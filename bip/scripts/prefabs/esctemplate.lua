@@ -53,7 +53,12 @@ local common_postinit = function(inst)
 end
 
 local function OnDayComplete(self)
-  -- if inventory is not full obtain a new random blueprint
+  local blueprint = SpawnPrefab("blueprint")
+  local x, y, z = self.inst.Transform:GetWorldPosition()
+  blueprint.Transform:SetPosition(x, y + 2, z)
+  local speed = 1 + math.random()
+  local angle = math.random() * 2 * PI
+  blueprint.Physics:SetVel(speed * math.cos(angle), 2 + math.random() * 3, speed * math.sin(angle))
 end
 
 -- This initializes for the server only. Components are added here.
@@ -79,7 +84,7 @@ local master_postinit = function(inst)
   inst.components.combat.damagemultiplier = 1
 
   -- Hunger rate (optional)
-  inst.components.hunger.hungerrate = 10 * TUNING.WILSON_HUNGER_RATE
+  inst.components.hunger.hungerrate = TUNING.WILSON_HUNGER_RATE
 
   inst.OnLoad = onload
   inst.OnNewSpawn = onload
