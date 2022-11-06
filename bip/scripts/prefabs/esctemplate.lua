@@ -7,7 +7,7 @@ local assets = {
 -- Your character's stats
 TUNING.ESCTEMPLATE_HEALTH = 150
 TUNING.ESCTEMPLATE_HUNGER = 150
-TUNING.ESCTEMPLATE_SANITY = 200
+TUNING.ESCTEMPLATE_SANITY = 150
 
 -- Custom starting inventory
 TUNING.GAMEMODE_STARTING_ITEMS.DEFAULT.ESCTEMPLATE = {
@@ -52,6 +52,10 @@ local common_postinit = function(inst)
   inst.MiniMapEntity:SetIcon("esctemplate.tex")
 end
 
+local function OnDayComplete(self)
+  -- if inventory is not full obtain a new random blueprint
+end
+
 -- This initializes for the server only. Components are added here.
 local master_postinit = function(inst)
   -- Set starting inventory
@@ -68,11 +72,14 @@ local master_postinit = function(inst)
   inst.components.hunger:SetMax(TUNING.ESCTEMPLATE_HUNGER)
   inst.components.sanity:SetMax(TUNING.ESCTEMPLATE_SANITY)
 
+  -- Perk
+  inst:WatchWorldState("cycles", OnDayComplete)
+
   -- Damage multiplier (optional)
   inst.components.combat.damagemultiplier = 1
 
   -- Hunger rate (optional)
-  inst.components.hunger.hungerrate = 1 * TUNING.WILSON_HUNGER_RATE
+  inst.components.hunger.hungerrate = 10 * TUNING.WILSON_HUNGER_RATE
 
   inst.OnLoad = onload
   inst.OnNewSpawn = onload
