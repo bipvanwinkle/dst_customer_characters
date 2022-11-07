@@ -54,7 +54,7 @@ end
 
 local function OnDayComplete(self)
   local blueprint = SpawnPrefab("blueprint")
-  local x, y, z = self.inst.Transform:GetWorldPosition()
+  local x, y, z = self.Transform:GetWorldPosition()
   blueprint.Transform:SetPosition(x, y + 2, z)
   local speed = 1 + math.random()
   local angle = math.random() * 2 * PI
