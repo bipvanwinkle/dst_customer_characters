@@ -1,4 +1,5 @@
 local MakePlayerCharacter = require "prefabs/player_common"
+local SourceModifierList = require("util/sourcemodifierlist")
 
 local assets = {
   Asset("SCRIPT", "scripts/prefabs/player_common.lua"),
@@ -71,17 +72,18 @@ local function OnDayComplete(self)
   self.components.inventory:GiveItem(blueprint)
 end
 
+--TODO make it so that learning from the science machine also remove the sanity penalty
 local function OnLearnRecipe(inst, data)
-  -- TODO
-  -- Create a blueprint with a specific recipe
-  -- Place the blueprint in the inventory unless inventory is full
-  --
   local blueprint = SpawnPrefab("blueprint")
   blueprint.components.teacher:SetRecipe(data.recipe)
   blueprint.components.named:SetName(STRINGS.NAMES[string.upper(data.recipe)] .. " " .. STRINGS.NAMES.BLUEPRINT)
 
   inst.components.inventory:GiveItem(blueprint)
   inst.components.sanity:DoDelta(10)
+
+  inst.components.timer:StopTimer("bip_memory_fog")
+  inst.components.timer:StartTimer("bip_memory_fog", TUNING.SEG_TIME)
+  inst.components.sanity.externalmodifiers:RemoveModifier("memory_fog")
 end
 
 local function OnAttackOther(inst, data)
@@ -89,8 +91,18 @@ local function OnAttackOther(inst, data)
   inst:PushEvent("oneatberry", { kind = "raspberry" })
 end
 
+-- Just a random event listener to test that custom events work
 local function OnEatBerry(inst, data)
   print("I ate a berry")
+end
+
+local function OnClockSegmentChanged(inst, data)
+  print("Tick tock")
+end
+
+local function OnMemoryFog(inst, data)
+  print("I haven't learned anything in a while")
+  inst.components.sanity.externalmodifiers:SetModifier('memory_fog', -TUNING.SANITYAURA_SMALL)
 end
 
 -- This initializes for the server only. Components are added here.
@@ -108,6 +120,12 @@ local master_postinit = function(inst)
   inst:ListenForEvent("onunlockrecipe", function(inst, data) OnLearnRecipe(inst, data) end)
   inst:ListenForEvent("onattackother", function(inst, data) OnAttackOther(inst, data) end)
   inst:ListenForEvent("oneatberry", function(inst, data) OnEatBerry(inst, data) end)
+  inst:ListenForEvent("timerdone", function(inst, data) OnMemoryFog(inst, data) end)
+
+  inst.components.timer:StartTimer("bip_memory_fog", TUNING.SEG_TIME)
+
+  -- Couldn't get this to work 👇
+  -- inst:ListenForEvent("clocksegschanged", function(inst, data) OnClockSegmentChanged(inst, data) end)
 
   -- Stats
   inst.components.health:SetMaxHealth(TUNING.ESCTEMPLATE_HEALTH)
