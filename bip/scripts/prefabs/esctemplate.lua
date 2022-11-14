@@ -10,6 +10,14 @@ TUNING.ESCTEMPLATE_HEALTH = 151
 TUNING.ESCTEMPLATE_HUNGER = 150
 TUNING.ESCTEMPLATE_SANITY = 150
 
+TUNING.MEMORY_FOG = {
+  SANITY = {
+    LEVEL_ONE = -.01,
+    LEVEL_TWO = -.05,
+    LEVEL_THREE = -.10
+  }
+}
+
 -- Custom starting inventory
 TUNING.GAMEMODE_STARTING_ITEMS.DEFAULT.ESCTEMPLATE = {
   "blueprint",
@@ -31,31 +39,6 @@ for k, v in pairs(TUNING.GAMEMODE_STARTING_ITEMS) do
 end
 local prefabs = FlattenTree(start_inv, true)
 
--- When the character is revived from human
-local function onbecamehuman(inst)
-  print("I was just resurrected")
-  -- Set speed when not a ghost (optional)
-  inst.components.locomotor:SetExternalSpeedMultiplier(inst, "esctemplate_speed_mod", 1)
-end
-
-local function onbecameghost(inst)
-  -- Remove speed modifier when becoming a ghost
-  print("I just became a ghost")
-  inst.components.locomotor:RemoveExternalSpeedMultiplier(inst, "esctemplate_speed_mod")
-end
-
--- When loading or spawning the character
-local function onload(inst)
-  inst:ListenForEvent("ms_respawnedfromghost", onbecamehuman)
-  inst:ListenForEvent("ms_becameghost", onbecameghost)
-
-  if inst:HasTag("playerghost") then
-    onbecameghost(inst)
-  else
-    onbecamehuman(inst)
-  end
-end
-
 -- This initializes for both the server and client. Tags can be added here.
 local common_postinit = function(inst)
   -- Minimap icon
@@ -74,6 +57,7 @@ end
 
 --TODO make it so that learning from the science machine also remove the sanity penalty
 local function OnLearnRecipe(inst, data)
+  print("I learned something")
   local blueprint = SpawnPrefab("blueprint")
   blueprint.components.teacher:SetRecipe(data.recipe)
   blueprint.components.named:SetName(STRINGS.NAMES[string.upper(data.recipe)] .. " " .. STRINGS.NAMES.BLUEPRINT)
@@ -81,9 +65,11 @@ local function OnLearnRecipe(inst, data)
   inst.components.inventory:GiveItem(blueprint)
   inst.components.sanity:DoDelta(10)
 
-  inst.components.timer:StopTimer("bip_memory_fog")
-  inst.components.timer:StartTimer("bip_memory_fog", TUNING.SEG_TIME)
+  inst.components.timer:StopTimer("memory_fog")
+  inst.components.timer:StartTimer("memory_fog",
+    TUNING.SEG_TIME * (TUNING.DAY_SEGS_DEFAULT + TUNING.DUSK_SEGS_DEFAULT + TUNING.NIGHT_SEGS_DEFAULT) * 3)
   inst.components.sanity.externalmodifiers:RemoveModifier("memory_fog")
+  inst.memory_fog["level"] = "LEVEL_ONE"
 end
 
 local function OnAttackOther(inst, data)
@@ -96,13 +82,59 @@ local function OnEatBerry(inst, data)
   print("I ate a berry")
 end
 
-local function OnClockSegmentChanged(inst, data)
-  print("Tick tock")
-end
+-- local function OnClockSegmentChanged(inst, data)
+--   print("Tick tock")
+-- end
 
 local function OnMemoryFog(inst, data)
-  print("I haven't learned anything in a while")
-  inst.components.sanity.externalmodifiers:SetModifier('memory_fog', -TUNING.SANITYAURA_SMALL)
+  if data.name == "memory_fog" then
+    print("I haven't learned anything in a while")
+    print("My current memory fog level is ", inst.memory_fog.level)
+    if inst.memory_fog.level == "LEVEL_ONE" then
+      inst.memory_fog.level = "LEVEL_TWO"
+    elseif inst.memory_fog.level == "LEVEL_TWO" then
+      inst.memory_fog.level = "LEVEL_THREE"
+    end
+
+    local new_sanity_debuff = TUNING.MEMORY_FOG.SANITY[inst.memory_fog.level]
+    inst.components.sanity.externalmodifiers:SetModifier('memory_fog', new_sanity_debuff)
+    inst.components.timer:StartTimer("memory_fog",
+      TUNING.SEG_TIME * (TUNING.DAY_SEGS_DEFAULT + TUNING.DUSK_SEGS_DEFAULT + TUNING.NIGHT_SEGS_DEFAULT) * 3)
+  end
+end
+
+local function GetOnLoad(inst)
+  local old_OnLoad = inst.OnLoad
+  local function new_OnLoad(inst, data, ...) -- "..." is used to also load also all other parameters we are currently not interested in, if there are any.
+    if data ~= nil then -- if something was loaded
+      if data.memory_fog == nil then
+        inst.memory_fog = { level = "LEVEL_ONE" }
+      else
+        inst.memory_fog = data.memory_fog
+      end
+    else
+      inst.memory_fog = { level = "LEVEL_ONE" }
+    end
+    local new_sanity_debuff = TUNING.MEMORY_FOG.SANITY[inst.memory_fog.level]
+    inst.components.sanity.externalmodifiers:SetModifier('memory_fog', new_sanity_debuff)
+    inst.components.timer:StartTimer("memory_fog",
+      TUNING.SEG_TIME * (TUNING.DAY_SEGS_DEFAULT + TUNING.DUSK_SEGS_DEFAULT + TUNING.NIGHT_SEGS_DEFAULT) * 3)
+    if old_OnLoad ~= nil then
+      return old_OnLoad(inst, data, ...)
+    end
+  end
+
+  return new_OnLoad
+end
+
+local function GetOnSave(inst)
+  local old_OnSave = inst.OnSave
+  local function new_OnSave(inst, data, ...)
+    data.memory_fog = inst.memory_fog -- simply add your data (currently within the instance) to the data list
+    if old_OnSave ~= nil then old_OnSave(inst, data, ...) end -- call the old, if there is one. no need to return data
+  end
+
+  return new_OnSave
 end
 
 -- This initializes for the server only. Components are added here.
@@ -117,12 +149,11 @@ local master_postinit = function(inst)
   --inst.talker_path_override = "dontstarve_DLC001/characters/"
 
   inst:ListenForEvent("learnrecipe", function(inst, data) OnLearnRecipe(inst, data) end)
-  inst:ListenForEvent("onunlockrecipe", function(inst, data) OnLearnRecipe(inst, data) end)
+  inst:ListenForEvent("unlockrecipe", function(inst, data) OnLearnRecipe(inst, data) end)
   inst:ListenForEvent("onattackother", function(inst, data) OnAttackOther(inst, data) end)
   inst:ListenForEvent("oneatberry", function(inst, data) OnEatBerry(inst, data) end)
   inst:ListenForEvent("timerdone", function(inst, data) OnMemoryFog(inst, data) end)
 
-  inst.components.timer:StartTimer("bip_memory_fog", TUNING.SEG_TIME)
 
   -- Couldn't get this to work 👇
   -- inst:ListenForEvent("clocksegschanged", function(inst, data) OnClockSegmentChanged(inst, data) end)
@@ -141,9 +172,9 @@ local master_postinit = function(inst)
   -- Hunger rate (optional)
   inst.components.hunger.hungerrate = TUNING.WILSON_HUNGER_RATE
 
-  inst.OnLoad = onload
-  inst.OnNewSpawn = onload
-
+  inst.OnLoad = GetOnLoad(inst)
+  inst.OnSave = GetOnSave(inst)
+  inst.OnNewSpawn = GetOnLoad(inst)
 end
 
 return MakePlayerCharacter("esctemplate", prefabs, assets, common_postinit, master_postinit, prefabs)
