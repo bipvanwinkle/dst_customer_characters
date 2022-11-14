@@ -70,10 +70,23 @@ local function OnLearnRecipe(inst, data)
     TUNING.SEG_TIME * (TUNING.DAY_SEGS_DEFAULT + TUNING.DUSK_SEGS_DEFAULT + TUNING.NIGHT_SEGS_DEFAULT) * 3)
   inst.components.sanity.externalmodifiers:RemoveModifier("memory_fog")
   inst.memory_fog["level"] = "LEVEL_ONE"
+
+  print_table(inst.memory_fog.learn_log)
+  inst.memory_fog.learn_log[data.recipe] = { cycle = TheWorld.state.cycles, time = TheWorld.state.time }
+  print_table(inst.memory_fog.learn_log[data.recipe])
 end
 
 local function OnAttackOther(inst, data)
   print("Attacking somebody else")
+  print("GetTime", GetTime())
+  print("GetTickTime", GetTickTime())
+  print("GetStaticTime", GetStaticTime())
+  print("GetTick", GetTick())
+  print("GetStaticTick", GetStaticTick())
+  print("GetTimeReal", GetTimeReal())
+  print("GetTimeRealSeconds", GetTimeRealSeconds())
+  print("The World Cycles", TheWorld.state.cycles)
+  print("The World Time", TheWorld.state.time)
   inst:PushEvent("oneatberry", { kind = "raspberry" })
 end
 
@@ -108,12 +121,15 @@ local function GetOnLoad(inst)
   local function new_OnLoad(inst, data, ...) -- "..." is used to also load also all other parameters we are currently not interested in, if there are any.
     if data ~= nil then -- if something was loaded
       if data.memory_fog == nil then
-        inst.memory_fog = { level = "LEVEL_ONE" }
+        inst.memory_fog = { level = "LEVEL_ONE", learn_log = {} }
       else
         inst.memory_fog = data.memory_fog
       end
+      if data.memory_fog.learn_log == nil then
+        inst.memory_fog.learn_log = {}
+      end
     else
-      inst.memory_fog = { level = "LEVEL_ONE" }
+      inst.memory_fog = { level = "LEVEL_ONE", learn_log = {} }
     end
     local new_sanity_debuff = TUNING.MEMORY_FOG.SANITY[inst.memory_fog.level]
     inst.components.sanity.externalmodifiers:SetModifier('memory_fog', new_sanity_debuff)
@@ -148,7 +164,7 @@ local master_postinit = function(inst)
   -- Uncomment if "wathgrithr"(Wigfrid) or "webber" voice is used
   --inst.talker_path_override = "dontstarve_DLC001/characters/"
 
-  inst:ListenForEvent("learnrecipe", function(inst, data) OnLearnRecipe(inst, data) end)
+  -- inst:ListenForEvent("learnrecipe", function(inst, data) OnLearnRecipe(inst, data) end)
   inst:ListenForEvent("unlockrecipe", function(inst, data) OnLearnRecipe(inst, data) end)
   inst:ListenForEvent("onattackother", function(inst, data) OnAttackOther(inst, data) end)
   inst:ListenForEvent("oneatberry", function(inst, data) OnEatBerry(inst, data) end)
