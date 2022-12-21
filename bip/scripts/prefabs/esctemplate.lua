@@ -1,5 +1,4 @@
 local MakePlayerCharacter = require "prefabs/player_common"
-local SourceModifierList = require("util/sourcemodifierlist")
 
 local assets = {
   Asset("SCRIPT", "scripts/prefabs/player_common.lua"),
@@ -116,21 +115,35 @@ local function OnMemoryFog(inst, data)
   end
 end
 
+local function OnBuildItem(inst, data)
+  print_table(data)
+  print_table(data.recipe)
+  local recipe_name = data.recipe.name
+
+  inst.memory_fog.build_log[recipe_name] = { cycle = TheWorld.state.cycles, time = TheWorld.state.time }
+  print_table(inst.memory_fog.build_log)
+  print_table(inst.memory_fog.build_log[recipe_name])
+end
+
 local function GetOnLoad(inst)
   local old_OnLoad = inst.OnLoad
   local function new_OnLoad(inst, data, ...) -- "..." is used to also load also all other parameters we are currently not interested in, if there are any.
     if data ~= nil then -- if something was loaded
       if data.memory_fog == nil then
-        inst.memory_fog = { level = "LEVEL_ONE", learn_log = {} }
+        inst.memory_fog = { level = "LEVEL_ONE", learn_log = {}, build_log = {} }
       else
         inst.memory_fog = data.memory_fog
       end
       if data.memory_fog.learn_log == nil then
         inst.memory_fog.learn_log = {}
       end
+      if data.memory_fog.build_log == nil then
+        inst.memory_fog.build_log = {}
+      end
     else
-      inst.memory_fog = { level = "LEVEL_ONE", learn_log = {} }
+      inst.memory_fog = { level = "LEVEL_ONE", learn_log = {}, build_log = {} }
     end
+    print_table(inst.memory_fog)
     local new_sanity_debuff = TUNING.MEMORY_FOG.SANITY[inst.memory_fog.level]
     inst.components.sanity.externalmodifiers:SetModifier('memory_fog', new_sanity_debuff)
     inst.components.timer:StartTimer("memory_fog",
@@ -169,6 +182,7 @@ local master_postinit = function(inst)
   inst:ListenForEvent("onattackother", function(inst, data) OnAttackOther(inst, data) end)
   inst:ListenForEvent("oneatberry", function(inst, data) OnEatBerry(inst, data) end)
   inst:ListenForEvent("timerdone", function(inst, data) OnMemoryFog(inst, data) end)
+  inst:ListenForEvent("builditem", function(inst, data) OnBuildItem(inst, data) end)
 
 
   -- Couldn't get this to work 👇
