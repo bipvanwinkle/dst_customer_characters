@@ -16,6 +16,10 @@ function Inspectable:SetDescription(desc)
     self.description = desc
 end
 
+function Inspectable:SetNameOverride(nameoverride)
+    self.nameoverride = nameoverride
+end
+
 function Inspectable:RecordViews(state)
     self.recordview = state ~= false
 end
@@ -50,7 +54,14 @@ function Inspectable:GetDescription(viewer)
     if self.inst == viewer then
         return
     elseif not CanEntitySeeTarget(viewer, self.inst) then
-        return GetString(viewer, "DESCRIBE_TOODARK")
+		local owner = self.inst.components.inventoryitem ~= nil and self.inst.components.inventoryitem.owner or nil
+		if not (owner ~= nil and
+				owner:HasTag("pocketdimension_container") and
+				owner.components.container ~= nil and
+				owner.components.container:IsOpenedBy(viewer)
+			) then
+			return GetString(viewer, "DESCRIBE_TOODARK")
+		end
     end
 
     local desc, filter_context, author

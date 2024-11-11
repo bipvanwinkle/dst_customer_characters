@@ -134,11 +134,22 @@ local assets =
     Asset("ANIM", "anim/player_idles_wx.zip"),
     Asset("ANIM", "anim/player_idles_wonkey.zip"),
     Asset("ANIM", "anim/player_idles_wickerbottom.zip"),
+    Asset("ANIM", "anim/player_idles_waxwell.zip"),
+    Asset("ANIM", "anim/player_idles_wilson.zip"),    
     Asset("ANIM", "anim/bernie_build.zip"),
     Asset("ANIM", "anim/swap_lucy_axe.zip"),
+    -- Beefalo
+    Asset("ANIM", "anim/beefalo_basic.zip"),
+    Asset("ANIM", "anim/beefalo_build.zip"),
+    Asset("ANIM", "anim/beefalo_actions.zip"),
 
     -- Wardrobe
     Asset("ANIM", "anim/player_emotesxl.zip"), -- idle emote animations
+
+    -- Skill tree
+    Asset("ANIM", "anim/skills_activate.zip"),
+    Asset("ANIM", "anim/skill_unlock.zip"),
+
 
     -- Unused and deprecated. Keeping for mods.
     Asset("DYNAMIC_ATLAS", "images/skinsscreen.xml"),
@@ -357,6 +368,10 @@ for k, v in pairs(require("prefabs/weed_defs").WEED_DEFS) do
 	table.insert(prefabs, v.prefab)
 end
 
+-- Testing and viewing skins on a more close level.
+if CAN_USE_DBUI then
+    require("dbui_no_package/debug_skins_data/hooks").Hooks("frontend", assets)
+end
 
 --we don't actually instantiate this prefab. It's used for controlling asset loading
 local function fn()

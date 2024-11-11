@@ -223,8 +223,8 @@ end
 
 local function teleport_override_fn(inst)
     local ipos = inst:GetPosition()
-    local offset = FindWalkableOffset(ipos, 2*PI*math.random(), 10, 8, true, false)
-        or FindWalkableOffset(ipos, 2*PI*math.random(), 14, 8, true, false)
+    local offset = FindWalkableOffset(ipos, TWOPI*math.random(), 10, 8, true, false)
+        or FindWalkableOffset(ipos, TWOPI*math.random(), 14, 8, true, false)
 
     return (offset ~= nil and ipos + offset) or ipos
 end
@@ -339,6 +339,9 @@ local function fn()
     inst:AddTag("noepicmusic")
     inst:AddTag("scarytoprey")
     inst:AddTag("soulless")
+    inst:AddTag("lunar_aligned")
+
+    inst.scrapbook_proxy = "alterguardian_phase1"
 
     inst._musicdirty = net_event(inst.GUID, "alterguardian_phase2._musicdirty", "musicdirty")
     inst._playingmusic = false
@@ -406,7 +409,8 @@ local function fn()
     MakeLargeFreezableCharacter(inst)
     inst.components.freezable:SetResistance(8)
 
-    MakeHauntableGoToStateWithChanceFunction(inst, "atk_chop", hauntchancefn, TUNING.ALTERGUARDIAN_PHASE2_ATTACK_PERIOD, TUNING.HAUNT_SMALL)
+	inst:AddComponent("hauntable")
+	inst.components.hauntable:SetHauntValue(TUNING.HAUNT_TINY)
 
     inst:ListenForEvent("phasetransition", OnPhaseTransition)
     inst:ListenForEvent("attacked", OnAttacked)

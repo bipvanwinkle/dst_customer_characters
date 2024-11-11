@@ -52,6 +52,8 @@ local function fn()
     inst.entity:AddMiniMapEntity()
     inst.entity:AddNetwork()
 
+	inst:SetDeploySmartRadius(0.75) --recipe min_spacing/2
+
     inst.MiniMapEntity:SetIcon("saltbox.png")
 
     inst:AddTag("saltbox")
@@ -60,6 +62,8 @@ local function fn()
     inst.AnimState:SetBank("saltbox")
     inst.AnimState:SetBuild("saltbox")
     inst.AnimState:PlayAnimation("closed")
+
+    inst.scrapbook_anim = "closed"
 
     -- inst.SoundEmitter:PlaySound("dontstarve/common/ice_box_LP", "idlesound")
 

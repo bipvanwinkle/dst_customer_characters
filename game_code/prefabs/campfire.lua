@@ -31,7 +31,7 @@ local function ontakefuel(inst)
 end
 
 local function updatefuelrate(inst)
-    inst.components.fueled.rate = TheWorld.state.israining and 1 + TUNING.CAMPFIRE_RAIN_RATE * TheWorld.state.precipitationrate or 1
+	inst.components.fueled.rate = TheWorld.state.israining and inst.components.rainimmunity == nil and 1 + TUNING.CAMPFIRE_RAIN_RATE * TheWorld.state.precipitationrate or 1
 end
 
 local function onupdatefueled(inst)
@@ -132,6 +132,7 @@ local function fn()
     inst.entity:AddSoundEmitter()
     inst.entity:AddNetwork()
 
+	inst:SetDeploySmartRadius(1) --recipe min_spacing/2
     MakeObstaclePhysics(inst, .2)
 
     inst.AnimState:SetBank("campfire")

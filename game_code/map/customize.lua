@@ -145,6 +145,14 @@ local loop_descriptions = {
 	{ text = STRINGS.UI.SANDBOXMENU.LOOPALWAYS, data = "always" },
 }
 
+local loop_plus_descriptions = {
+	{ text = STRINGS.UI.SANDBOXMENU.LOOPNEVER, data = "never" },
+	{ text = STRINGS.UI.SANDBOXMENU.LOOPRARE, data = "rare" },
+	{ text = STRINGS.UI.SANDBOXMENU.LOOPRANDOM, data = "default" },
+	{ text = STRINGS.UI.SANDBOXMENU.LOOPOFTEN, data = "often" },
+	{ text = STRINGS.UI.SANDBOXMENU.LOOPALWAYS, data = "always" },
+}
+
 local complexity_descriptions = {
 	{ text = STRINGS.UI.SANDBOXMENU.SLIDEVERYSIMPLE, data = "verysimple" },
 	{ text = STRINGS.UI.SANDBOXMENU.SLIDESIMPLE, data = "simple" },
@@ -237,6 +245,13 @@ local lessdamagetaken_descriptions = {	-- Note: The data values should be named 
 	{ text = STRINGS.UI.SANDBOXMENU.SLIDEOFTEN, data = "more" },
 }
 
+local riftsenabled_descriptions = {
+	{ text = STRINGS.UI.SANDBOXMENU.SLIDENEVER, data = "never" },
+	{ text = STRINGS.UI.SANDBOXMENU.DETECT_AUTO, data = "default" },
+    { text = STRINGS.UI.SANDBOXMENU.DETECT_ALWAYS, data = "always" },
+}
+
+
 local descriptions = {
 	frequency_descriptions = frequency_descriptions,
 	worldgen_frequency_descriptions = worldgen_frequency_descriptions,
@@ -264,6 +279,7 @@ local descriptions = {
 	resetime_descriptions = resetime_descriptions,
 	nonlethal_descriptions = nonlethal_descriptions,
 	darknessdamage_descriptions = darknessdamage_descriptions,
+    riftsenabled_descriptions = riftsenabled_descriptions,
 }
 
 local WORLDGEN_GROUP = {
@@ -313,6 +329,7 @@ local WORLDGEN_GROUP = {
 			["moon_fruitdragon"] = {value = "default", image = "moon_fruitdragon.tex", world = {"forest"}},
 			["ocean_shoal"] = {value = "default", image = "ocean_shoal.tex", world = {"forest"}},
 			["ocean_wobsterden"] = {value = "default", image = "ocean_wobsterden.tex", world = {"forest"}},
+			["ocean_otterdens"] = {value = "default", image = "ocean_otterdens.tex", world={"forest"}},
 		}
 	},
 	["resources"] = {
@@ -376,6 +393,7 @@ local WORLDGEN_GROUP = {
 			["moon_fissure"] = {value = "default", image = "moon_fissure.tex", desc = worldgen_frequency_descriptions, world = {"forest"}},
 			["terrariumchest"] = {value = "default", image = "terrarium.tex", desc = yesno_descriptions, world={"forest"}},
 			["stageplays"] = {value = "default", image = "stageplays.tex", desc = yesno_descriptions, world={"forest"}},
+			["junkyard"] = {value = "default", image = "junkyard.tex", desc = yesno_descriptions, world={"forest"}},
 		}
 	},
 	["global"] = {
@@ -423,6 +441,11 @@ local WORLDSETTINGS_GROUP = {
 			["klaus"] = {value = "default", image = "klaus.tex", world={"forest"}},
 			["spiderqueen"] = {value = "default", image = "spiderqueen.tex", world={"forest", "cave"}},
 			["eyeofterror"] = {value = "default", image = "eyeofterror.tex", world={"forest"}},
+
+			["daywalker"] = {value = "default", image = "daywalker.tex", world={"cave"}},
+			["daywalker2"] = {value = "default", image = "daywalker2.tex", world={"forest"}}, -- Same TUNING but different icon for forest.
+
+			["sharkboi"] = {value = "default", image = "sharkboi.tex", world={"forest"}},
 			--NO_BOSS_TIME?
 		}
 	},
@@ -456,6 +479,8 @@ local WORLDSETTINGS_GROUP = {
 			["spider_spitter"] = {value = "default", image = "spider_spitter.tex", world={"cave"}},
 			["spider_dropper"] = {value = "default", image = "spider_dropper.tex", world={"cave"}},
 			["molebats"] = {value = "default", image = "molebats.tex", world={"cave"}},
+			["itemmimics"] = {value = "default", image = "itemmimics.tex", world={"cave"}},
+			["chest_mimics"] = {value = "default", image = "chest_mimics.tex", world={"cave"}},
 		}
 	},
 	["animals"] = {
@@ -474,6 +499,7 @@ local WORLDSETTINGS_GROUP = {
 			["wobsters"] = {value = "default", image = "wobsters.tex", world={"forest"}},
 			["gnarwail"] = {value = "default", image = "gnarwail.tex", world={"forest"}},
 			["fishschools"] = {value = "default", image = "fishschool.tex", world={"forest"}},
+			["otters_setting"] = {value = "default", image = "otter.tex", world={"forest"}},
 
 			["pigs_setting"] = {value ="default", image = "pigs.tex", world={"forest", "cave"}},
 			["bunnymen_setting"] = {value ="default", image = "bunnymen.tex", world={"forest", "cave"}},
@@ -547,12 +573,19 @@ local WORLDSETTINGS_GROUP = {
 			["hounds"] = {value = "default", image = "houndattacks.tex", desc = frequency_descriptions, world={"forest"}, order = 1},
 			["winterhounds"] = {value = "default", image = "winterhounds.tex", desc = yesno_descriptions, world={"forest"}, order = 2},
 			["summerhounds"] = {value = "default", image = "summerhounds.tex", desc = yesno_descriptions, world={"forest"}, order = 3},
+            ["rifts_frequency"] = {value = "default", image = "lunarrift_portal.tex", desc = frequency_descriptions, world={"forest"}},
+            ["rifts_enabled"] = {value = "default", image = "lunarrift_portal.tex", desc = riftsenabled_descriptions, world={"forest"}},
+            ["lunarhail_frequency"] = {value = "default", image = "lunar_hail.tex", desc = frequency_descriptions, world={"forest"}},
 
 			["weather"] = {value = "default", image = "rain.tex", desc = frequency_descriptions, world={"forest", "cave"}},
 
 			["earthquakes"] = {value = "default", image = "earthquakes.tex", desc = frequency_descriptions, world={"cave"}},
 			["wormattacks"] = {value = "default", image = "wormattacks.tex", desc = frequency_descriptions, world={"cave"}},
+			["wormattacks_boss"] = {value = "default", image = "wormattacks_boss.tex", desc = loop_plus_descriptions, world={"cave"}},
 			["atriumgate"] = {value = "default", image = "atriumgate.tex", desc = atrium_descriptions, world={"cave"}},
+            ["rifts_frequency_cave"] = {value = "default", image = "shadowrift_portal.tex", desc = frequency_descriptions, world={"cave"}},
+            ["rifts_enabled_cave"] = {value = "default", image = "shadowrift_portal.tex", desc = riftsenabled_descriptions, world={"cave"}},
+			["acidrain_enabled"] = {value = "always", image = "acid_rain.tex", desc = enableddisabled_descriptions, world={"cave"}},
 
 			--["disease_delay"] = {value = "default", image = "berrybush_diseased.tex", desc = disease_descriptions, world={"forest", "cave"}},
 		}
@@ -591,6 +624,8 @@ local WORLDSETTINGS_GROUP = {
 			["year_of_the_carrat"] = {value = "default", image = "yotc_carratshrine.tex", masteroption = true, master_controlled = true, order = 7},
 			["year_of_the_beefalo"] = {value = "default", image = "yotb_beefaloshrine.tex", masteroption = true, master_controlled = true, order = 8},
 			["year_of_the_catcoon"] = {value = "default", image = "yot_catcoonshrine.tex", masteroption = true, master_controlled = true, order = 9},
+			["year_of_the_bunnyman"] = {value = "default", image = "yotr_rabbitshrine.tex", masteroption = true, master_controlled = true, order = 10},
+			["year_of_the_dragonfly"] = {value = "default", image = "yotd_dragonshrine.tex", masteroption = true, master_controlled = true, order = 11},
 		}
 	},
 	["global"] = {

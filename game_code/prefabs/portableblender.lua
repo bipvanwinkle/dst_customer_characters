@@ -126,6 +126,7 @@ local function fn()
     inst.entity:AddMiniMapEntity()
     inst.entity:AddNetwork()
 
+	inst:SetDeploySmartRadius(DEPLOYSPACING_RADIUS[DEPLOYSPACING.DEFAULT] / 2) --item deployspacing/2
     inst:SetPhysicsRadiusOverride(.5)
     MakeObstaclePhysics(inst, inst.physicsradiusoverride)
 
@@ -228,6 +229,8 @@ local function itemfn()
     if not TheWorld.ismastersim then
         return inst
     end
+
+    inst.scrapbook_anim = "idle_ground"
 
     inst:AddComponent("inspectable")
 

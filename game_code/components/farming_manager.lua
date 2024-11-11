@@ -114,9 +114,9 @@ local function SetSoilMoisture(index, soil_moisture)
 					--obj:PushEvent("onsoilmoisturestatechange", {is_soil_moist = new_moisture > 0, was_soil_moist = prev_moisture > 0})
 					obj.components.farmsoildrinker:OnSoilMoistureStateChange(new_moisture > 0, prev_moisture > 0)
 					if new_moisture == 0 then
-						inst:RemoveTag("wildfireprotected")
+						obj:RemoveTag("wildfireprotected")
 					elseif prev_moisture == 0 then
-						inst:AddTag("wildfireprotected")
+						obj:AddTag("wildfireprotected")
 					end
 				end
 			end
@@ -153,7 +153,12 @@ local function OnTerraform(inst, data, isloading)
     if data.tile == WORLD_TILES.FARMING_SOIL then
 		if not isloading then
 			if not nutrients then
-				self:SetTileNutrients(x, y, GetRandomMinMax(TUNING.STARTING_NUTRIENTS_MIN, TUNING.STARTING_NUTRIENTS_MAX), GetRandomMinMax(TUNING.STARTING_NUTRIENTS_MIN, TUNING.STARTING_NUTRIENTS_MAX), GetRandomMinMax(TUNING.STARTING_NUTRIENTS_MIN, TUNING.STARTING_NUTRIENTS_MAX))
+				self:SetTileNutrients(
+					x, y,
+					GetRandomMinMax(TUNING.STARTING_NUTRIENTS_MIN, TUNING.STARTING_NUTRIENTS_MAX),
+					GetRandomMinMax(TUNING.STARTING_NUTRIENTS_MIN, TUNING.STARTING_NUTRIENTS_MAX),
+					GetRandomMinMax(TUNING.STARTING_NUTRIENTS_MIN, TUNING.STARTING_NUTRIENTS_MAX)
+				)
 			end
 			TheWorld.components.undertile:SetTileUnderneath(x, y, data.original_tile or nil)
 		end
@@ -294,13 +299,17 @@ end
 function self:_RefreshSoilMoisture(dt)
 	local rain_rate = TheWorld.state.israining and TheWorld.state.precipitationrate or 0
 	local world_wetness = TheWorld.state.wetness
-	local world_temp = TheWorld.state.temperature
 
 	for index, soilmoisture in pairs(_moisturegrid.grid) do
 		if soilmoisture < world_wetness then
 			-- the soil will never by dryer than the ground's wetness
 			SetSoilMoisture(index, world_wetness)
 		else
+			local tx, ty = _moisturegrid:GetXYFromIndex(index)
+			local x, y, z = TheWorld.Map:GetTileCenterPoint(tx, ty)
+
+			local world_temp = GetTemperatureAtXZ(x, z)
+
 			-- if its raining, then add moisture based on how hard its raining, otherwise, the world temp may do some drying
 			local world_rate = rain_rate > 0 and (rain_rate * SOIL_RAIN_MOD)
 						or Remap(Clamp(world_temp, MIN_DRYING_TEMP, MAX_DRYING_TEMP), MIN_DRYING_TEMP, MAX_DRYING_TEMP, SOIL_MIN_TEMP_DRY_RATE, SOIL_MAX_TEMP_DRY_RATE)	--
@@ -362,9 +371,12 @@ function self:GetTileNutrients(x, y)
 	if nutrients then
         return DecodeNutrients(nutrients)
 	end
-	nutrients = GetTileInfo(_map:GetTile(x, y)).nutrients
-    if nutrients then
-        return unpack(nutrients)
+    local tile_info = GetTileInfo(_map:GetTile(x, y))
+    if tile_info then
+        nutrients = tile_info.nutrients
+        if nutrients then
+            return unpack(nutrients)
+        end
     end
     return 0, 0, 0
 end

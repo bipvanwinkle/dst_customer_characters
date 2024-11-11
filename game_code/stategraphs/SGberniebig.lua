@@ -31,6 +31,8 @@ local events =
 {
     CommonHandlers.OnLocomote(true, true),
     CommonHandlers.OnHop(),
+    CommonHandlers.OnSink(),
+    CommonHandlers.OnFallInVoid(),
     EventHandler("death", function(inst, data)
         if not inst.sg:HasStateTag("deactivating") then
             inst.sg:GoToState("death", data)
@@ -221,8 +223,16 @@ local states =
         onenter = function(inst)
             inst.components.locomotor:Stop()
             inst.AnimState:PlayAnimation("death")
+			inst.AnimState:PushAnimation("death_pst", false)
             inst.Transform:SetNoFaced()
+			inst.sg:SetTimeout(inst.AnimState:GetCurrentAnimationLength())
         end,
+
+		ontimeout = function(inst)
+            if inst:GetSkinName() == nil then
+			    inst.AnimState:SetBuild("bernie_build")
+            end
+		end,
 
         timeline =
         {
@@ -259,7 +269,7 @@ local states =
 
         events =
         {
-            EventHandler("animover", function(inst)
+			EventHandler("animqueueover", function(inst)
                 if inst.AnimState:AnimDone() then
                     inst:GoInactive()
                 end
@@ -343,10 +353,18 @@ local states =
         onenter = function(inst)
             inst.components.locomotor:Stop()
             inst.AnimState:PlayAnimation("deactivate")
+			inst.AnimState:PushAnimation("deactivate_pst", false)
             inst.Transform:SetNoFaced()
             inst.components.health:SetInvincible(true)
             inst.SoundEmitter:PlaySound("dontstarve/creatures/together/bernie_big/deactivate")
+			inst.sg:SetTimeout(inst.AnimState:GetCurrentAnimationLength())
         end,
+
+		ontimeout = function(inst)
+            if inst:GetSkinName() == nil then
+    			inst.AnimState:SetBuild("bernie_build")
+            end
+		end,
 
         timeline =
         {
@@ -374,7 +392,7 @@ local states =
 
         events =
         {
-            EventHandler("animover", function(inst)
+			EventHandler("animqueueover", function(inst)
                 if inst.AnimState:AnimDone() then
                     inst:GoInactive()
                 end
@@ -466,5 +484,7 @@ CommonStates.AddRunStates(states,
 })
 
 CommonStates.AddHopStates(states, true, {pre = "run_pre", loop = "run_loop", pst = "run_pst"})
+CommonStates.AddSinkAndWashAshoreStates(states, {washashore = "hit",})
+CommonStates.AddVoidFallStates(states, {voiddrop = "hit",})
 
 return StateGraph("berniebig", states, events, "activate")

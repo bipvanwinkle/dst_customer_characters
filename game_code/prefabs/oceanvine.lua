@@ -172,13 +172,13 @@ local function OnStartBurnAnim(inst)
     if inst.components.pickable ~= nil then
         inst:RemoveComponent("pickable")
     end
-    
+
     inst.components.burnable:SetOnExtinguishFn(inst.Remove)
 
     inst.AnimState:PlayAnimation("burn")
     inst:ListenForEvent("animover", inst.Remove)
 
-    local theta = math.random() * 2 * PI
+    local theta = math.random() * TWOPI
     local spd = math.random() * 2
     local ash = SpawnPrefab("ash")
     ash.Transform:SetPosition(inst:GetPosition():Get())
@@ -237,7 +237,7 @@ local function makefull(inst)
 end
 
 local function onloadpostpass(inst, newents, savedata)
-    inst.AnimState:SetTime(math.random() * inst.AnimState:GetCurrentAnimationLength())
+	inst.AnimState:SetFrame(math.random(inst.AnimState:GetCurrentAnimationNumFrames()) - 1)
 end
 
 local function fall(inst)
@@ -278,6 +278,7 @@ local function commonfn(Sim)
 	inst.AnimState:SetBank("oceanvine")
     inst.AnimState:SetBuild("oceanvine")
 	inst.AnimState:PlayAnimation("idle_fruit", true)
+    inst.scrapbook_anim = "idle_fruit"
 
 	inst:AddTag("hangingvine")
     inst:AddTag("flying")

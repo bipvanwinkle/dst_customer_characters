@@ -167,9 +167,9 @@ function LoadoutSelect_beefalo:_MakeMenu(subscreener)
     local menu_items = nil
     menu_items =
     {
-        {widget = self.button_beef_body },
-        {widget = self.button_beef_horn },
         {widget = self.button_beef_head },
+        {widget = self.button_beef_horn },
+        {widget = self.button_beef_body },
         {widget = self.button_beef_feet },
         {widget = self.button_beef_tail },
     }
@@ -289,7 +289,7 @@ function LoadoutSelect_beefalo:_ApplySkins(skins, skip_change_emote)
 
     local base_skin = self.currentcharacter_inst:GetBaseSkin()
 
-	self.puppet:SetSkins(self.currentcharacter, base_skin, skins, skip_change_emote)
+	self.puppet:SetSkins(self.currentcharacter, base_skin, skins, skip_change_emote, self.currentcharacter_inst)
 end
 
 function LoadoutSelect_beefalo:_UpdateMenu(skins)
@@ -348,7 +348,7 @@ function LoadoutSelect_beefalo:OnControl(control, down)
             return true
         else
             ]]
-        if control == CONTROL_MENU_MISC_1 and AllowSkins() then
+        if control == CONTROL_SKIN_PRESETS and AllowSkins() then
             self:_LoadSkinPresetsScreen()
             TheFrontEnd:GetSound():PlaySound("dontstarve/HUD/click_move")
             return true
@@ -369,7 +369,7 @@ function LoadoutSelect_beefalo:GetHelpText()
 
 --        table.insert(t, TheInput:GetLocalizedControl(controller_id, CONTROL_MENU_MISC_3) .. " " .. STRINGS.UI.WARDROBESCREEN.CYCLE_VIEW)
 
-        table.insert(t, TheInput:GetLocalizedControl(controller_id, CONTROL_MENU_MISC_1) .. " " .. STRINGS.UI.SKIN_PRESETS.TITLE)
+        table.insert(t, TheInput:GetLocalizedControl(controller_id, CONTROL_SKIN_PRESETS) .. " " .. STRINGS.UI.SKIN_PRESETS.TITLE)
 
 		return table.concat(t, "  ")
 	else

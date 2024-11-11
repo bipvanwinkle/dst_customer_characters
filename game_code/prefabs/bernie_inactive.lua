@@ -1,10 +1,13 @@
 --Inventory item version
+
+local commonfn =  require "prefabs/bernie_common"
 local assets =
 {
     Asset("ANIM", "anim/bernie.zip"),
     Asset("ANIM", "anim/bernie_build.zip"),
     Asset("INV_IMAGE", "bernie_dead"),
 	Asset("MINIMAP_IMAGE", "bernie"),
+    Asset("SCRIPT", "scripts/prefabs/bernie_common.lua"),
 }
 
 local prefabs =
@@ -68,7 +71,7 @@ local function tryreanimate(inst)
     local rangesq = 256 --[[16 * 16]]
     local x, y, z = inst.Transform:GetWorldPosition()
     for i, v in ipairs(AllPlayers) do
-        if v.components.sanity:IsCrazy() and v.entity:IsVisible() then
+        if ( commonfn.isleadercrazy(inst,v) or inst:hotheaded(v) ) and v.entity:IsVisible() then
             local distsq = v:GetDistanceSqToPoint(x, y, z)
             if distsq < rangesq then
                 rangesq = distsq
@@ -77,9 +80,9 @@ local function tryreanimate(inst)
         end
     end
     if target ~= nil then
-        local skin_name = nil
-        if inst:GetSkinName() ~= nil then
-            skin_name = inst:GetSkinName().."_active"
+        local skin_name = inst:GetSkinName()
+        if skin_name ~= nil then
+            skin_name = skin_name:gsub("_shadow_build", ""):gsub("_lunar_build", "") .. "_active"
         end
         local active = SpawnPrefab("bernie_active", skin_name, inst.skin_id, nil)
         if active ~= nil then
@@ -245,6 +248,7 @@ local function fn()
     inst.AnimState:SetBank("bernie")
     inst.AnimState:SetBuild("bernie_build")
     inst.AnimState:PlayAnimation("inactive")
+    inst.scrapbook_anim = "inactive"
 
     inst.MiniMapEntity:SetIcon("bernie.png")
 
@@ -255,6 +259,8 @@ local function fn()
     if not TheWorld.ismastersim then
         return inst
     end
+
+    inst.scrapbook_specialinfo = "BERNIE"
 
     inst._isdeadstate = nil
     inst._decaytask = nil
@@ -292,6 +298,8 @@ local function fn()
 
     inst.OnEntitySleep = deactivate
     inst.OnEntityWake = onentitywake
+    inst.hotheaded = commonfn.hotheaded
+    inst.isleadercrazy = commonfn.isleadercrazy
 
     inst.OnLoad = onload
     inst.OnSave = onsave

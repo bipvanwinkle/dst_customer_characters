@@ -6,6 +6,11 @@ local LoadoutSelect = require "widgets/redux/loadoutselect"
 local TEMPLATES = require "widgets/redux/templates"
 
 local SCREEN_OFFSET = -.38 * RESOLUTION_X
+
+local function _IsUsingController()
+	return TheInput:ControllerAttached() and not TheFrontEnd.tracking_mouse
+end
+
 local GridScarecrowClothingPopupScreen = Class(Screen, function(self, owner_scarecrow, doer, profile)
 	Screen._ctor(self, "GridScarecrowClothingPopupScreen")
 
@@ -34,7 +39,7 @@ local GridScarecrowClothingPopupScreen = Class(Screen, function(self, owner_scar
 	else
 		self.initial_skins = {}
 	end
-    dumptable(self.initial_skins)
+    --dumptable(self.initial_skins)
 
 	self.loadout = self.proot:AddChild(LoadoutSelect(profile, self.owner_scarecrow.prefab, nil, true, nil, true, self.initial_skins))
 	self.loadout:SetDefaultMenuOption()
@@ -54,6 +59,12 @@ local GridScarecrowClothingPopupScreen = Class(Screen, function(self, owner_scar
 
 	self.loadout:SetPosition(-306, 0)
 	self.menu:SetPosition(493, -260, 0)
+		
+	-- hide the menu if the player is using a controller; we'll control this with button presses that are listed in the helpbar
+	if _IsUsingController() then
+		self.menu:Hide()
+		self.menu:Disable()
+	end  
 
 	self.default_focus = self.loadout
 
@@ -95,7 +106,7 @@ function GridScarecrowClothingPopupScreen:OnBecomeActive()
 		end
 	end
 
-    if TheInput:ControllerAttached() then
+    if _IsUsingController() then
         self.default_focus:SetFocus()
     end
 end
@@ -125,6 +136,10 @@ function GridScarecrowClothingPopupScreen:OnControl(control, down)
         self:Cancel()
         TheFrontEnd:GetSound():PlaySound("dontstarve/HUD/click_move")
         return true
+	elseif control == CONTROL_MENU_START and not down then  
+		self:Close(true)
+		TheFrontEnd:GetSound():PlaySound("dontstarve/HUD/click_move")
+		return true
     end
 end
 
@@ -147,7 +162,7 @@ function GridScarecrowClothingPopupScreen:Close(apply_skins)
 	local skins = self.loadout.selected_skins
 
     local data = {}
-    if TheNet:IsOnlineMode() then
+    if TheInventory:HasSupportForOfflineSkins() or TheNet:IsOnlineMode() then
 		data = skins
     end
 
@@ -169,6 +184,7 @@ function GridScarecrowClothingPopupScreen:GetHelpText()
 	local controller_id = TheInput:GetControllerID()
 	local t = {}
     table.insert(t, TheInput:GetLocalizedControl(controller_id, CONTROL_CANCEL) .. " " .. STRINGS.UI.HELP.CANCEL)
+	table.insert(t, TheInput:GetLocalizedControl(controller_id, CONTROL_MENU_START) .. " " .. STRINGS.UI.WARDROBE_POPUP.SET)
 	return table.concat(t, "  ")
 end
 

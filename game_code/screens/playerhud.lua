@@ -11,15 +11,24 @@ local BloodOver = require "widgets/bloodover"
 local BeefBloodOver = require "widgets/beefbloodover"
 local HeatOver = require "widgets/heatover"
 local FumeOver = require "widgets/fumeover"
+local MiasmaOver = require("widgets/miasmaover")
+local MiasmaCloudsOver = require("widgets/miasmacloudsover")
 local SandOver = require "widgets/sandover"
 local SandDustOver = require "widgets/sanddustover"
 local MoonstormOver = require "widgets/moonstormover"
 local MoonstormOver_Lightning = require "widgets/moonstormover_lightning"
+local RainDomeOver = require("widgets/raindomeover")
 local Leafcanopy = require "widgets/leafcanopy"
 local MindControlOver = require "widgets/mindcontrolover"
+local ParasiteThrallOver = require "widgets/parasitethrallover"
 local InkOver = require "widgets/inkover"
+local WagpunkUI = require "widgets/wagpunkui"
 local GogglesOver = require "widgets/gogglesover"
 local NutrientsOver = require "widgets/nutrientsover"
+local ScrapMonocleOver = require "widgets/scrapmonocleover"
+local NightVisionFruitOver = require "widgets/nightvisionfruitover"
+local InspectaclesOver = require("widgets/inspectaclesover")
+local RoseGlassesOver = require("widgets/roseglassesover")
 local BatOver = require "widgets/batover"
 local FlareOver = require "widgets/flareover"
 local EndOfMatchPopup = require "widgets/redux/endofmatchpopup"
@@ -32,6 +41,10 @@ local PlayerStatusScreen = require "screens/playerstatusscreen"
 local InputDialogScreen = require "screens/inputdialog"
 local CookbookPopupScreen = require "screens/cookbookpopupscreen"
 local PlantRegistryPopupScreen = require "screens/plantregistrypopupscreen"
+local PlayerInfoPopupScreen = require "screens/playerinfopopupscreen"
+local ScrapbookScreen = require "screens/redux/scrapbookscreen"
+local InspectaclesScreen = require("screens/redux/inspectaclesscreen")
+local PumpkinCarvingScreen = require("screens/redux/pumpkincarvingscreen")
 
 local TargetIndicator = require "widgets/targetindicator"
 
@@ -81,6 +94,8 @@ local PlayerHud = Class(Screen, function(self)
                 self.playerstatusscreen:CloseUserCommandPickerScreen()
             end
         end, TheWorld)
+    else
+        self.inst:ListenForEvent("ms_closepopups", self.onclosepopups)
     end
 end)
 
@@ -116,17 +131,23 @@ function PlayerHud:CreateOverlays(owner)
     self.drops_alpha= 0
 
     self.inst:ListenForEvent("moisturedelta", function(inst, data)
-            if data.new > data.old then
+			if owner.components.raindomewatcher ~= nil and owner.components.raindomewatcher:IsUnderRainDome() then
+				self.dropsplash = nil
+				if self.droptask ~= nil then
+					self.droptask:Cancel()
+					self.droptask = nil
+				end
+			elseif data.new > data.old then
                 self.dropsplash = true
                 if self.droptask then
                     self.droptask:Cancel()
-                    self.droptask = nil
                 end
                 self.droptask = self.inst:DoSimTaskInTime(3,function() self.dropsplash = nil end)
             end
         end, owner)
 
     self.leafcanopy = self.overlayroot:AddChild(Leafcanopy(owner))
+    self.raindomeover = self.overlayroot:AddChild(RainDomeOver(owner))
 
     self.storm_root = self.over_root:AddChild(Widget("storm_root"))
     self.storm_overlays = self.storm_root:AddChild(Widget("storm_overlays"))
@@ -144,16 +165,24 @@ function PlayerHud:CreateOverlays(owner)
     self.moonstormdust:SetClickable(false)
     self.moonstormover_lightning = self.storm_overlays:AddChild(MoonstormOver_Lightning(owner))
 
+	self.miasmaclouds = self.storm_overlays:AddChild(MiasmaCloudsOver(owner))
+
     self.mindcontrolover = self.over_root:AddChild(MindControlOver(owner))
+    self.parasitethrallover = self.over_root:AddChild(ParasiteThrallOver(owner))
 
     if IsSpecialEventActive(SPECIAL_EVENTS.HALLOWED_NIGHTS) then
         self.batover = self.overlayroot:AddChild(BatOver(owner))
     end
     self.sandover = self.overlayroot:AddChild(SandOver(owner, self.sanddustover))
     self.moonstormover = self.overlayroot:AddChild(MoonstormOver(owner, self.moonstormdust))
+	self.miasmaover = self.overlayroot:AddChild(MiasmaOver(owner, self.miasmaclouds))
 
     self.gogglesover = self.overlayroot:AddChild(GogglesOver(owner, self.storm_overlays))
     self.nutrientsover = self.overlayroot:AddChild(NutrientsOver(owner))
+    self.scrapmonocleover = self.overlayroot:AddChild(ScrapMonocleOver(owner))
+    self.nightvisionfruitover = self.overlayroot:AddChild(NightVisionFruitOver(owner))
+    self.inspectaclesover = self.overlayroot:AddChild(InspectaclesOver(owner))
+    self.roseglassesover = self.overlayroot:AddChild(RoseGlassesOver(owner))
     self.bloodover = self.overlayroot:AddChild(BloodOver(owner))
     self.beefbloodover = self.overlayroot:AddChild(BeefBloodOver(owner))
     self.iceover = self.overlayroot:AddChild(IceOver(owner))
@@ -163,14 +192,17 @@ function PlayerHud:CreateOverlays(owner)
     self.flareover = self.overlayroot:AddChild(FlareOver(owner))
 
     self.InkOver = self.overlayroot:AddChild(InkOver(owner))
+    self.Wagpunkui = self.overlayroot:AddChild(WagpunkUI(owner))    
 
     self.clouds = self.under_root:AddChild(UIAnim())
     self.clouds.cloudcolour = GetGameModeProperty("cloudcolour") or {1, 1, 1}
     self.clouds:SetClickable(false)
     self.clouds:SetHAnchor(ANCHOR_MIDDLE)
     self.clouds:SetVAnchor(ANCHOR_MIDDLE)
+    self.clouds:SetScaleMode(SCALEMODE_FIXEDSCREEN_NONDYNAMIC)
     self.clouds:GetAnimState():SetBank("clouds_ol")
     self.clouds:GetAnimState():SetBuild("clouds_ol")
+    self.clouds:GetAnimState():SetForceSinglePass(true)
     self.clouds:GetAnimState():PlayAnimation("idle", true)
     self.clouds:GetAnimState():SetMultColour(self.clouds.cloudcolour[1], self.clouds.cloudcolour[2], self.clouds.cloudcolour[3], 0)
     self.clouds:Hide()
@@ -183,6 +215,7 @@ function PlayerHud:CreateOverlays(owner)
     self.serverpause_underlay:SetScaleMode(SCALEMODE_FILLSCREEN)
     self.serverpause_underlay:SetTint(0,0,0,0.5)
 	self.serverpause_underlay:Hide()
+	self.serverpaused = false
     self:SetServerPaused(TheNet:IsServerPaused(true))
 
     self.eventannouncer = self.under_root:AddChild(Widget("eventannouncer_root"))
@@ -214,7 +247,7 @@ function PlayerHud:OnLoseFocus()
     TheInput:EnableMouse(true)
 
     self:CloseCrafting()
-
+	self:CloseSpellWheel()
     if self:IsControllerInventoryOpen() then
         self:CloseControllerInventory()
     end
@@ -225,6 +258,7 @@ function PlayerHud:OnLoseFocus()
     if self.controls ~= nil then
         self.controls.hover:Hide()
         self.controls.item_notification:ToggleHUDFocus(false)
+        self.controls.skilltree_notification:ToggleHUDFocus(false)
 
         local resurrectbutton = self.controls.status:GetResurrectButton()
         if resurrectbutton ~= nil then
@@ -246,6 +280,7 @@ function PlayerHud:OnGainFocus()
             self.controls.hover:Show()
         end
         self.controls.item_notification:ToggleHUDFocus(true)
+        self.controls.skilltree_notification:ToggleHUDFocus(true)
         local resurrectbutton = self.controls.status:GetResurrectButton()
         if resurrectbutton ~= nil then
             resurrectbutton:ToggleHUDFocus(true)
@@ -298,6 +333,15 @@ function PlayerHud:GetFirstOpenContainerWidget()
     return v
 end
 
+local function CloseAllChestContainerWidgets(self)
+	for _, v in pairs(self.controls.containers) do
+		--cheap check for "chest" type containers
+		if v:GetParent() == self.controls.containerroot then
+			v:Close()
+		end
+	end
+end
+
 local function CloseContainerWidget(self, container, side)
     for k, v in pairs(self.controls.containers) do
         if v.container == container then
@@ -320,6 +364,8 @@ local function OpenContainerWidget(self, container, side)
     local containerwidget = ContainerWidget(self.owner)
 	local parent = side and self.controls.containerroot_side
 					or (container.replica.container ~= nil and container.replica.container.type == "hand_inv") and self.controls.inv.hand_inv
+                    or (container.replica.container ~= nil and container.replica.container.type == "side_inv") and self.controls.secondary_status.side_inv
+                    or (container.replica.container ~= nil and container.replica.container.type == "side_inv_behind") and self.controls.containerroot_side_behind
 					or self.controls.containerroot
 
 	parent:AddChild(containerwidget)
@@ -331,6 +377,10 @@ local function OpenContainerWidget(self, container, side)
 	containerwidget:MoveToBack()
     containerwidget:Open(container, self.owner)
     self.controls.containers[container] = containerwidget
+
+	if parent == self.controls.containerroot then
+		self:CloseSpellWheel()
+	end
 end
 
 function PlayerHud:OpenContainer(container, side)
@@ -343,31 +393,21 @@ function PlayerHud:OpenContainer(container, side)
     end
 end
 
-function PlayerHud:TogglePlayerAvatarPopup(player_name, data, show_net_profile, force)
-    if self.playeravatarpopup ~= nil and
-        self.playeravatarpopup.started and
-        self.playeravatarpopup.inst:IsValid() then
-        self.playeravatarpopup:Close()
-        if player_name == nil or
-            data == nil or
-            (data.userid ~= nil and self.playeravatarpopup.userid == data.userid) or --if we have a userid, test for that
-            (data.userid == nil and self.playeravatarpopup.target == data.inst) then --if no userid, then compare inst
-            self.playeravatarpopup = nil
-            return
-        end
-    end
+function PlayerHud:RemoveDressupWidget()
+    if self.dressupAvatarPopUpcreen then
+        self.dressupAvatarPopUpcreen:Kill()
+        self.dressupAvatarPopUpcreen = nil
+    end 
+end
 
-    if not force and GetGameModeProperty("no_avatar_popup") then
-        return
+function PlayerHud:TogglePlayerInfoPopup(player_name, data, show_net_profile, force)
+    if self.dressupAvatarPopUpcreen ~= nil then
+        self.dressupAvatarPopUpcreen:Close()
+        self.dressupAvatarPopUpcreen = nil
+    elseif self.OpenPlayerInfoScreen ~= nil then
+        POPUPS.PLAYERINFO:Close(self.owner)
+        self:OpenPlayerInfoScreen(player_name, data, show_net_profile, force)
     end
-
-    -- Don't show steam button for yourself or targets without a userid(skeletons)
-    self.playeravatarpopup = self.controls.right_root:AddChild(
-        data.inst ~= nil and
-        data.inst:HasTag("dressable") and
-        DressupAvatarPopup(self.owner, player_name, data) or
-        PlayerAvatarPopup(self.owner, player_name, data, show_net_profile and data.userid ~= nil and data.userid ~= self.owner.userid)
-    )
 end
 
 --ThePlayer.HUD:ShowEndOfMatchPopup({victory=true})
@@ -578,6 +618,76 @@ function PlayerHud:ClosePlantRegistryScreen()
     end
 end
 
+function PlayerHud:OpenPlayerInfoScreen(player_name, data, show_net_profile, force)
+    self:ClosePlayerInfoScreen()
+    if data and data.inst ~= nil and data.inst:HasTag("dressable") then
+        self.dressupAvatarPopUpcreen = self.controls.right_root:AddChild( DressupAvatarPopup(self.owner, player_name, data) )
+        self.dressupAvatarPopUpcreen.started = false
+        self.dressupAvatarPopUpcreen:Start()
+    else
+        self.playerinfoscreen = PlayerInfoPopupScreen(self.owner, player_name, data, show_net_profile, force)
+        self:OpenScreenUnderPause(self.playerinfoscreen)
+        return true
+    end
+end
+
+function PlayerHud:ClosePlayerInfoScreen()
+    if self.playerinfoscreen ~= nil then
+        if self.playerinfoscreen.inst:IsValid() then
+            TheFrontEnd:PopScreen(self.playerinfoscreen)
+        end
+        self.playerinfoscreen = nil
+    end
+end
+
+function PlayerHud:OpenScrapbookScreen()
+    self:CloseScrapbookScreen()
+    self.scrapbookscreen = ScrapbookScreen(self.owner)
+    self:OpenScreenUnderPause(self.scrapbookscreen)
+    return true
+end
+
+function PlayerHud:CloseScrapbookScreen()
+    if self.scrapbookscreen ~= nil then
+        if self.scrapbookscreen.inst:IsValid() then
+            TheFrontEnd:PopScreen(self.scrapbookscreen)
+        end
+        self.scrapbookscreen = nil
+    end
+end
+
+function PlayerHud:OpenInspectaclesScreen()
+    self:CloseInspectaclesScreen()
+    self.inspectaclesscreen = InspectaclesScreen(self.owner)
+    self:OpenScreenUnderPause(self.inspectaclesscreen)
+    return true
+end
+
+function PlayerHud:CloseInspectaclesScreen()
+    if self.inspectaclesscreen ~= nil then
+        if self.inspectaclesscreen.inst:IsValid() then
+            TheFrontEnd:PopScreen(self.inspectaclesscreen)
+        end
+        self.inspectaclesscreen = nil
+    end
+end
+
+function PlayerHud:OpenPumpkinCarvingScreen(target)
+	self:ClosePumpkinCarvingScreen()
+	self.pumpkincarvingscreen = PumpkinCarvingScreen(self.owner, target)
+	self:OpenScreenUnderPause(self.pumpkincarvingscreen)
+	return true
+end
+
+function PlayerHud:ClosePumpkinCarvingScreen()
+	if self.pumpkincarvingscreen then
+		if self.pumpkincarvingscreen.inst:IsValid() then
+			TheFrontEnd:PopScreen(self.pumpkincarvingscreen)
+		end
+		self.pumpkincarvingscreen = nil
+	end
+end
+
 --Helper for transferring data between screens when transitioning from giftitempopup to wardrobepopup
 function PlayerHud:SetRecentGifts(item_types, item_ids)
     if self.recentgiftstask ~= nil then
@@ -678,6 +788,11 @@ function PlayerHud:SetMainCharacter(maincharacter)
         self.inst:ListenForEvent("gosane", function() self:GoSane() end, self.owner)
         self.inst:ListenForEvent("goinsane", function() self:GoInsane() end, self.owner)
         self.inst:ListenForEvent("goenlightened", function() self:GoEnlightened() end, self.owner)
+		self.inst:ListenForEvent("newactiveitem", function(owner, data)
+				if data ~= nil and data.item ~= nil then
+					self:CloseSpellWheel()
+				end
+			end, self.owner)
 
         if self.owner.replica.sanity ~= nil then
             if self.owner.replica.sanity:IsCrazy() then
@@ -695,6 +810,21 @@ function PlayerHud:SetMainCharacter(maincharacter)
 
     end
 end
+
+local GODMODEINDICATOR_HATS =
+{
+    "feather",
+    "goggles",
+    "green_mushroom",
+    "ice",
+    "merm",
+    "monkey_small",
+    "rain",
+    "scrap",
+    "skeleton",
+    "top",
+    "wathgrithr_improved",
+}
 
 function PlayerHud:OnUpdate(dt)
     if Profile ~= nil and self.vig ~= nil then
@@ -729,22 +859,41 @@ function PlayerHud:OnUpdate(dt)
                 self.controls.godmodeindicator = self.controls.inv:AddChild(UIAnim())
                 self.controls.godmodeindicator:GetAnimState():SetBank("pigman")
                 self.controls.godmodeindicator:GetAnimState():SetBuild("pig_guard_build")
+                self.controls.godmodeindicator:GetAnimState():OverrideSymbol("swap_hat", "hat_"..GetRandomItem(GODMODEINDICATOR_HATS), "swap_hat")
+                self.controls.godmodeindicator:GetAnimState():Hide("ARM_carry_up")
                 self.controls.godmodeindicator:SetHAnchor(ANCHOR_LEFT)
                 self.controls.godmodeindicator:SetVAnchor(ANCHOR_BOTTOM)
                 self.controls.godmodeindicator:SetPosition(100, 50, 0)
                 self.controls.godmodeindicator:SetScale(0.2, 0.2, 0.2)
+                self.controls.godmodeindicator:SetFacing(FACING_DOWN)
+                self.controls.godmodeindicator:GetAnimState():MakeFacingDirty()
                 self.controls.godmodeindicator:GetAnimState():PlayAnimation("idle_happy")
                 self.controls.godmodeindicator:GetAnimState():PushAnimation("idle_loop")
             end
         elseif self.controls.godmodeindicator ~= nil then
             self.controls.godmodeindicator:GetAnimState():PlayAnimation("death")
-            self.controls.godmodeindicator.inst:DoTaskInTime(2, function(inst) inst.widget:Kill() end)
+            self.controls.godmodeindicator.inst:DoTaskInTime(1.5, function(inst) inst.widget:Kill() end)
             self.controls.godmodeindicator = nil
         end
     end
+
     if self.leafcanopy then
         self.leafcanopy:OnUpdate(dt)
     end
+
+	if self.owner ~= nil then
+		local spellbook = self:GetCurrentOpenSpellBook()
+		if spellbook ~= nil then
+			if not spellbook:IsValid() or spellbook:HasTag("fueldepleted") then
+				self:CloseSpellWheel()
+			else
+				local inventoryitem = spellbook.replica.inventoryitem
+				if inventoryitem == nil or not inventoryitem:IsGrandOwner(self.owner) then
+					self:CloseSpellWheel()
+				end
+			end
+		end
+	end
 end
 
 function PlayerHud:HideControllerCrafting()
@@ -762,10 +911,12 @@ function PlayerHud:OpenControllerInventory()
     TheFrontEnd:StopTrackingMouse()
 
     self:CloseCrafting()
+	self:CloseSpellWheel()
 
     self.controls.inv:OpenControllerInventory()
     self.controls.item_notification:ToggleController(true)
     self.controls.yotb_notification:ToggleController(true)
+    self.controls.skilltree_notification:ToggleController(true)
     self.controls:ShowStatusNumbers()
 
     self.owner.components.playercontroller:OnUpdate(0)
@@ -779,6 +930,7 @@ function PlayerHud:CloseControllerInventory()
     self.controls.inv:CloseControllerInventory()
     self.controls.item_notification:ToggleController(false)
     self.controls.yotb_notification:ToggleController(false)
+    self.controls.skilltree_notification:ToggleController(false)
 end
 
 function PlayerHud:HasInputFocus()
@@ -788,7 +940,7 @@ function PlayerHud:HasInputFocus()
     local active_screen = TheFrontEnd:GetActiveScreen()
     return (active_screen ~= nil and active_screen ~= self)
 		or TheFrontEnd.textProcessorWidget ~= nil
-        or (self.controls ~= nil and (self.controls.inv.open or (self:IsCraftingOpen() and TheInput:ControllerAttached())))
+        or (self.controls ~= nil and (self.controls.inv.open or ((self:IsCraftingOpen() or self:IsSpellWheelOpen()) and TheInput:ControllerAttached())))
         or self.modfocus ~= nil
 end
 
@@ -883,8 +1035,14 @@ function PlayerHud:IsPlayerAvatarPopUpOpen()
         and self.playeravatarpopup.inst:IsValid()
 end
 
+function PlayerHud:IsPlayerInfoPopUpOpen()
+    return self.PlayerInfoPopupScreen ~= nil
+        and self.PlayerInfoPopupScreen.inst:IsValid()
+end
+
 function PlayerHud:OpenCrafting(search)
 	if not self:IsCraftingOpen() and not GetGameModeProperty("no_crafting") then
+		self:CloseSpellWheel()
 		if self:IsControllerInventoryOpen() then
 			self:CloseControllerInventory()
 		end
@@ -894,6 +1052,7 @@ function PlayerHud:OpenCrafting(search)
 
 		self.controls.item_notification:ToggleController(true)
 		self.controls.yotb_notification:ToggleController(true)
+        self.controls.skilltree_notification:ToggleController(true)
 	end
 end
 
@@ -904,7 +1063,96 @@ function PlayerHud:CloseCrafting()
 
 		self.controls.item_notification:ToggleController(false)
 		self.controls.yotb_notification:ToggleController(false)
+        self.controls.skilltree_notification:ToggleController(false)
     end
+end
+
+function PlayerHud:IsSpellWheelOpen()
+	return self.controls.spellwheel:IsOpen()
+end
+
+function PlayerHud:GetCurrentOpenSpellBook()
+	return self.controls.spellwheel.invobject
+end
+
+function PlayerHud:OpenSpellWheel(invobject, items, radius, focus_radius, bgdata)
+	self:CloseCrafting()
+	if self:IsControllerInventoryOpen() then
+		self:CloseControllerInventory()
+	end
+	CloseAllChestContainerWidgets(self)
+	local itemscpy = {}
+	for i, v in ipairs(items) do
+		itemscpy[i] = shallowcopy(v)
+		if v.execute ~= nil then
+			itemscpy[i].execute = function()
+				invobject.components.spellbook:SelectSpell(i)
+				v.execute(invobject)
+			end
+			itemscpy[i].onfocus = function()
+				for j, v in ipairs(items) do
+					v.selected = i == j or nil
+				end
+				if invobject.components.spellbook.focussound then
+					TheFocalPoint.SoundEmitter:PlaySound(invobject.components.spellbook.focussound)
+				end
+			end
+		end
+	end
+	self.controls.spellwheel:SetScale(TheFrontEnd:GetProportionalHUDScale()) --instead of GetHUDScale(), because parent already has SCALEMODE_PROPORTIONAL
+	self.controls.spellwheel:SetItems(itemscpy, radius, focus_radius)
+	self.controls.spellwheel:Open()
+
+	if bgdata then
+		local bg = self.controls.spellwheel:AddChild(UIAnim())
+		bg:GetAnimState():SetBuild(bgdata.build)
+		bg:GetAnimState():SetBank(bgdata.bank)
+		bg:GetAnimState():PlayAnimation(bgdata.anim, bgdata.loop)
+		if bgdata.widget_scale then
+			bg:SetScale(bgdata.widget_scale)
+		end
+		bg:MoveToBack()
+		self.controls.spellwheel.bg = bg
+	end
+
+	local old = self.controls.spellwheel.invobject
+	self.controls.spellwheel.invobject = invobject
+	if old ~= nil and old:IsValid() then
+		old:PushEvent("closespellwheel")
+	end
+	invobject:PushEvent("openspellwheel")
+	local sfx = invobject.components.spellbook ~= nil and invobject.components.spellbook.opensound or nil
+	if sfx ~= nil then
+		TheFocalPoint.SoundEmitter:PlaySound(sfx)
+	end
+end
+
+function PlayerHud:CloseSpellWheel(is_execute)
+	self.controls.spellwheel:Close()
+
+	if self.controls.spellwheel.bg then
+		self.controls.spellwheel.bg:Kill()
+		self.controls.spellwheel.bg = nil
+	end
+
+	local old = self.controls.spellwheel.invobject
+	if old ~= nil then
+		self.controls.spellwheel.invobject = nil
+		if old:IsValid() then
+			old:PushEvent("closespellwheel")
+		end
+		if old.components.spellbook ~= nil then
+			local sfx
+			if is_execute then
+				sfx = old.components.spellbook.executesound
+			else
+				sfx = old.components.spellbook.closesound
+			end
+			if sfx ~= nil then
+				TheFocalPoint.SoundEmitter:PlaySound(sfx)
+			end
+		end
+	end
 end
 
 function PlayerHud:ShowPlayerStatusScreen(click_to_close, onclosefn)
@@ -924,7 +1172,7 @@ function PlayerHud:InspectSelf()
         local client_obj = TheNet:GetClientTableForUser(self.owner.userid)
         if client_obj ~= nil then
             --client_obj.inst = self.owner --don't track yourself
-            self:TogglePlayerAvatarPopup(client_obj.name, client_obj) -- don't show steam button for yourself
+            self:TogglePlayerInfoPopup(client_obj.name, client_obj)
             return true
         end
     end
@@ -934,15 +1182,19 @@ function PlayerHud:OnControl(control, down)
     if PlayerHud._base.OnControl(self, control, down) then
         return true
     elseif not self.shown then
+		if self.serverpaused and down and control == CONTROL_SERVER_PAUSE then
+			SetServerPaused(false)
+			return true
+		end
         return
     end
 
     if down then
         if control == CONTROL_INSPECT then
             if self:IsVisible() and
-                self:IsPlayerAvatarPopUpOpen() and
+                self:IsPlayerInfoPopUpOpen() and
                 self.owner.components.playercontroller:IsEnabled() then
-                self:TogglePlayerAvatarPopup()
+                self:TogglePlayerInfoPopup()
                 return true
             elseif self.controls.votedialog:CheckControl(control, down) then
                 return true
@@ -957,6 +1209,7 @@ function PlayerHud:OnControl(control, down)
 		if TheInput:ControllerAttached() then
             self.owner.components.playercontroller:CancelAOETargeting()
             self:CloseCrafting()
+			self:CloseSpellWheel()
             if self:IsControllerInventoryOpen() then
                 self:CloseControllerInventory()
             end
@@ -971,8 +1224,12 @@ function PlayerHud:OnControl(control, down)
                 self:CloseCrafting()
                 closed = true
             end
-			if self:IsPlayerAvatarPopUpOpen() then
-                self:TogglePlayerAvatarPopup()
+			if self:IsSpellWheelOpen() then
+				self:CloseSpellWheel()
+				closed = true
+			end
+			if self:IsPlayerInfoPopUpOpen() and
+                self:TogglePlayerInfoPopup() then
                 closed = true
 			end
 			if not closed then
@@ -1001,12 +1258,13 @@ function PlayerHud:OnControl(control, down)
         return true
     elseif self.controls.item_notification:CheckControl(control, down) then
         return true
+    elseif self.controls.skilltree_notification:CheckControl(control, down) then
+        return true        
     elseif not down then
         if control == CONTROL_MAP then
             if not self:IsMapScreenOpen() then
-                if self:IsCraftingOpen() then
-                    self:CloseCrafting()
-                end
+				self:CloseCrafting()
+				self:CloseSpellWheel()
                 if self:IsControllerInventoryOpen() then
                     self:CloseControllerInventory()
                 end
@@ -1017,6 +1275,9 @@ function PlayerHud:OnControl(control, down)
             if self:IsCraftingOpen() then
                 self:CloseCrafting()
                 return true
+			elseif self:IsSpellWheelOpen() then
+				self:CloseSpellWheel()
+				return true
             elseif self:IsControllerInventoryOpen() then
                 self:CloseControllerInventory()
                 return true
@@ -1033,6 +1294,11 @@ function PlayerHud:OnControl(control, down)
 		elseif control == CONTROL_TOGGLE_SLASH_COMMAND then
 			local chat_input_screen = ChatInputScreen(false)
 			chat_input_screen.chat_edit:SetString("/")
+			TheFrontEnd:PushScreen(chat_input_screen)
+			return true
+		elseif control == CONTROL_START_EMOJI then
+			local chat_input_screen = ChatInputScreen(false)
+			chat_input_screen.chat_edit:SetString(":")
 			TheFrontEnd:PushScreen(chat_input_screen)
 			return true
         end
@@ -1101,12 +1367,10 @@ end
 function PlayerHud:OnRawKey(key, down)
     if PlayerHud._base.OnRawKey(self, key, down) then
         return true
-    elseif down and self.shown and key == KEY_SEMICOLON and TheInput:IsKeyDown(KEY_SHIFT) then
-        local chat_input_screen = ChatInputScreen(false)
-        chat_input_screen.chat_edit:SetString(":")
-        TheFrontEnd:PushScreen(chat_input_screen)
-        return true
     end
+    -- NOTES(JBK): Add controls to the files below to allow players to edit bound keys do not use OnRawKey for forced binds unless in dev only.
+    -- strings.lua, constants.lua, playerhud.lua, optionsscreen.lua, DontStarveInputHandler.h, DontStarveInputHandler.cpp, InputDefinitions.h
+    -- I am leaving this function stub here for dev testing only and maybe a mod already hooked it.
 end
 
 local DROPS_ALPHA_INCREASE_RATE = 0.01
@@ -1230,6 +1494,7 @@ function PlayerHud:SetServerPaused(paused)
     else
         self.serverpause_underlay:Hide()
     end
+	self.serverpaused = paused
 end
 
 function PlayerHud:OffsetServerPausedWidget(serverpausewidget)

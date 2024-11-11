@@ -22,8 +22,10 @@ local assets =
 	Asset("IMAGE", "images/colour_cubes/lunacy_regular_cc.tex"),
     Asset("IMAGE", "images/colour_cubes/purple_moon_cc.tex"),
     Asset("IMAGE", "images/colour_cubes/moonstorm_cc.tex"),
+    Asset("IMAGE", "images/colour_cubes/blackout_cc.tex"),
 
     Asset("ANIM", "anim/snow.zip"),
+    Asset("ANIM", "anim/acidglob.zip"),
     Asset("ANIM", "anim/lightning.zip"),
 
     Asset("SOUND", "sound/forest_stream.fsb"),
@@ -211,6 +213,9 @@ local assets =
     Asset("ATLAS", "images/lunacy_over_lunacy_over0042.xml"),
     Asset("ATLAS", "images/lunacy_over_lunacy_over0043.xml"),
     Asset("ATLAS", "images/lunacy_over_lunacy_over0044.xml"),
+
+    -- rabbitkingmanager
+    Asset("SOUND", "sound/rabbit.fsb"),
 }
 
 local prefabs =
@@ -251,6 +256,7 @@ local prefabs =
     "teleportato_crank",
     "teleportato_potato",
     "pond",
+    "pond_mos",
     "marsh_tree",
     "marsh_bush",
     "burnt_marsh_bush",
@@ -258,6 +264,7 @@ local prefabs =
     "mist",
     "snow",
     "rain",
+    "lunarhail",
     "pollen",
     "marblepillar",
     "marbletree",
@@ -269,7 +276,6 @@ local prefabs =
     "sculpture_bishop",
     "sculpture_rook",
     "statue_marble",
-    "eyeplant",
     "lureplant",
     "purpleamulet",
     "monkey",
@@ -393,6 +399,8 @@ local prefabs =
 
     -- moon geyser
     "wagstaff_npc",
+    "wagstaff_npc_mutations",
+    "wagstaff_npc_wagpunk",
 
     "moon_device",
     "moon_device_construction1",
@@ -422,6 +430,7 @@ local prefabs =
     "terrarium",
 
     -- Pirates
+    "boat_pirate",
     "powder_monkey",
     "prime_mate",
     "monkeyisland_center",
@@ -435,6 +444,7 @@ local prefabs =
     "palmconetree_normal",
     "palmconetree_tall",
     "pirate_flag_pole",
+	"piratewarningsound",
     "bananabush",
     "monkeytail",
     "dock_tile_registrator",
@@ -442,12 +452,54 @@ local prefabs =
     "dock_woodposts",
     "fx_dock_crackle",
     "fx_dock_pop",
-
-    "fence_rotator",
+    "fx_ice_crackle",
+    "ice_crack_grid_fx",
 
     "charlie_stage_post",
     "stageusher",
     "statueharp_hedgespawner",
+
+    -- Lunar Rifts
+    "lunarrift_portal",
+
+    "lunarthrall_plant",
+    "domesticplantherd",
+
+    -- Shadow Rifts
+    "charlie_npc",
+    "scrapbook_page",
+
+    -- Rifts 3
+    "wagstaff_machinery",
+    "lunarfrog",
+    "scrapbook_page_special",
+
+    --
+    "boat_ice",
+    "oceanice_damage",
+    "degrade_fx_ice",
+	"sharkboi",
+    "icefishing_hole",
+    "sharkboi_ice_hazard",
+
+    -- Rifts / Meta QoL
+
+    --"fishbone_shadow",
+    "fence_junk",
+    "junk_pile",
+    "junk_pile_big",
+
+    "boat_otterden",
+
+    -- Rifts 4
+
+    -- rabbitkingmanager
+    "rabbitking_passive",
+    "rabbitking_aggressive",
+    "rabbitking_lucky",
+
+    "itemmimic_revealed",
+    
 }
 
 local FISH_DATA = require("prefabs/oceanfishdef")
@@ -552,6 +604,7 @@ local function master_postinit(inst)
     inst:AddComponent("mermkingmanager")
     inst:AddComponent("malbatrossspawner")
     inst:AddComponent("crabkingspawner")
+    inst:AddComponent("rabbitkingmanager")
 
 	inst:AddComponent("flotsamgenerator")
 	inst:AddComponent("messagebottlemanager")
@@ -564,6 +617,7 @@ local function master_postinit(inst)
 
     inst:AddComponent("carnivalevent")
 
+    inst:AddComponent("yotd_raceprizemanager")
     inst:AddComponent("yotc_raceprizemanager")
     inst:AddComponent("yotb_stagemanager")
 
@@ -571,9 +625,29 @@ local function master_postinit(inst)
 
     inst:AddComponent("sharklistener")
 
+    inst:AddComponent("riftspawner")
+    inst:AddComponent("lunarthrall_plantspawner")
+
+    inst:AddComponent("oceanicemanager")
+    inst:AddComponent("sharkboimanager") -- Needs oceanicemanager.
+
+    inst:AddComponent("lunarhailmanager")
+    inst:AddComponent("lunarriftmutationsmanager")
+
+    inst:AddComponent("wagpunk_manager")
+
+    inst:AddComponent("forestdaywalkerspawner")
+
     if METRICS_ENABLED then
         inst:AddComponent("worldoverseer")
     end
+
+    -- We don't want to auto-spawn mimics, but they might be brought up from the caves,
+    -- so we might need to spawn them from existing mimics re-hiding.
+    inst:AddComponent("shadowthrall_mimics")
 end
 
-return MakeWorld("forest", prefabs, assets, common_postinit, master_postinit, {"forest"}, {tile_physics_init = tile_physics_init})
+return MakeWorld("forest", prefabs, assets, common_postinit, master_postinit, {"forest"}, {
+    tile_physics_init = tile_physics_init,
+    cancrossbarriers_flying = true,
+})

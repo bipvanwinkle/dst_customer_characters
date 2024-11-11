@@ -52,7 +52,7 @@ local function DropItem(inst, data)
 
 		if item ~= nil then
 			local x, y, z = inst.Transform:GetWorldPosition()
-			local dir = math.random() * PI * 2
+			local dir = math.random() * TWOPI
 			item.Transform:SetPosition(x + math.cos(dir) * DROP_OFFSET, y, z + math.sin(dir) * DROP_OFFSET)
 		end
 	end
@@ -85,6 +85,9 @@ local function onspawnitemfromdata(item, data)
 		if data then
 			if item.components.perishable ~= nil and data.perish_percent then
 				item.components.perishable:SetPercent(data.perish_percent or 1)
+			end
+			if item.components.pumpkincarvable and data.pumpkincarvable_cutdata then
+				item.components.pumpkincarvable:LoadCutData(data.pumpkincarvable_cutdata)
 			end
 		end
 	end
@@ -199,7 +202,7 @@ local function onnewtrophy(inst, data_old_and_new)
 	end)
 end
 
-local function comparepostfn(item_data, new_inst)
+local function comparepostfn(inst, item_data, new_inst)
 	if new_inst:HasTag("heavy") then
 		item_data.build = PLANT_DEFS[new_inst._base_name].build
 		if item_data.build == nil then
@@ -215,6 +218,21 @@ local function comparepostfn(item_data, new_inst)
 	end
 
 	item_data.day = new_inst.harvested_on_day or 1
+
+	if inst.pumpkincarving_fx then
+		inst.pumpkincarving_fx:Remove()
+		inst.pumpkincarving_fx = nil
+	end
+	if new_inst.components.pumpkincarvable then
+		local cutdata = new_inst.components.pumpkincarvable:GetCutData()
+		if string.len(cutdata) > 0 then
+			item_data.pumpkincarvable_cutdata = cutdata
+
+			inst.pumpkincarving_fx = SpawnPrefab("pumpkincarving_swap_fx")
+			inst.pumpkincarving_fx.entity:SetParent(inst.entity)
+			inst.pumpkincarving_fx:SetCutData(cutdata)
+		end
+	end
 end
 
 local function ondeconstructstructure(inst)
@@ -323,6 +341,12 @@ local function onload(inst, data)
 					end
 					inst.AnimState:PlayAnimation("veg_light_idle", true)
 				end
+
+				if item_data.pumpkincarvable_cutdata then
+					inst.pumpkincarving_fx = SpawnPrefab("pumpkincarving_swap_fx")
+					inst.pumpkincarving_fx.entity:SetParent(inst.entity)
+					inst.pumpkincarving_fx:SetCutData(item_data.pumpkincarvable_cutdata)
+				end
 			end
 		end
     end
@@ -337,6 +361,7 @@ local function fn()
 	inst.entity:AddSoundEmitter()
 	inst.entity:AddNetwork()
 
+	inst:SetDeploySmartRadius(1.4) --recipe min_spacing/2
 	MakeObstaclePhysics(inst, .4)
 
 	inst.MiniMapEntity:SetPriority(5)
@@ -345,6 +370,9 @@ local function fn()
 	inst.AnimState:SetBuild("trophyscale_oversizedveggies")
 	inst.AnimState:SetBank("trophyscale_oversizedveggies")
 	inst.AnimState:PlayAnimation("noveg_idle")
+
+	inst.scrapbook_anim = "noveg_idle"
+	inst.scrapbook_specialinfo = "TROPHYSCALEOVERSIZEDVEGGIES"
 
 	SetDigits(inst, "00000")
 
@@ -372,7 +400,7 @@ local function fn()
 
 	inst:AddComponent("trophyscale")
 	inst.components.trophyscale.type = TROPHYSCALE_TYPES.OVERSIZEDVEGGIES
-	inst.components.trophyscale:SetComparePostFn(comparepostfn)
+	inst.components.trophyscale:SetComparePostFn(function(item_data, new_inst) comparepostfn(inst, item_data, new_inst) end)
 	inst.components.trophyscale:SetOnSpawnItemFromDataFn(onspawnitemfromdata)
 	inst.components.trophyscale:SetItemCanBeTaken(false)
 

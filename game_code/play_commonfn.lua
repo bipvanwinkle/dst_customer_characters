@@ -4,9 +4,10 @@ local fns = {}
 local function bird_arrive(inst, bird_property, bird_castname)
 	local stageactingprop = inst.components.stageactingprop
 	if stageactingprop and stageactingprop.cast then
-		local stageactor = stageactingprop[bird_property]
+		local stageactor = stageactingprop[bird_property]		
 		stageactingprop.cast[bird_castname] = {castmember = stageactor}
 		stageactor:PushEvent("arrive")
+		stageactor.exited_stage = nil
 	end
 end
 
@@ -21,18 +22,19 @@ end
 --------------------------------------------------------------------------------
 
 local function bird_exit(bird)
-	bird.exit = true
+	bird.exited_stage = true
 end
 
 fns.exitbirds = function(inst, line, cast)
 	if cast ~= nil then
 		local bird1_castdata = cast["BIRD1"]
-		if bird1_castdata ~= nil and bird1_castdata.castmember ~= nil then
+		if bird1_castdata ~= nil and bird1_castdata.castmember ~= nil and not bird1_castdata.castmember.sg:HasStateTag("away") then
 			bird1_castdata.castmember:DoTaskInTime(0.1, bird_exit)
 		end
 
+		
 		local bird2_castdata = cast["BIRD2"]
-		if bird2_castdata ~= nil and bird2_castdata.castmember ~= nil then
+		if bird2_castdata ~= nil and bird2_castdata.castmember ~= nil and not bird2_castdata.castmember.sg:HasStateTag("away")  then
 			bird2_castdata.castmember:DoTaskInTime(0.3, bird_exit)
 		end
 	end
@@ -58,6 +60,16 @@ fns.actorsbow = function(inst, line, cast)
 		data.castmember:DoTaskInTime(0.1 + 0.4*math.random(), push_acting, BOW_DATA)
 	end
 end
+--------------------------------------------------------------------------------
+
+fns.do_mask_blink = function(inst, line, cast)
+  	for i, costume in ipairs(line.roles) do
+  		local actor = cast[costume].castmember
+		actor.fx = SpawnPrefab("mask_halfwit_fx")
+		actor.fx:AttachToOwner(actor)
+	end
+end
+
 --------------------------------------------------------------------------------
 
 local function spawn_timed_fx_onme(inst, fxname, time)
@@ -165,14 +177,43 @@ fns.maskflash = function(inst, line, cast)
 	end
 end
 
-local function cleanup_waxwell_dancer(inst, caster, dancer)
-	if dancer == nil or not dancer:IsValid() then
-		return
-	end
+local PLAYERS_MUST = {"player"}
 
-	if caster ~= nil and caster:IsValid() then
-		caster.petspawneffects(dancer)
-		dancer:Remove()
+fns.enableblackout = function(inst)
+
+	inst.blackoutviewers = {}
+
+	local pt = Vector3(inst.Transform:GetWorldPosition())
+	local ents = TheSim:FindEntities(pt.x, pt.y, pt.z, 25, PLAYERS_MUST)
+
+	if #ents > 0 then
+		for i, ent in ipairs(ents) do
+			if ent._blackout then
+	        	ent._blackout:set(true)
+	        	table.insert(inst.blackoutviewers, ent)
+	    	end
+		end
+	end
+end
+
+fns.disableblackout = function(inst)
+	if inst.blackoutviewers and #inst.blackoutviewers > 0 then
+		for i, ent in ipairs(inst.blackoutviewers)do
+			if ent._blackout then
+				ent._blackout:set(false)
+			end
+		end
+	end
+    inst.blackoutviewers = nil
+end
+
+local function cleanup_waxwell_dancer(inst, dancer)
+	if dancer ~= nil and dancer:IsValid() then
+		if dancer.sg ~= nil then
+			dancer.sg:GoToState("quickdespawn")
+		else
+			dancer:Remove()
+		end
 	end
 end
 
@@ -187,11 +228,13 @@ fns.waxwelldancer = function(inst, line, cast)
 	local offset = Vector3FromTheta(line.theta, line.radius)
 	dancer.Transform:SetPosition(x + offset.x, 0, z + offset.z)
 
-    local caster = caster_data.castmember
-	caster.petspawneffects(dancer)
+	dancer.components.skinner:CopySkinsFromPlayer(caster_data.castmember)
+	if dancer.sg ~= nil then
+		dancer.sg:GoToState("quickspawn")
+	end
 	dancer:PushEvent("dance")
 
-	inst:DoTaskInTime(line.time, cleanup_waxwell_dancer, caster, dancer)
+	inst:DoTaskInTime(line.time, cleanup_waxwell_dancer, dancer)
 end
 
 local COMMENTER_MUST = {"player"}
@@ -266,6 +309,8 @@ local POSITIONS = {
 	[6] = {theta = -PI/4,		radius = 2.3},	-- FORE
 	[7] = {theta = 0,			radius = 0},	-- CENTER
 	[8] = {theta = (3/4)*PI,	radius = 3},	-- BACK
+	[9] = {theta = 0,			radius = 2.8},	-- LEFT WIDE
+	[10] = {theta = 1.5*PI,		radius = 2.8},	-- RIGHT WIDE
 }
 
 local function on_findposition_timeout(castmember)

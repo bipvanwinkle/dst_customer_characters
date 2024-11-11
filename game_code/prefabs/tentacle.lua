@@ -92,12 +92,14 @@ local function fn()
     inst.AnimState:SetBank("tentacle")
     inst.AnimState:SetBuild("tentacle")
     inst.AnimState:PlayAnimation("idle")
+    inst.scrapbook_anim ="atk_idle"
 
     inst:AddTag("monster")
     inst:AddTag("hostile")
     inst:AddTag("wet")
     inst:AddTag("WORM_DANGER")
 	inst:AddTag("tentacle")
+    inst:AddTag("NPCcanaggro")
 
     inst.entity:SetPristine()
 
@@ -126,6 +128,10 @@ local function fn()
     inst:AddComponent("inspectable")
     inst:AddComponent("lootdropper")
     inst.components.lootdropper:SetChanceLootTable('tentacle')
+
+    inst:AddComponent("acidinfusible")
+    inst.components.acidinfusible:SetFXLevel(1)
+    inst.components.acidinfusible:SetMultipliers(TUNING.ACID_INFUSION_MULT.BERSERKER)
 
     inst:SetStateGraph("SGtentacle")
 

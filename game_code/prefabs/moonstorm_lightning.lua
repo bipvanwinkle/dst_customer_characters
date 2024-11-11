@@ -55,11 +55,21 @@ local function StartFX(inst)
 		end
 	end
 end
-
+local MUST_TAGS = {"moonstorm_glass"}
 local function spawnglass(inst)
-    local glass = SpawnPrefab("moonstorm_glass")
-    glass.spawnin(glass)
-    glass.Transform:SetPosition(inst.Transform:GetWorldPosition())
+
+    local x,y,z = inst.Transform:GetWorldPosition()
+    local ents = TheSim:FindEntities(x,y,z, 4, MUST_TAGS)        
+
+    if #ents > 0 then
+        local nx,ny,nz = ents[1].Transform:GetWorldPosition()
+        local new = SpawnPrefab("moonglass_charged")
+        ents[1].components.lootdropper:FlingItem(new)       
+    else
+        local glass = SpawnPrefab("moonstorm_glass")
+        glass.spawnin(glass)
+        glass.Transform:SetPosition(inst.Transform:GetWorldPosition())
+    end
 end
 
 local function fn()
@@ -75,6 +85,7 @@ local function fn()
     inst.AnimState:SetBank("Moonstorm_LightningStrike")
     inst.AnimState:SetBuild("moonstorm_lightningstrike")
     inst.AnimState:PlayAnimation("strike")
+    inst.scrapbook_anim = "strike"
 
     inst.SoundEmitter:PlaySound("dontstarve/rain/thunder_close", nil, nil, true)
 

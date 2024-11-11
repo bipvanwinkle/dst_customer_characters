@@ -18,6 +18,9 @@ local function fn()
     inst.AnimState:SetMultColour(1, 1, 1, 0.5)
     inst.AnimState:UsePointFiltering(true)
 
+	--waterproofer (from waterproofer component) added to pristine state for optimization
+	inst:AddTag("waterproofer")
+
     MakeInventoryFloatable(inst)
 
     inst.entity:SetPristine()
@@ -25,6 +28,8 @@ local function fn()
     if not TheWorld.ismastersim then
         return inst
     end
+
+	inst.AnimState:SetFrame(math.random(inst.AnimState:GetCurrentAnimationNumFrames()) - 1)
 
     inst:AddComponent("stackable")
     inst.components.stackable.maxsize = TUNING.STACK_SIZE_SMALLITEM
@@ -35,6 +40,9 @@ local function fn()
     inst:AddComponent("repairer")
     inst.components.repairer.repairmaterial = MATERIALS.NIGHTMARE
     inst.components.repairer.finiteusesrepairvalue = TUNING.NIGHTMAREFUEL_FINITEUSESREPAIRVALUE
+
+	inst:AddComponent("waterproofer")
+	inst.components.waterproofer:SetEffectiveness(0)
 
     MakeHauntableLaunch(inst)
 

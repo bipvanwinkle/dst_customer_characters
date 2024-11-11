@@ -10,6 +10,7 @@ RunAway = Class(BehaviourNode, function(self, inst, hunterparams, see_dist, safe
         self.huntertags = hunterparams.tags
         self.hunternotags = hunterparams.notags
         self.hunteroneoftags = hunterparams.oneoftags
+        self.hunterseeequipped = hunterparams.seeequipped
     else
         self.hunterfn = hunterparams
     end
@@ -90,9 +91,49 @@ function RunAway:GetRunAngle(pt, hp, sp)
     return result_angle
 end
 
+local function ShouldGoHome(inst)
+    local homeseeker = inst.components.homeseeker
+    if homeseeker == nil then
+        return false
+    end
+
+    local home = homeseeker.home
+    if home == nil then
+        return false
+    end
+
+    if home.components.burnable ~= nil and home.components.burnable:IsBurning() then
+        return false
+    end
+
+    if home:HasTag("burnt") then
+        return false
+    end
+
+    return true
+end
+
 function RunAway:Visit()
     if self.status == READY then
-        self.hunter = FindEntity(self.inst, self.see_dist, self.hunterfn, self.huntertags, self.hunternotags, self.hunteroneoftags)
+        if self.hunterseeequipped then
+            self.hunter = nil
+            local x, y, z = self.inst.Transform:GetWorldPosition()
+            local ents = TheSim:FindEntities(x, y, z, self.see_dist, self.huntertags, self.hunternotags, self.hunteroneoftags)
+            for _, ent in ipairs(ents) do
+                if ent ~= self.inst and (self.hunterfn == nil or self.hunterfn(ent, self.inst)) then
+                    if ent.entity:IsVisible() or ent.components.equippable and ent.components.equippable:IsEquipped() then
+                        local owner = ent.components.inventoryitem and ent.components.inventoryitem:GetGrandOwner() or nil
+                        local leader = self.inst.components.follower and self.inst.components.follower:GetLeader() or nil
+                        if owner == nil or leader == nil or owner ~= leader then
+                            self.hunter = ent
+                            break
+                        end
+                    end
+                end
+            end
+        else
+            self.hunter = FindEntity(self.inst, self.see_dist, self.hunterfn, self.huntertags, self.hunternotags, self.hunteroneoftags)
+        end
 
         if self.hunter ~= nil and self.shouldrunfn ~= nil and not self.shouldrunfn(self.hunter, self.inst) then
             self.hunter = nil
@@ -106,7 +147,7 @@ function RunAway:Visit()
             self.status = FAILED
             self.inst.components.locomotor:Stop()
         else
-            if self.runshomewhenchased and self.inst.components.homeseeker ~= nil then
+            if self.runshomewhenchased and ShouldGoHome(self.inst) then
                 self.inst.components.homeseeker:GoHome(true)
             else
                 local pt = self.inst:GetPosition()

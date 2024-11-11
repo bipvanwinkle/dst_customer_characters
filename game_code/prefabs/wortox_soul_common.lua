@@ -1,3 +1,5 @@
+local fns
+
 local function DoHeal(inst)
     local healtargets = {}
     local healtargetscount = 0
@@ -42,20 +44,10 @@ local function DoHeal(inst)
 end
 
 local function HasSoul(victim)
-    return not (victim:HasTag("veggie") or
-                victim:HasTag("structure") or
-                victim:HasTag("wall") or
-                victim:HasTag("balloon") or
-                victim:HasTag("soulless") or
-                victim:HasTag("chess") or
-                victim:HasTag("shadow") or
-                victim:HasTag("shadowcreature") or
-                victim:HasTag("shadowminion") or
-                victim:HasTag("shadowchesspiece") or
-                victim:HasTag("groundspike") or
-                victim:HasTag("smashable"))
-        and (  (victim.components.combat ~= nil and victim.components.health ~= nil)
-            or victim.components.murderable ~= nil )
+	return (	(victim.components.combat ~= nil and victim.components.health ~= nil) or
+				victim.components.murderable ~= nil
+			)
+		and not victim:HasAnyTag(SOULLESS_TARGET_TAGS)
 end
 
 local function GetNumSouls(victim)
@@ -65,8 +57,55 @@ local function GetNumSouls(victim)
         or 1
 end
 
-return {
+local function SpawnSoulAt(x, y, z, victim, marksource)
+    local fx = SpawnPrefab("wortox_soul_spawn")
+    if marksource then
+        fx._soulsource = victim and victim._soulsource or nil
+    end
+    fx.Transform:SetPosition(x, y, z)
+    fx:Setup(victim)
+end
+
+local function SpawnSoulsAt(victim, numsouls)
+    local x, y, z = victim.Transform:GetWorldPosition()
+    if numsouls == 2 then
+        local theta = math.random() * TWOPI
+        local radius = .4 + math.random() * .1
+        fns.SpawnSoulAt(x + math.cos(theta) * radius, 0, z - math.sin(theta) * radius, victim, true)
+        theta = GetRandomWithVariance(theta + PI, PI / 15)
+        fns.SpawnSoulAt(x + math.cos(theta) * radius, 0, z - math.sin(theta) * radius, victim, false) -- NOTES(JBK): Only one guarantee.
+    else
+        fns.SpawnSoulAt(x, y, z, victim, true)
+        if numsouls > 1 then
+            numsouls = numsouls - 1
+            local theta0 = math.random() * TWOPI
+            local dtheta = TWOPI / numsouls
+            local thetavar = dtheta / 10
+            local theta, radius
+            for i = 1, numsouls do
+                theta = GetRandomWithVariance(theta0 + dtheta * i, thetavar)
+                radius = 1.6 + math.random() * .4
+                fns.SpawnSoulAt(x + math.cos(theta) * radius, 0, z - math.sin(theta) * radius, victim, false) -- NOTES(JBK): Only one guarantee.
+            end
+        end
+    end
+end
+
+local function GiveSouls(inst, num, pos)
+    local soul = SpawnPrefab("wortox_soul")
+    if soul.components.stackable ~= nil then
+        soul.components.stackable:SetStackSize(num)
+    end
+    inst.components.inventory:GiveItem(soul, nil, pos)
+end
+
+fns = {
     DoHeal = DoHeal,
     HasSoul = HasSoul,
     GetNumSouls = GetNumSouls,
+    SpawnSoulAt = SpawnSoulAt,
+    SpawnSoulsAt = SpawnSoulsAt,
+    GiveSouls = GiveSouls,
 }
+
+return fns

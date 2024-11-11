@@ -356,6 +356,10 @@ local function on_load(inst, data)
     update_barnacle_layers(inst, inst.components.harvestable.produce / inst.components.harvestable.maxproduce)
 end
 
+local function on_landed_initialize(inst)
+    inst.components.floater:OnLandedServer()
+end
+
 local PRIZE_PREFAB = "barnacle"
 local function fn()
     local inst = CreateEntity()
@@ -382,6 +386,13 @@ local function fn()
     inst.AnimState:SetBuild("barnacle_plant_colour_swaps")
     inst.AnimState:PlayAnimation("idle")
 
+    inst.scrapbook_overridedata={}
+    table.insert( inst.scrapbook_overridedata, {"bc_bud", "barnacle_plant_colour_swaps", "bc_bud"})
+    table.insert( inst.scrapbook_overridedata, {"bc_face", "barnacle_plant_colour_swaps", "bc_face"})
+    table.insert( inst.scrapbook_overridedata, {"bc_flower_petal", "barnacle_plant_colour_swaps", "bc_flower_petal"})
+    inst.scrapbook_anim = "idle"
+
+
     inst.AnimState:Hide("stage1")
     inst.AnimState:Hide("bud1")
     inst.AnimState:Hide("bud2")
@@ -394,6 +405,7 @@ local function fn()
     inst.AnimState:SetFinalOffset(1)
 
     MakeInventoryFloatable(inst, "med", 0.1, {1.1, 0.9, 1.1})
+    inst.components.floater:SetIsObstacle()
     inst.components.floater.bob_percent = 0
     inst.components.floater.splash = false
 
@@ -407,18 +419,14 @@ local function fn()
     inst.base.Transform:SetPosition(0,0,0)
 
     -- Stop the plants from idling in unison.
-    local random_anim_time = math.random() * inst.AnimState:GetCurrentAnimationLength()
-    inst.AnimState:SetTime(random_anim_time)
-    inst.base.AnimState:SetTime(random_anim_time)
+	local random_anim_frame = math.random(inst.AnimState:GetCurrentAnimationNumFrames()) - 1
+	inst.AnimState:SetFrame(random_anim_frame)
+	inst.base.AnimState:SetFrame(random_anim_frame)
 
     inst.highlightchildren = { inst.base }
 
-    inst.AnimState:SetTime(math.random() * inst.AnimState:GetCurrentAnimationLength())
-
     local land_time = (POPULATING and math.random()*5*FRAMES) or 0
-    inst:DoTaskInTime(land_time, function(inst)
-        inst.components.floater:OnLandedServer()
-    end)
+    inst:DoTaskInTime(land_time, on_landed_initialize)
 
     inst:AddComponent("sleeper")
 

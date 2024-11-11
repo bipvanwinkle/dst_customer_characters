@@ -12,6 +12,7 @@ local assets =
     Asset("ANIM", "anim/werepig_basic.zip"),
     Asset("ANIM", "anim/werepig_actions.zip"),
     Asset("ANIM", "anim/pig_token.zip"),
+    Asset("ANIM", "anim/ds_pig_parasite_death.zip"),
     Asset("SOUND", "sound/pig.fsb"),
     Asset("ANIM", "anim/merm_actions.zip"),
 }
@@ -169,6 +170,10 @@ local function IsGuardPig(dude)
     return dude:HasTag("guard") and dude:HasTag("pig")
 end
 
+local function IsHost(dude)
+    return dude:HasTag("shadowthrall_parasite_hosted")
+end
+
 local function OnAttacked(inst, data)
     --print(inst, "OnAttacked")
     local attacker = data.attacker
@@ -180,7 +185,9 @@ local function OnAttacked(inst, data)
 		elseif attacker.prefab ~= "deciduous_root" and not attacker:HasTag("pigelite") then
 			inst.components.combat:SetTarget(attacker)
 
-			if inst:HasTag("werepig") then
+            if inst:HasTag("shadowthrall_parasite_hosted") then
+                inst.components.combat:ShareTarget(attacker, SHARE_TARGET_DIST, IsHost, MAX_TARGET_SHARES)
+			elseif inst:HasTag("werepig") then
 				inst.components.combat:ShareTarget(attacker, SHARE_TARGET_DIST, IsWerePig, MAX_TARGET_SHARES)
 			elseif inst:HasTag("guard") then
 				inst.components.combat:ShareTarget(attacker, SHARE_TARGET_DIST, attacker:HasTag("pig") and IsGuardPig or IsPig, MAX_TARGET_SHARES)
@@ -350,7 +357,7 @@ local function GuardRetargetFn(inst)
         if not TheWorld.state.isday and home ~= nil and home.components.burnable ~= nil and home.components.burnable:IsBurning() then
             local lightThief = FindEntity(
                 home,
-                home.components.burnable:GetLargestLightRadius(),
+                home.components.burnable:GetLargestLightRadius() or 4,
                 function(guy)
                     return guy:IsInLight()
                         and not (defenseTarget.components.trader ~= nil and defenseTarget.components.trader:IsTryingToTradeWithMe(guy))
@@ -559,6 +566,8 @@ local function CustomOnHaunt(inst)
     end
 end
 
+local SCRAPBOOK_HIDE_SYMBOLS = { "hat", "ARM_carry_up" }
+
 local function common(moonbeast)
     local inst = CreateEntity()
 
@@ -579,6 +588,7 @@ local function common(moonbeast)
     inst.AnimState:SetBank("pigman")
     inst.AnimState:PlayAnimation("idle_loop", true)
     inst.AnimState:Hide("hat")
+    inst.AnimState:Hide("ARM_carry_up")
 
     if IsSpecialEventActive(SPECIAL_EVENTS.YOTB) then
         inst.AnimState:AddOverrideBuild("pigman_yotb")
@@ -615,6 +625,11 @@ local function common(moonbeast)
     if not TheWorld.ismastersim then
         return inst
     end
+
+    inst.scrapbook_hide = SCRAPBOOK_HIDE_SYMBOLS
+
+    inst.scrapbook_removedeps = { "strawhat", "tophat" }
+    inst.scrapbook_adddeps = { "gargoyle_werepigdeath" }
 
     --Remove these tags so that they can be added properly when replicating components below
     inst:RemoveTag("_named")
@@ -724,6 +739,8 @@ local function normal()
     if not TheWorld.ismastersim then
         return inst
     end
+
+    inst.scrapbook_build = "pig_build"
 
     -- boat hopping setup
     inst.components.locomotor:SetAllowPlatformHopping(true)

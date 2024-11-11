@@ -13,6 +13,7 @@ local prefabs =
     "nightmarefuel",
 	"bat",
 	"cookingrecipecard",
+    "scrapbook_page",
 }
 
 for k = 1, NUM_TRINKETS do
@@ -22,6 +23,9 @@ for k = 1, NUM_HALLOWEEN_ORNAMENTS do
     table.insert(prefabs, "halloween_ornament_"..tostring(k))
 end
 
+for k = 1, NUM_HALLOWEEN_PUMPKINCARVERS do
+    table.insert(prefabs, "pumpkincarver"..tostring(k))
+end
 
 local LOOTS =
 {
@@ -29,7 +33,7 @@ local LOOTS =
     amulet = 1,
     gears = 1,
     redgem = 5,
-    bluegem = 5,
+    bluegem = 5,    
 }
 
 local function ReturnChildren(inst)
@@ -76,7 +80,14 @@ local function onfinishcallback(inst, worker)
 
 			if math.random() < TUNING.COOKINGRECIPECARD_GRAVESTONE_CHANCE then
                 inst.components.lootdropper:SpawnLootPrefab("cookingrecipecard")
+
+            elseif IsSpecialEventActive(SPECIAL_EVENTS.HALLOWED_NIGHTS) and math.random() < TUNING.HALLOWEEN_PUMPKINCARVER_GRAVESTONE_CHANCE then
+                inst.components.lootdropper:SpawnLootPrefab("pumpkincarver"..math.random(NUM_HALLOWEEN_PUMPKINCARVERS))
 			end
+
+            if math.random() < TUNING.SCRAPBOOK_PAGE_GRAVESTONE_CHANCE then
+                inst.components.lootdropper:SpawnLootPrefab("scrapbook_page")
+            end
 
 			if IsSpecialEventActive(SPECIAL_EVENTS.HALLOWED_NIGHTS) then
 				local ornament = math.random(NUM_HALLOWEEN_ORNAMENTS * 4)
@@ -162,6 +173,9 @@ local function fn()
     inst.AnimState:PlayAnimation("gravedirt")
 
     inst:AddTag("grave")
+	inst:AddTag("buried")
+
+    inst.scrapbook_anim = "gravedirt"
 
     inst.entity:SetPristine()
 

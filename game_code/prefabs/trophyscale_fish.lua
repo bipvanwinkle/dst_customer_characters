@@ -79,9 +79,8 @@ local function SetDigits(inst, weight)
 		weight = string.sub(formatted, 1, 3)..string.sub(formatted, 5)
 	end
 
-	local build = inst.AnimState:GetBuild()
 	for i=1,5 do
-		inst.AnimState:OverrideSymbol("column"..i, build, "number"..string.sub(weight, i, i)..(DIGIT_COLORS[i] or "_black"))
+		inst.AnimState:OverrideSymbol("column"..i, "scale_o_matic", "number"..string.sub(weight, i, i)..(DIGIT_COLORS[i] or "_black"))
 	end
 end
 
@@ -297,6 +296,7 @@ local function fn()
 	inst.entity:AddSoundEmitter()
 	inst.entity:AddNetwork()
 
+	inst:SetDeploySmartRadius(1.25) --recipe min_spacing/2
 	MakeObstaclePhysics(inst, .4)
 
 	inst.MiniMapEntity:SetPriority(5)
@@ -305,6 +305,7 @@ local function fn()
 	inst.AnimState:SetBuild("scale_o_matic")
 	inst.AnimState:SetBank("scale_o_matic")
 	inst.AnimState:PlayAnimation("nofish_idle")
+	inst.scrapbook_anim = "nofish_idle"
 
 	SetDigits(inst, nil)
 
@@ -314,6 +315,8 @@ local function fn()
 	inst:AddTag("trophyscale_fish")
 
 	MakeSnowCoveredPristine(inst)
+
+	inst.scrapbook_specialinfo = "TROPHYSCALEFISH"
 
 	inst.entity:SetPristine()
 

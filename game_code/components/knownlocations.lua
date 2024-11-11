@@ -27,43 +27,44 @@ function KnownLocations:GetDebugString()
 end
 
 function KnownLocations:SerializeLocations()
-    local locs = {}
-        for k,v in pairs(self.locations) do
-            table.insert(locs, {name = k, x = v.x, y = v.y, z = v.z})
-        end
+    local locs = nil
+    for location_name, location_position in pairs(self.locations) do
+        locs = locs or {}
+        table.insert(locs, {
+            name = location_name,
+            x = location_position.x,
+            y = location_position.y,
+            z = location_position.z
+        })
+    end
     return locs
 end
 
 function KnownLocations:DeserializeLocations(data)
-    for k,v in pairs(data) do
-        self:RememberLocation(v.name, Vector3(v.x, v.y, v.z))
+    for _, location in pairs(data) do
+        self:RememberLocation(location.name, Vector3(location.x, location.y, location.z))
     end
 end
 
 function KnownLocations:OnSave()
-    local data = {}
-
-    data.locations = self:SerializeLocations()
-
-    return data
+    local serialized_locations = self:SerializeLocations()
+    return (serialized_locations ~= nil and {locations = serialized_locations})
+        or nil
 end
 
 function KnownLocations:OnLoad(data)
-    if data then
-        if data.locations then
-            self:DeserializeLocations(data.locations)
-        end
+    if data and data.locations then
+        self:DeserializeLocations(data.locations)
     end
 end
 
 function KnownLocations:RememberLocation(name, pos, dont_overwrite)
-    if not self.locations[name] or not dont_overwrite then
+	if not dont_overwrite or self.locations[name] == nil then
         self.locations[name] = pos
-		if pos ~= nil and (pos.x ~= pos.x or pos.y ~= pos.y or pos.z ~= pos.z) then
+		if pos ~= nil and (isbadnumber(pos.x) or isbadnumber(pos.y) or isbadnumber(pos.z)) then
 			print("KnownLocations:RememberLocation position error: ", self.inst.prefab, self.inst:IsValid(), pos.x, pos.y, pos.z)
 			error("Error: KnownLocations:RememberLocation() recieved a bad pos value.")
 		end
-
     end
 end
 

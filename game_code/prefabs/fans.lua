@@ -43,7 +43,7 @@ local function OnChanneling(inst, target)
         if pos ~= nil then
             local angle
             if inst.lasttornadoangle == nil then
-                angle = math.random() * 2 * PI
+                angle = math.random() * TWOPI
                 inst.lasttornadoangle = angle
             else
                 angle = inst.lasttornadoangle + PI
@@ -95,6 +95,7 @@ local function common_fn(overridesymbol, onchannelingfn)
         --channelingfan (from fan component) added to pristine state for optimization
         inst:AddTag("channelingfan")
     end
+    inst:AddTag("donotautopick")
 
     local swap_data = {bank = "fan", anim = "idle"}
     MakeInventoryFloatable(inst, nil, nil, nil, nil, nil, swap_data)
@@ -150,6 +151,8 @@ local function perd_fn()
     inst.components.floater:SetSize("large")
     inst.components.floater:SetVerticalOffset(0.15)
     inst.components.floater:SetScale({0.55, 0.5, 0.55})
+
+    inst.scrapbook_overridedata = {"swap_fan", "fan", "swap_fan_perd"}
 
     if not TheWorld.ismastersim then
         return inst

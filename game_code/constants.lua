@@ -3,17 +3,25 @@ local TechTree = require("techtree")
 
 local IS_BETA = BRANCH == "staging" --or BRANCH == "dev"
 
-PI = 3.14159
+PI = math.pi
 PI2 = PI*2
+TWOPI = PI2
+SQRT2 = math.sqrt(2)
+GOLDENANGLE = PI * (3 - math.sqrt(5))
 DEGREES = PI/180
 RADIANS = 180/PI
 FRAMES = 1/30
 TILE_SCALE = 4
+MAXUINT = 4294967295
 
 RESOLUTION_X = 1280
 RESOLUTION_Y = 720
 
 PLAYER_REVEAL_RADIUS = 30.0 -- NOTES(JBK): Keep in sync with MiniMapRenderer.cpp!
+PLAYER_CAMERA_SEE_DISTANCE = 40.0 -- NOTES(JBK): Based off of an approximation of the maximum default camera distance before seeing clouds and is the screen diagonal.
+PLAYER_CAMERA_SEE_DISTANCE_SQ = PLAYER_CAMERA_SEE_DISTANCE * PLAYER_CAMERA_SEE_DISTANCE -- Helper.
+PLAYER_CAMERA_SHOULD_SNAP_DISTANCE = 20.0 -- NOTES(JBK): This is an approximate distance traveled where the camera should snap and fade out to not cause disorientations.
+PLAYER_CAMERA_SHOULD_SNAP_DISTANCE_SQ = PLAYER_CAMERA_SHOULD_SNAP_DISTANCE * PLAYER_CAMERA_SHOULD_SNAP_DISTANCE -- Helper.
 
 MAX_FE_SCALE = 3 --Default if you don't call SetMaxPropUpscale
 MAX_HUD_SCALE = 1.25
@@ -185,6 +193,20 @@ CONTROL_INV_13 = 79
 CONTROL_INV_14 = 80
 CONTROL_INV_15 = 81
 
+CONTROL_START_EMOJI = 82
+
+-- extra menu controls that should have been above but it's too late to add them now
+CONTROL_MENU_BACK = 83
+CONTROL_MENU_START = 84
+CONTROL_MENU_L2 = 85
+CONTROL_MENU_R2 = 86
+
+CONTROL_OPEN_COMMAND_WHEEL = 87
+
+-- controller targetting
+CONTROL_TARGET_LOCK = 88
+CONTROL_TARGET_CYCLE = 89
+
 CONTROL_CUSTOM_START = 100
 
 XBOX_CONTROLLER_ID = 17
@@ -194,6 +216,9 @@ CONTROL_TARGET_MODIFIER = CONTROL_MENU_MISC_2
 CONTROL_TARGET_LOCK = CONTROL_MENU_MISC_2
 CONTROL_TARGET_CYCLE_BACK = CONTROL_ROTATE_LEFT
 CONTROL_TARGET_CYCLE_FORWARD = CONTROL_ROTATE_RIGHT
+
+-- a constant used in place of hardcoding the CONTROL_ for the skin presets popup. This is overridden to a different CONTROL_ in the console branch (currently CONTROL_MENU_L2)
+CONTROL_SKIN_PRESETS = CONTROL_MENU_MISC_1
 
 KEY_TAB = 9
 KEY_KP_0			= 256
@@ -350,6 +375,7 @@ ROG_CHARACTERLIST =
 }
 
 --When adding new characters with alternate states, be sure to update skinsutils.lua function GetSkinModes.
+-- NOTES(JBK): Keep this up to date with LOOKUP_LIST in scrapbookpartitions.lua
 DST_CHARACTERLIST =
 {
     "wilson",
@@ -388,7 +414,7 @@ CHARACTER_VIDEOS =
 	wx78 = {"https://klei.gg/3F9qqc1"},
 	wickerbottom = {"https://klei.gg/3bCaOTL"},
 	wes = {"https://bit.ly/2QLFpn4"},
-	waxwell = {"https://bit.ly/3rF0UD0"},
+	waxwell = {"https://klei.gg/3AHfLEb"},
 	woodie = {"https://bit.ly/3sHhUK1"},
 	wathgrithr = {"https://bit.ly/3rC8YV6"},
 	webber = {"https://klei.gg/3zXJrLt"},
@@ -563,6 +589,7 @@ EQUIPSLOTS =
     HANDS = "hands",
     HEAD = "head",
     BODY = "body",
+    BEARD = "beard",
 }
 
 ITEMTAG =
@@ -675,10 +702,15 @@ TERRAFORM_IMMUNE = {}
 GROUND_FLOORING = {} --These tiles are flooring (stuff shouldn't grow on them)
 GROUND_HARD = {} --not plantable
 GROUND_ROADWAYS = {} -- Player speed boosting enabled.
+GROUND_NOGROUNDOVERLAYS = {} -- Stops rendering of snow or water etc overlays this table is immutable after initialization or engine crashes may occur.
+GROUND_INVISIBLETILES = {} -- Stops rendering of the tile top and skirt but will still have overlays this table is immutable after initialization or engine crashes may occur.
+GROUND_ISTEMPTILE = {} -- Tiles that are temporarily placed as a layer using the undertile component.
 
 FALLOFF_IDS = {
     FALLOFF = 1,
     DOCK_FALLOFF = 2,
+    OCEANICE_FALLOFF = 3,
+    INVISIBLE = 4,
 }
 
 GROUND_CREEP_IDS = {
@@ -749,9 +781,11 @@ SPECIAL_EVENTS =
     YOTC = "year_of_the_carrat",
     YOTB = "year_of_the_beefalo",
     YOT_CATCOON = "year_of_the_catcoon",
+    YOTR = "year_of_the_bunnyman",
+    YOTD = "year_of_the_dragonfly",
 }
---WORLD_SPECIAL_EVENT = SPECIAL_EVENTS.NONE
-WORLD_SPECIAL_EVENT = IS_BETA and SPECIAL_EVENTS.NONE or SPECIAL_EVENTS.HALLOWED_NIGHTS
+WORLD_SPECIAL_EVENT = SPECIAL_EVENTS.HALLOWED_NIGHTS
+--WORLD_SPECIAL_EVENT = IS_BETA and SPECIAL_EVENTS.NONE or SPECIAL_EVENTS.YOTR
 WORLD_EXTRA_EVENTS = {}
 
 FESTIVAL_EVENTS =
@@ -777,6 +811,8 @@ IS_YEAR_OF_THE_SPECIAL_EVENTS =
     [SPECIAL_EVENTS.YOTC] = true,
     [SPECIAL_EVENTS.YOTB] = true,
 	[SPECIAL_EVENTS.YOT_CATCOON] = true,
+    [SPECIAL_EVENTS.YOTR] = true,
+    [SPECIAL_EVENTS.YOTD] = true,
 }
 
 
@@ -801,10 +837,8 @@ SPECIAL_EVENT_MUSIC =
     --winter's feast carol
     [SPECIAL_EVENTS.WINTERS_FEAST] =
     {
-  --      bank = "music_frontend_winters_feast.fsb",
-  --      sound = "dontstarve/music/music_FE_WF",
-        bank = "music_frontend.fsb",
-        sound = "dontstarve/music/music_FE_wolfgang",
+        bank = "music_frontend_winters_feast.fsb",
+        sound = "dontstarve/music/music_FE_WF",
     },
 
     --year of the gobbler
@@ -846,6 +880,20 @@ SPECIAL_EVENT_MUSIC =
     {
         bank = "music_frontend_yotg.fsb",
         sound = "dontstarve/music/music_FE_yotg",
+    },
+
+    --year of the rabbit
+    [SPECIAL_EVENTS.YOTR] =
+    {
+        bank = "music_frontend_yotg.fsb",
+        sound = "dontstarve/music/music_FE_yotg",
+    },
+
+    --year of the dragonfly
+    [SPECIAL_EVENTS.YOTD] =
+    {
+        bank = "music.fsb",
+        sound = "dontstarve/music/music_FE_boatrace",
     },
 
 	-- crow carnival
@@ -1036,7 +1084,17 @@ end
 FE_MUSIC =
     (FESTIVAL_EVENT_MUSIC[WORLD_FESTIVAL_EVENT] ~= nil and FESTIVAL_EVENT_MUSIC[WORLD_FESTIVAL_EVENT].sound) or
     (SPECIAL_EVENT_MUSIC[WORLD_SPECIAL_EVENT] ~= nil and SPECIAL_EVENT_MUSIC[WORLD_SPECIAL_EVENT].sound) or
-    "dontstarve/music/music_FE_charliestage"
+    "dontstarve/music/music_FE_hallowednights2024"
+    --"dontstarve/music/music_FE_rifts4"
+    --"dontstarve/music/music_FE_winonawurt"
+    --"dontstarve/music/music_FE_junkyardhog"
+    --"dontstarve/music/music_FE_riftsthree"
+    --"dontstarve/music/music_FE_survivorsguideone"
+    --"dontstarve/music/music_FE_shadowrift"
+    --"dontstarve/music/music_FE_lunarrift"
+    --"dontstarve/music/music_FE_daywalker"
+    --"dontstarve/music/music_FE_maxwell"
+    --"dontstarve/music/music_FE_charliestage"
     --"dontstarve/music/music_FE_wickerbottom"
     --"dontstarve/music/music_FE"
     --"dontstarve/music/music_FE_pirates"
@@ -1048,8 +1106,25 @@ FE_MUSIC =
 
 
 ---------------------------------------------------------
+-- Pickup sounds for in game events.
+PICKUPSOUNDS = {
+    ["wood"] = "aqol/new_test/wood",
+    ["gem"] = "aqol/new_test/gem",
+    ["cloth"] = "aqol/new_test/cloth",
+    ["metal"] = "aqol/new_test/metal",
+    ["rock"] = "aqol/new_test/rock",
+    ["vegetation_firm"] = "aqol/new_test/vegetation_firm",
+    ["vegetation_grassy"] = "aqol/new_test/vegetation_grassy",    
+    ["squidgy"] = "aqol/new_test/squidgy",
+    ["grainy"] = "aqol/new_test/grainy",
+    ["DEFAULT_FALLBACK"] = "dontstarve/HUD/collect_resource",
+	["NONE"] = nil, --reserved
+}
+
+---------------------------------------------------------
 NUM_HALLOWEENCANDY = 14
 NUM_HALLOWEEN_ORNAMENTS = 6
+NUM_HALLOWEEN_PUMPKINCARVERS = 3
 NUM_WINTERFOOD = 9
 
 SANITY_MODE_INSANITY = 0
@@ -1094,6 +1169,9 @@ TECH =
     CARRATOFFERING_THREE = { CARRATOFFERING = 3 },
     BEEFOFFERING_THREE = { BEEFOFFERING = 3 },
     CATCOONOFFERING_THREE = { CATCOONOFFERING = 3 },
+    RABBITOFFERING_THREE = { RABBITOFFERING = 3 },
+    DRAGONOFFERING_THREE = { DRAGONOFFERING = 3 },
+
     MADSCIENCE_ONE = { MADSCIENCE = 1 },
 	CARNIVAL_PRIZESHOP_ONE = { CARNIVAL_PRIZESHOP = 1 },
 	CARNIVAL_HOSTSHOP_ONE = { CARNIVAL_HOSTSHOP = 1 },
@@ -1107,6 +1185,8 @@ TECH =
 	HERMITCRABSHOP_THREE = { HERMITCRABSHOP = 3 },
 	HERMITCRABSHOP_FIVE = { HERMITCRABSHOP = 5 },
     HERMITCRABSHOP_SEVEN = { HERMITCRABSHOP = 7 },
+
+    RABBITKINGSHOP_TWO = { RABBITKINGSHOP = 2 },
 
     TURFCRAFTING_ONE = { TURFCRAFTING = 1 },
     TURFCRAFTING_TWO = { TURFCRAFTING = 2 },
@@ -1122,6 +1202,8 @@ TECH =
     YOTC = { SCIENCE = 10 }, -- ApplySpecialEvent() will change this from lost to 0
     YOTB = { SCIENCE = 10 }, -- ApplySpecialEvent() will change this from lost to 0
     YOT_CATCOON = { SCIENCE = 10 }, -- ApplySpecialEvent() will change this from lost to 0
+    YOTR = { SCIENCE = 10 }, -- ApplySpecialEvent() will change this from lost to 0
+    YOTD = { SCIENCE = 10 }, -- ApplySpecialEvent() will change this from lost to 0
 
     LOST = { MAGIC = 10, SCIENCE = 10, ANCIENT = 10 },
 
@@ -1129,6 +1211,15 @@ TECH =
 
     ROBOTMODULECRAFT_ONE = { ROBOTMODULECRAFT = 1 },
     BOOKCRAFT_ONE = { BOOKCRAFT = 1 },
+
+	LUNARFORGING_ONE = { LUNARFORGING = 1 },
+	LUNARFORGING_TWO = { LUNARFORGING = 2 },
+
+	SHADOWFORGING_ONE = { SHADOWFORGING = 1 },
+	SHADOWFORGING_TWO = { SHADOWFORGING = 2 },
+
+    CARPENTRY_TWO = { CARPENTRY = 2 },
+    CARPENTRY_THREE = { CARPENTRY = 3 },
 }
 
 -- See cell_data.h
@@ -1344,7 +1435,9 @@ RECIPETABS =
 	FISHING =				{ str = "FISHING",				sort = 100, icon = "tab_fishing.tex",			crafting_station = true },
 	WINTERSFEASTCOOKING =	{ str = "WINTERSFEASTCOOKING",	sort = 100, icon = "tab_feast_oven.tex",		crafting_station = true },
     HERMITCRABSHOP =		{ str = "HERMITCRABSHOP",		sort = 100, icon = "tab_hermitcrab_shop.tex",	crafting_station = true, shop = true},
+    RABBITKINGSHOP =		{ str = "RABBITKINGSHOP",		sort = 100, icon = "tab_rabbitking.tex",		crafting_station = true, shop = true, icon_atlas = "images/hud2.xml"},
     TURFCRAFTING =		    { str = "TURFCRAFTING", 		sort = 100, icon = "tab_turfcrafting.tex",      crafting_station = true, icon_atlas = "images/hud2.xml" },
+    CARPENTRY =	    	    { str = "CARPENTRY",			sort = 100, icon = "station_carpentry.tex",     crafting_station = true, icon_atlas = "images/hud2.xml" },
 }
 
 CUSTOM_RECIPETABS =
@@ -1418,7 +1511,8 @@ ANIM_SORT_ORDER =
 {
 	OCEAN_UNDERWATER = 0,
 	OCEAN_WAVES = 1,
-	OCEAN_BOAT = 2,
+	OCEAN_WHIRLPORTAL = 1,
+	OCEAN_BOAT = 2, -- Keep at 2.
     OCEAN_BOAT_BUMPERS = 3,
 	OCEAN_SKYSHADOWS = 4,
 }
@@ -1729,20 +1823,41 @@ MATERIALS =
     GEARS = "gears",
     MOONROCK = "moonrock",
     ICE = "ice",
+    CARROT = "carrot",
     SCULPTURE = "sculpture",
     FOSSIL = "fossil",
     MOON_ALTAR = "moon_altar",
     KELP = "kelp",
     SHELL = "shell",
     NIGHTMARE = "nightmare",
+	DREADSTONE = "dreadstone",
+    SALT = "salt",
+    VITAE = "vitae",
 }
 
-UPGRADETYPES =
+FORGEMATERIALS =
+{
+	LUNARPLANT = "lunarplant",
+	VOIDCLOTH = "voidcloth",
+    WAGPUNKBITS = "wagpunk_bits",
+}
+
+UPGRADETYPES = -- NOTES(JBK): Keep this table updated in export_accountitems.lua [EAITAB]
 {
     DEFAULT = "default",
     SPIDER = "spider",
     WATERPLANT = "waterplant",
     MAST = "mast",
+    SPEAR_LIGHTNING = "spear_lightning",
+    CHEST = "chest",
+}
+
+SPELLTYPES = -- NOTES(JBK): Keep this table updated in export_accountitems.lua [EAITAB]
+{
+    WURT_SHADOW = "wurt_shadow",
+    WURT_LUNAR = "wurt_lunar",
+    SHADOW_SWAMP_BOMB = "shadow_swamp_bomb",
+    LUNAR_SWAMP_BOMB = "lunar_swamp_bomb",
 }
 
 LOCKTYPE =
@@ -1762,11 +1877,24 @@ FUELTYPE =
     PIGTORCH = "PIGTORCH",
     CHEMICAL = "CHEMICAL",
     WORMLIGHT = "WORMLIGHT",
+    LIGHTER = "LIGHTER",
 }
 
 OCCUPANTTYPE =
 {
     BIRD = "bird",
+}
+
+VALID_KITCOON_BUILDS = {
+    "kitcoon_forest_build",
+    "kitcoon_savanna_build",
+    "kitcoon_deciduous_build",
+    "kitcoon_marsh_build",
+    "kitcoon_grass_build",
+    "kitcoon_rocky_build",
+    "kitcoon_desert_build",
+    "kitcoon_moon_build",
+    "kitcoon_yot_build", 
 }
 
 FOODTYPE =
@@ -1782,6 +1910,7 @@ FOODTYPE =
     BERRY = "BERRY", --hack for smallbird; berries are actually part of veggie
     RAW = "RAW", -- things which some animals can eat off the ground, but players need to cook
     BURNT = "BURNT", --For lavae.
+    NITRE = "NITRE", -- For acidbats; they are part of elemental.
     ROUGHAGE = "ROUGHAGE",
 	WOOD = "WOOD",
     GOODIES = "GOODIES",
@@ -1877,6 +2006,20 @@ TECH_INGREDIENT =
     SCULPTING = "sculpting_material",
 }
 
+-- NOTES(DiogoW): Now DEPRECATED, keeping it around for mods.
+    -- Identifies which builder tags are from which characters' skill trees,
+    -- so that the crafting menu properly identifies that they're locked behind a skill
+    -- for your current character.
+TECH_SKILLTREE_BUILDER_TAG_OWNERS = {}
+
+SKILLTREE_EQUIPPABLE_RESTRICTED_TAGS = 
+{
+    -- Using quotes for searching purposes.
+    ["inspectacleshatuser"]  = "winona",
+    ["wathgrithrshielduser"] = "wathgrithr",
+    [UPGRADETYPES.SPEAR_LIGHTNING.."_upgradeuser"] = "wathgrithr",
+}
+
 -- IngredientMod must be one of the following values
 INGREDIENT_MOD_LOOKUP =
 {
@@ -1906,6 +2049,20 @@ TOOLACTIONS =
     PLAY = true,
     UNSADDLE = true,
 	REACH_HIGH = true,
+	SCYTHE = true,
+}
+
+FALLINGREASON =
+{
+    OCEAN = "ocean",
+    VOID = "void",
+}
+
+EQUIPMENTSETNAMES =
+{
+    DREADSTONE = "dreadstone",
+    LUNARPLANT = "lunarplant",
+    VOIDCLOTH = "voidcloth",
 }
 
 -- this is a net_tinybyte on inventoryitem_classified.deploymode
@@ -1940,6 +2097,12 @@ DEPLOYSPACING =
     LARGE = 5,
 }
 
+--V2C: Deploy spacing is a legacy system where this is actually the distance
+--     between our center point and other objects' center points.
+--     For newer things, half of DEPLOYSPACING_RADIUS is used to indicate our
+--     actual footprint radius, combined with nearby objects that have called
+--     SetDeploySmartRadius (or physics size for inventoryitems) to determine
+--     required deploy spacing.
 DEPLOYSPACING_RADIUS =
 {
     [DEPLOYSPACING.DEFAULT] = 2,
@@ -2038,6 +2201,33 @@ PLANTREGISTRYUICOLOURS = {
 MAX_CHAT_INPUT_LENGTH = 150
 MAX_WRITEABLE_LENGTH = 200
 
+-- Used by exportprefabs to identify which "npcchatflairs" images to recognize.
+DST_NPCCHATTERLIST =
+{
+    "none", -- Default chatter/image name
+
+    "daywalker",
+    "daywalker_scrap",
+    "hermitcrab",
+    "sharkboi",
+    "stalker",
+    "wagstaff",
+}
+
+CHATPRIORITIES =
+{
+    -- Messages sent with priority 0 should never appear in chat history.
+    NOCHAT = 0,
+
+    LOW = 1,
+    HIGH = 2,
+
+    -- Keep this the highest value in the table.
+    -- Do not use this value for any messages, unless
+    -- it is desperately needed to be seen irrelevant of user settings.
+    MAX = 3,
+}
+
 --Bit flags, currently supports up to 8
 --Server may use these for things that clients need to know about
 --other clients whose player entities may or may not be available
@@ -2108,9 +2298,10 @@ WORMHOLETYPE =
 {
     WORM = 0,
     TENTAPILLAR = 1,
+    OCEANWHIRLPORTAL = 2,
 }
 
--- Houndwarning level
+-- Houndwarning level, max value of 63 (net_smallbyte)
 HOUNDWARNINGTYPE =
 {
     LVL1 = 0,
@@ -2121,6 +2312,7 @@ HOUNDWARNINGTYPE =
     LVL2_WORM = 5,
     LVL3_WORM = 6,
     LVL4_WORM = 7,
+    WORM_BOSS = 8,
 }
 
 -- Domestication tendencies
@@ -2427,11 +2619,34 @@ SKIN_TYPES_THAT_RECEIVE_CLOTHING =
 	"NO_BASE",
 }
 
+POSTACTIVATEHANDSHAKE = { -- NOTES(JBK): These are expected to never go backwards and only increment.
+    NONE = 0, -- Initialization purposes.
+    CTS_LOADED = 1, -- Client is ready to receive server state.
+    STC_SENDINGSTATE = 2, -- Server is sending what it knows.
+    READY = 3, -- Client is in a good sync state. Must be the end.
+}
+
 STORM_TYPES =
 {
     NONE = 0,
     SANDSTORM = 1,
     MOONSTORM = 2,
+}
+
+HUNT_ACTIONS = {
+    SUCCESS = 0,
+    PROP = 1,
+    SLEEP = 2,
+}
+
+THRALL_TYPES = {
+    SHADOW = {
+        TRIO = "trio",
+        MOUTH = "mouth",
+    },
+    LUNAR = {
+        PLANT = "plant",
+    },
 }
 
 LOADING_SCREEN_TIP_OPTIONS =
@@ -2496,6 +2711,36 @@ LOADING_SCREEN_CONTROL_TIP_KEYS =
     TIP_INVENTORY_SLOTS = { inv_0 = CONTROL_INV_10, inv_9 = CONTROL_INV_9 },
 }
 
+SCRAPBOOK_CATS = {
+    "creature",
+    "item",
+    "food",
+    "giant",
+    "thing",
+    "POI",
+}
+
+SPECIAL_SCRAPBOOK_PAGES_LOOKUP =
+{
+    --[[
+    {
+        name = "ID",
+        entries = { "entry1", "entry2", "..." },
+    },
+    ]]
+}
+
+BERNIEALLEGIANCE ={
+    SHADOW = 1,
+    LUNAR = 2,
+}
+
+SPECIAL_SCRAPBOOK_PAGES = {}
+
+for i, data in ipairs(SPECIAL_SCRAPBOOK_PAGES_LOOKUP) do
+    SPECIAL_SCRAPBOOK_PAGES[data.name] = i
+end
+
 -- When using a controller or on console, some control IDs are different than on non-console, but use the same tips.
 LOADING_SCREEN_CONTROLLER_ID_LOOKUP =
 {
@@ -2503,4 +2748,34 @@ LOADING_SCREEN_CONTROLLER_ID_LOOKUP =
     [CONTROL_ACTION] = CONTROL_CONTROLLER_ACTION,
     [CONTROL_FORCE_INSPECT] = CONTROL_INSPECT,
     [CONTROL_SHOW_PLAYER_STATUS] = CONTROL_MENU_MISC_4,
+}
+
+-- The games for inspectacles with netvar inspectacles_game range [0..7]
+INSPECTACLES_GAMES = {
+    NONE = 0,
+    WIRES = 1,
+    --GEARS = 2,
+    --TAPE = 3,
+    FREE1 = 2, -- FIXME(JBK): Adjust the enum for games added.
+    --FREE2 = 5,
+    --FREE3 = 6,
+}
+INSPECTACLES_GAMES_LOOKUP = {}
+for name, i in pairs(INSPECTACLES_GAMES) do
+    INSPECTACLES_GAMES_LOOKUP[i] = name
+end
+
+CHARLIERESIDUE_MAP_ACTIONS = {
+    NONE = 0,
+    WORMHOLE = 1,
+}
+
+-- Constants to reduce network overhead.
+CLIENTAUTHORITATIVESETTINGS = {
+    PLATFORMHOPDELAY = 0,
+}
+
+NIGHTSWORD_FX_OFFSETS = {
+    RIGHT = 0.75,-- -1,
+    DOWN = 2.9,-- 2.6,
 }

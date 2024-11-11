@@ -23,6 +23,10 @@ for i = 1, NUM_HALLOWEENCANDY do
     table.insert(prefabs, "halloweencandy_"..i)
 end
 
+for i = 1, NUM_HALLOWEEN_PUMPKINCARVERS do
+    table.insert(prefabs, "pumpkincarver"..i)
+end
+
 --------------------------------------------------------------------------
 
 local MINIGAME_ITEM = "goldnugget"
@@ -102,6 +106,12 @@ local function ontradeforgold(inst, item, giver)
             local candy = SpawnPrefab("halloweencandy_"..GetRandomItem(candytypes))
             candy.Transform:SetPosition(x, y, z)
             launchitem(candy, angle)
+        end
+
+        if math.random() <= TUNING.HALLOWEEN_PUMPKINCARVER_PIGKING_TRADE_CHANCE then
+            local pumpkincarver = SpawnPrefab("pumpkincarver"..math.random(NUM_HALLOWEEN_PUMPKINCARVERS))
+            pumpkincarver.Transform:SetPosition(x, y, z)
+            launchitem(pumpkincarver, angle)
         end
     end
 end
@@ -307,6 +317,8 @@ local function LaunchGameItem(inst, item, angle, minorspeedvariance)
     item.Physics:SetVel(math.cos(angle) * spd, 11.5, math.sin(angle) * spd)
     item:DoTaskInTime(.6, OnRestoreItemPhysics)
     item:PushEvent("knockbackdropped", { owner = inst, knocker = inst, delayinteraction = .75, delayplayerinteraction = .5 })
+
+    --#WARNING: you probably don't want this last part if you copy pasta this function!--
     if item.components.burnable ~= nil then
         inst:ListenForEvent("onignite", function()
             for k, v in pairs(inst._minigame_elites) do
@@ -314,6 +326,7 @@ local function LaunchGameItem(inst, item, angle, minorspeedvariance)
             end
         end, item)
     end
+    -------------------------------------------------------------------------------------
 end
 
 local PROP_MUST_TAGS = { "minigameitem", "propweapon" }
@@ -338,8 +351,8 @@ local function OnTossGameItems(inst)
         table.insert(items, MINIGAME_ITEM)
     end
 	inst._minigame_gold_tossed = inst._minigame_gold_tossed + numgold
-    local angle = math.random() * 2 * PI
-    local delta = 2 * PI / (numgold + numprops + 1) --purposely leave a random gap
+    local angle = math.random() * TWOPI
+    local delta = TWOPI / (numgold + numprops + 1) --purposely leave a random gap
     local variance = delta * .4
     while #items > 0 do
         local item = SpawnPrefab(table.remove(items, math.random(#items)))
@@ -412,7 +425,7 @@ local function LaunchRewards(inst, level, minigame_players)
 		end
 	end
 
-	-- Now Lunach it
+	-- Now Launch it
 	for i, pouch in ipairs(pouches) do
 	    local angle
 		local target = minigame_players[((i-1) % num_players) + 1]
@@ -600,6 +613,7 @@ local function teletopos(inst)
 	pt.z = pt.z + math.sin(theta) * r
 	return pt
 end
+
 --------------------------------------------------------------------------
 
 local function fn()
@@ -643,6 +657,11 @@ local function fn()
     inst._camerafocus = net_bool(inst.GUID, "pigking._camerafocus", "camerafocusdirty")
 
     inst.OnRemoveEntity = RemoveBuildingBlockers
+
+    if not TheNet:IsDedicated() then
+        inst:AddComponent("pointofinterest")
+        inst.components.pointofinterest:SetHeight(70)
+    end
 
     inst.entity:SetPristine()
 

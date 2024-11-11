@@ -553,6 +553,7 @@ local function tree(name, stage, data)
         inst.entity:AddNetwork()
 
         MakeObstaclePhysics(inst, .5)
+		inst:SetDeploySmartRadius(DEPLOYSPACING_RADIUS[DEPLOYSPACING.DEFAULT] / 2) --seed/planted_tree deployspacing/2
 
         inst.MiniMapEntity:SetIcon("palmcone_tree.png")
         inst.MiniMapEntity:SetPriority(-1)
@@ -567,6 +568,10 @@ local function tree(name, stage, data)
         inst:AddTag("palmconetree") -- for plantregrowth
 
         MakeSnowCoveredPristine(inst)
+
+        inst.scrapbook_specialinfo = "TREE"
+        inst.scrapbook_proxy = "palmconetree_tall"
+        inst.scrapbook_speechname = inst.prefab
 
         inst.entity:SetPristine()
 
@@ -630,6 +635,8 @@ local function tree(name, stage, data)
 
         -------------------
         MakeHauntableWorkAndIgnite(inst)
+
+        MakeWaxablePlant(inst)
 
         -------------------
         inst.OnSave = on_save

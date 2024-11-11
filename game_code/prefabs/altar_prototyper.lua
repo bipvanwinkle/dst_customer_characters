@@ -190,7 +190,7 @@ local function DoRandomThing(inst, pos, count, target)
         end
 
         for i = 1, amt do
-            local offset = FindWalkableOffset(pos, math.random() * 2 * PI, radius , 8, true, false, NoHoles) -- try to avoid walls
+            local offset = FindWalkableOffset(pos, math.random() * TWOPI, radius , 8, true, false, NoHoles) -- try to avoid walls
             if offset ~= nil then
                 if func ~= nil then
                     func(inst, item, doaction)
@@ -269,6 +269,7 @@ local function common_fn(anim)
     inst:AddComponent("workable")
 
     MakeHauntableWork(inst)
+    MakeRoseTarget_CreateFuel_IncreasedHorror(inst)
 
     return inst
 end
@@ -337,6 +338,8 @@ end
 
 local function complete_fn()
     local inst = common_fn("idle_full")
+
+    inst.scrapbook_specialinfo = "CRAFTINGSTATION"
 
     if not TheWorld.ismastersim then
         return inst

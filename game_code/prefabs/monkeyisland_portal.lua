@@ -128,7 +128,7 @@ local function fling_portal_loot(inst, loot_to_drop)
     else
         loot_to_drop.Transform:SetPosition(fling_pos:Get())
 
-        local hopout_offset = FindWalkableOffset(portal_pos, 2*PI*math.random(), 3, nil, true, false)
+        local hopout_offset = FindWalkableOffset(portal_pos, TWOPI*math.random(), 3, nil, true, false)
         if hopout_offset then
             portal_pos = portal_pos + hopout_offset
         end
@@ -302,13 +302,17 @@ end
 
 local function on_portal_save(inst, data)
     if inst._loot ~= nil and #inst._loot > 0 then
-        data.loot = {}
+		local loot = {}
         for _, loot_item in ipairs(inst._loot) do
-            table.insert(data.loot, loot_item.GUID)
+			if loot_item.persists and loot_item:IsValid() then
+				table.insert(loot, loot_item.GUID)
+			end
         end
+		if #loot > 0 then
+			data.loot = loot
+			return loot
+		end
     end
-
-    return data.loot
 end
 
 local function on_portal_loadpostpass(inst, ents, data)
@@ -368,6 +372,9 @@ local function fn()
     inst.AnimState:SetBank ("monkey_island_portal")
     inst.AnimState:SetBuild("monkey_island_portal")
     inst.AnimState:PlayAnimation("out_idle", true)
+
+    inst.scrapbook_anim = "out_idle"
+    inst.scrapbook_specialinfo = "MONKEYISLANDPORTAL"
 
     inst.AnimState:SetBloomEffectHandle("shaders/anim.ksh")
     inst.AnimState:SetLightOverride(1)

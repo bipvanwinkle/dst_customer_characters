@@ -13,6 +13,7 @@ local events=
     CommonHandlers.OnLocomote(false,true),
     CommonHandlers.OnFreeze(),
     CommonHandlers.OnSink(),
+    CommonHandlers.OnFallInVoid(),
 }
 
 local states=
@@ -267,7 +268,8 @@ CommonStates.AddWalkStates(states,
 })
 
 CommonStates.AddFrozenStates(states)
-CommonStates.AddSinkAndWashAsoreStates(states)
+CommonStates.AddSinkAndWashAshoreStates(states)
+CommonStates.AddVoidFallStates(states)
 
 
 return StateGraph("spiderqueen", states, events, "idle", actionhandlers)

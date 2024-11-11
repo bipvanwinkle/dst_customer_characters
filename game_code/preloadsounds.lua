@@ -82,6 +82,9 @@ local MainSounds =
     "yotb_2021.fev",
     "yotb_2021.fsb",
 
+    "yotr_2023.fev",
+    "yotr_2023.fsb",
+
     "hookline_2.fev",
     "hookline_2.fsb",
 
@@ -133,8 +136,8 @@ local MainSounds =
     "webber2.fsb",
 
     "webber1.fev",
-    "webber1.fsb",	
-	
+    "webber1.fsb",
+
     "waterlogged2.fev",
     "waterlogged2.fsb",
 	"waterlogged2_amb.fsb",
@@ -144,7 +147,7 @@ local MainSounds =
 	"waterlogged1_amb.fsb",
 
 	"wanda2.fev",
-    "wanda2.fsb",	
+    "wanda2.fsb",
 
     "wanda1.fev",
     "wanda1.fsb",
@@ -177,13 +180,57 @@ local MainSounds =
 
     "wickerbottom_rework.fev",
     "wickerbottom_rework.fsb",
-    
+
     --"skin_sfx.fev",
     --"skin_sfx.fsb",
 
     "stageplay_set.fev",
     "stageplay_set.fsb",
     "stageplay_set_music.fsb",
+
+    "maxwell_rework.fev",
+    "maxwell_rework.fsb",
+
+    "daywalker.fev",
+    "daywalker.fsb",
+
+    "wilson_rework.fev",
+    "wilson_rework.fsb",
+
+    "rifts.fev",
+    "rifts.fsb",
+
+    "aqol.fev",
+    "aqol.fsb",
+
+    "rifts2.fev",
+    "rifts2.fsb",
+
+    "meta2.fev",
+    "meta2.fsb",
+
+    "rifts3.fev",
+    "rifts3.fsb",
+    "rifts3_AMB.fsb",
+
+    "meta3.fev",
+    "meta3.fsb",
+
+    "yotd2024.fev",
+    "yotd2024.fsb",
+    --"yotd2024_music.fsb",
+
+    "qol1.fev",
+    "qol1.fsb",
+
+    "meta4.fev",
+    "meta4.fsb",
+
+	"rifts4.fev",
+    "rifts4.fsb",
+
+	"hallowednights2024.fev",
+    "hallowednights2024.fsb",    
 }
 
 function PreloadSoundList(list)

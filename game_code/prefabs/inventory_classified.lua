@@ -54,6 +54,22 @@ end
 --Client interface
 --------------------------------------------------------------------------
 
+local function ProxyItem(item, context)
+	if item then
+		local proxy_item = EntityScriptProxy(item)
+		proxy_item:SetProxyProperty("stackable_preview_context", context)
+
+		--See if we need to transfer preview stacksize over
+		if item.stackable_preview_context and item.stackable_preview_context ~= context then
+			local stackable = item.replica.stackable
+			if stackable then
+				stackable:SetPreviewStackSize(stackable:StackSize(), context, TIMEOUT)
+			end
+		end
+		return proxy_item
+	end
+end
+
 local function OnRemoveEntity(inst)
     if inst._parent ~= nil then
         inst._parent.inventory_classified = nil
@@ -64,9 +80,7 @@ local function OnEntityReplicated(inst)
     inst._parent = inst.entity:GetParent()
     if inst._parent == nil then
         print("Unable to initialize classified data for inventory")
-    elseif inst._parent.replica.inventory ~= nil then
-        inst._parent.replica.inventory:AttachClassified(inst)
-    else
+	elseif not inst._parent:TryAttachClassifiedToReplicaComponent(inst, "inventory") then
         inst._parent.inventory_classified = inst
         inst.OnRemoveEntity = OnRemoveEntity
     end
@@ -136,6 +150,19 @@ local function GetEquippedItem(inst, eslot)
     return inst._equips[eslot] ~= nil and inst._equips[eslot]:value() or nil
 end
 
+--ignoreactiveitem means don't filter out _activeitem when generating _itemspreview
+--this happens when we're splitting stack to take part of it as active item
+local function GetProxyItems(inst, ignoreactiveitem)
+	local items = {}
+	for i, v in ipairs(inst._items) do
+		local item = v:value()
+		if item ~= inst._activeitem or ignoreactiveitem then
+			items[i] = ProxyItem(item, inst)
+		end
+	end
+	return items
+end
+
 local function GetItems(inst)
     if inst._itemspreview ~= nil then
         return inst._itemspreview
@@ -148,6 +175,17 @@ local function GetItems(inst)
         end
     end
     return items
+end
+
+local function GetProxyEquips(inst)
+	local equips = {}
+	for k, v in pairs(inst._equips) do
+		local item = v:value()
+		if item ~= inst._activeitem then
+			equips[k] = ProxyItem(item, inst)
+		end
+	end
+	return equips
 end
 
 local function GetEquips(inst)
@@ -174,7 +212,7 @@ end
 
 local function IsFull(inst)
     if inst._itemspreview ~= nil then
-        for i, v in ipairs(inst._items) do
+		for i = 1, #inst._items do
             if inst._itemspreview[i] == nil then
                 return false
             end
@@ -190,26 +228,31 @@ local function IsFull(inst)
 end
 
 local function Count(item)
-    return item.replica.stackable ~= nil and item.replica.stackable:StackSize() or 1
+	local stackable = item.replica.stackable
+	return stackable and stackable:StackSize() or 1
 end
 
 local function Has(inst, prefab, amount, checkallcontainers)
+	--V2C: this is the current assumption, so make it explicit
+	local iscrafting = checkallcontainers
+
     local count =
         inst._activeitem ~= nil and
         inst._activeitem.prefab == prefab and
+		not (iscrafting and inst._activeitem:HasTag("nocrafting")) and
         Count(inst._activeitem) or 0
 
     if inst._itemspreview ~= nil then
-        for i, v in ipairs(inst._items) do
+		for i = 1, #inst._items do
             local item = inst._itemspreview[i]
-            if item ~= nil and item.prefab == prefab then
+			if item ~= nil and item.prefab == prefab and not (iscrafting and item:HasTag("nocrafting")) then
                 count = count + Count(item)
             end
         end
     else
         for i, v in ipairs(inst._items) do
             local item = v:value()
-            if item ~= nil and item ~= inst._activeitem and item.prefab == prefab then
+			if item ~= nil and item ~= inst._activeitem and item.prefab == prefab and not (iscrafting and item:HasTag("nocrafting")) then
                 count = count + Count(item)
             end
         end
@@ -217,7 +260,7 @@ local function Has(inst, prefab, amount, checkallcontainers)
 
     local overflow = GetOverflowContainer(inst)
     if overflow ~= nil then
-        local overflowhas, overflowcount = overflow:Has(prefab, amount)
+		local overflowhas, overflowcount = overflow:Has(prefab, amount, iscrafting)
         count = count + overflowcount
     end
 
@@ -229,7 +272,7 @@ local function Has(inst, prefab, amount, checkallcontainers)
             for container_inst in pairs(containers) do
                 local container = container_inst.replica.container or container_inst.replica.inventory
                 if container and container ~= overflow and not container.excludefromcrafting then
-                    local containerhas, containercount = container:Has(prefab, amount)
+					local containerhas, containercount = container:Has(prefab, amount, iscrafting)
                     count = count + containercount
                 end
             end
@@ -246,7 +289,7 @@ local function HasItemWithTag(inst, tag, amount)
         Count(inst._activeitem) or 0
 
     if inst._itemspreview ~= nil then
-        for i, v in ipairs(inst._items) do
+		for i = 1, #inst._items do
             local item = inst._itemspreview[i]
             if item ~= nil and item:HasTag(tag) then
                 count = count + Count(item)
@@ -274,6 +317,13 @@ end
 --Client sync event handlers that translate and dispatch local UI messages
 --------------------------------------------------------------------------
 
+local function RefreshItemStackSize(item)
+	local stackable = item and item.replica.stackable or nil
+	if stackable then
+		stackable:ClearPreviewStackSize()
+	end
+end
+
 local function Refresh(inst)
     inst._refreshtask = nil
     inst._busy = false
@@ -282,6 +332,10 @@ local function Refresh(inst)
     inst._itemspreview = nil
     inst._equipspreview = nil
     if inst._parent ~= nil then
+		RefreshItemStackSize(inst._activeitem)
+		for i, v in ipairs(inst._items) do
+			RefreshItemStackSize(v:value())
+		end
         inst._parent:PushEvent("refreshinventory")
     end
 end
@@ -291,6 +345,14 @@ local function QueueRefresh(inst, delay)
         inst._refreshtask = inst:DoStaticTaskInTime(delay, Refresh)
         inst._busy = true
     end
+	if delay == 0 then
+		local player = ThePlayer
+		if player then
+			--cancel now, since next static tick will push "refreshinventory" again
+			--this will keep inventory, open containers, and crafting refreshes in sync
+			player:PushEvent("cancelrefreshcrafting")
+		end
+	end
 end
 
 local function CancelRefresh(inst)
@@ -312,6 +374,9 @@ local function OnActiveDirty(inst, netitem)
             inst._returncontainer:GetItemInSlot(inst._returnslot) ~= inst._activeitem) then
             inst._returncontainer = nil
             inst._returnslot = nil
+        end
+        if item == nil and inst._returningitem == nil then
+            inst._returningitem = inst._activeitem
         end
         inst._activeitem = item
         if inst._parent ~= nil then
@@ -462,7 +527,7 @@ end
 local function PushNewActiveItem(inst, data, returncontainer, returnslot)
     local item = data ~= nil and data.item or nil
     if item ~= inst._activeitem then
-        inst._activeitem = item
+		inst._activeitem = ProxyItem(item, "activeitem")
         if inst._parent ~= nil then
             inst._parent:PushEvent("newactiveitem", data or {})
         end
@@ -472,12 +537,18 @@ local function PushNewActiveItem(inst, data, returncontainer, returnslot)
     inst._returnslot = returnslot
 end
 
+local function UseActiveItemProxy(inst)
+	if inst._activeitem and inst._activeitem.stackable_preview_context == nil then
+		inst._activeitem = ProxyItem(inst._activeitem, "activeitem")
+	end
+end
+
 local function PushItemGet(inst, data, ignoresound)
     if data ~= nil then
         if inst._itemspreview == nil then
-            inst._itemspreview = inst:GetItems()
+			inst._itemspreview = GetProxyItems(inst)
         end
-        inst._itemspreview[data.slot] = data.item
+		inst._itemspreview[data.slot] = ProxyItem(data.item, inst)
         if inst._parent ~= nil then
             if not ignoresound then
                 inst._parent:PushEvent("gotnewitem", data)
@@ -491,7 +562,7 @@ end
 local function PushItemLose(inst, data)
     if data ~= nil then
         if inst._itemspreview == nil then
-            inst._itemspreview = inst:GetItems()
+			inst._itemspreview = GetProxyItems(inst)
         end
         inst._itemspreview[data.slot] = nil
         if inst._parent ~= nil then
@@ -504,9 +575,9 @@ end
 local function PushEquip(inst, data)
     if data ~= nil then
         if inst._equipspreview == nil then
-            inst._equipspreview = inst:GetEquips()
+			inst._equipspreview = GetProxyEquips(inst)
         end
-        inst._equipspreview[data.eslot] = data.item
+		inst._equipspreview[data.eslot] = ProxyItem(data.item, inst)
         if inst._parent ~= nil then
             inst._parent:PushEvent("equip", data)
         end
@@ -517,7 +588,7 @@ end
 local function PushUnequip(inst, data)
     if data ~= nil then
         if inst._equipspreview == nil then
-            inst._equipspreview = inst:GetEquips()
+			inst._equipspreview = GetProxyEquips(inst)
         end
         inst._equipspreview[data.eslot] = nil
         if inst._parent ~= nil then
@@ -528,8 +599,9 @@ local function PushUnequip(inst, data)
 end
 
 local function PushStackSize(inst, item, stacksize, animatestacksize, activestacksize, animateactivestacksize, selfonly, sounddata)
-    if item ~= nil and item.replica.stackable ~= nil then
-        local oldstacksize = item.replica.stackable:StackSize()
+	local stackable = item and item.replica.stackable or nil
+	if stackable then
+		local oldstacksize = stackable:StackSize()
         local data =
         {
             stacksize = stacksize,
@@ -540,10 +612,12 @@ local function PushStackSize(inst, item, stacksize, animatestacksize, activestac
         }
         if (stacksize ~= nil and stacksize ~= oldstacksize) or
             (activestacksize ~= nil and activestacksize ~= oldstacksize) then
+			UseActiveItemProxy(inst)
             if inst._itemspreview == nil then
                 for i, v in ipairs(inst._items) do
                     if v:value() == item then
-                        inst._itemspreview = inst:GetItems()
+						--don't exclude active item if we're splitting stack
+						inst._itemspreview = GetProxyItems(inst, stacksize and activestacksize and not selfonly)
                         break
                     end
                 end
@@ -551,7 +625,7 @@ local function PushStackSize(inst, item, stacksize, animatestacksize, activestac
             if inst._equipspreview == nil then
                 for k, v in pairs(inst._equips) do
                     if v:value() == item then
-                        inst._equipspreview = inst:GetEquips()
+						inst._equipspreview = GetProxyEquips(inst)
                     end
                 end
             end
@@ -562,7 +636,12 @@ local function PushStackSize(inst, item, stacksize, animatestacksize, activestac
             --Normally stack size previews have no sound
             inst._parent:PushEvent("gotnewitem", sounddata)
         end
-        item.replica.stackable:SetPreviewStackSize(stacksize)
+		if stacksize or (activestacksize and selfonly) then
+			stackable:SetPreviewStackSize(stacksize or activestacksize, inst, TIMEOUT)
+		end
+		if activestacksize and not selfonly then
+			stackable:SetPreviewStackSize(activestacksize, "activeitem", TIMEOUT)
+		end
         item:PushEvent("stacksizepreview", data)
     end
 end
@@ -600,7 +679,7 @@ local function ReturnActiveItemToSlot(inst, slot)
         if item == nil then
             local giveitem = SlotItem(inst._activeitem, slot)
             PushItemGet(inst, giveitem, true)
-        elseif item.replica.stackable ~= nil and item.prefab == inst._activeitem.prefab and item.AnimState:GetSkinBuild() == inst._activeitem.AnimState:GetSkinBuild() then --item.skinname == inst._activeitem.skinname (this does not work on clients, so we're going to use the AnimState hack instead)
+        elseif item.replica.stackable ~= nil and item.prefab == inst._activeitem.prefab and item:StackableSkinHack(inst._activeitem) then
             local stacksize = item.replica.stackable:StackSize() + inst._activeitem.replica.stackable:StackSize()
             local maxsize = item.replica.stackable:MaxSize()
             PushStackSize(inst, item, math.min(stacksize, maxsize), true)
@@ -655,7 +734,7 @@ end
 local function AddOneOfActiveItemToSlot(inst, slot)
     if not IsBusy(inst) and inst._activeitem ~= nil then
         local item = inst:GetItemInSlot(slot)
-        if item ~= nil and item.prefab == inst._activeitem.prefab and item.AnimState:GetSkinBuild() == inst._activeitem.AnimState:GetSkinBuild() then --item.skinname == inst._activeitem.skinname (this does not work on clients, so we're going to use the AnimState hack instead)
+        if item ~= nil and item.prefab == inst._activeitem.prefab and item:StackableSkinHack(inst._activeitem) then
             PushStackSize(inst, item, item.replica.stackable:StackSize() + 1, true)
             PushStackSize(inst, inst._activeitem, nil, nil, inst._activeitem.replica.stackable:StackSize() - 1, true)
             SendRPCToServer(RPC.AddOneOfActiveItemToSlot, slot)
@@ -666,7 +745,7 @@ end
 local function AddAllOfActiveItemToSlot(inst, slot)
     if not IsBusy(inst) and inst._activeitem ~= nil then
         local item = inst:GetItemInSlot(slot)
-        if item ~= nil and item.prefab == inst._activeitem.prefab and item.AnimState:GetSkinBuild() == inst._activeitem.AnimState:GetSkinBuild() then --item.skinname == inst._activeitem.skinname (this does not work on clients, so we're going to use the AnimState hack instead)
+        if item ~= nil and item.prefab == inst._activeitem.prefab and item:StackableSkinHack(inst._activeitem) then
             local stacksize = item.replica.stackable:StackSize() + inst._activeitem.replica.stackable:StackSize()
             local maxsize = item.replica.stackable:MaxSize()
             if stacksize <= maxsize then
@@ -695,6 +774,26 @@ local function SwapActiveItemWithSlot(inst, slot)
     end
 end
 
+local function TryNonNetworkedAction(inst, act, item)
+	if act == ACTIONS.RUMMAGE then
+		local overflow = GetOverflowContainer(inst)
+		if overflow ~= nil and overflow.inst == item then
+			if overflow:IsOpenedBy(inst._parent) then
+				overflow:Close()
+			else
+				overflow:Open(inst._parent)
+			end
+			return true
+		end
+	elseif act == ACTIONS.CLOSESPELLBOOK then
+		if inst._parent.HUD ~= nil and inst._parent.HUD:GetCurrentOpenSpellBook() == item then
+			inst._parent.HUD:CloseSpellWheel()
+		end
+		return true
+	end
+	return false
+end
+
 local function UseItemFromInvTile(inst, item)
     if not IsBusy(inst) and
         inst._parent ~= nil and
@@ -706,19 +805,9 @@ local function UseItemFromInvTile(inst, item)
         local actions = inst._activeitem ~= nil and
             inst._parent.components.playeractionpicker:GetUseItemActions(item, inst._activeitem, true) or
             inst._parent.components.playeractionpicker:GetInventoryActions(item)
-        if #actions > 0 then
-            if actions[1].action == ACTIONS.RUMMAGE then
-                local overflow = GetOverflowContainer(inst)
-                if overflow ~= nil and overflow.inst == item then
-                    if overflow:IsOpenedBy(inst._parent) then
-                        overflow:Close()
-                    else
-                        overflow:Open(inst._parent)
-                    end
-                    return
-                end
-            end
-            inst._parent.components.playercontroller:RemoteUseItemFromInvTile(actions[1], item)
+		local act = actions[1]
+		if act ~= nil and not TryNonNetworkedAction(inst, act, item) then
+			inst._parent.components.playercontroller:RemoteUseItemFromInvTile(act, item)
         end
     end
 end
@@ -737,18 +826,9 @@ local function ControllerUseItemOnItemFromInvTile(inst, item, active_item)
             --[[if inst._parent.HUD ~= nil then
                 inst._parent.HUD.controls.inv:CloseControllerInventory()
             end]]
-            if act.action == ACTIONS.RUMMAGE then
-                local overflow = GetOverflowContainer(inst)
-                if overflow ~= nil and overflow.inst == item then
-                    if overflow:IsOpenedBy(inst._parent) then
-                        overflow:Close()
-                    else
-                        overflow:Open(inst._parent)
-                    end
-                    return
-                end
+			if not TryNonNetworkedAction(inst, act, item) then
+				inst._parent.components.playercontroller:RemoteControllerUseItemOnItemFromInvTile(act, item, active_item)
             end
-            inst._parent.components.playercontroller:RemoteControllerUseItemOnItemFromInvTile(act, item, active_item)
         end
     end
 end
@@ -767,18 +847,7 @@ local function ControllerUseItemOnSelfFromInvTile(inst, item)
             act = BufferedAction(inst._parent, nil, ACTIONS.UNEQUIP, item)
         end
 
-        if act ~= nil then
-            if act.action == ACTIONS.RUMMAGE then
-                local overflow = GetOverflowContainer(inst)
-                if overflow ~= nil and overflow.inst == item then
-                    if overflow:IsOpenedBy(inst._parent) then
-                        overflow:Close()
-                    else
-                        overflow:Open(inst._parent)
-                    end
-                    return
-                end
-            end
+		if act ~= nil and not TryNonNetworkedAction(inst, act, item) then
             inst._parent.components.playercontroller:RemoteControllerUseItemOnSelfFromInvTile(act, item)
         end
     end
@@ -801,18 +870,7 @@ local function ControllerUseItemOnSceneFromInvTile(inst, item)
             act = inst._parent.components.playercontroller:GetItemUseAction(item)
         end
 
-        if act ~= nil and act.action ~= ACTIONS.UNEQUIP then
-            if act.action == ACTIONS.RUMMAGE then
-                local overflow = GetOverflowContainer(inst)
-                if overflow ~= nil and overflow.inst == item then
-                    if overflow:IsOpenedBy(inst._parent) then
-                        overflow:Close()
-                    else
-                        overflow:Open(inst._parent)
-                    end
-                    return
-                end
-            end
+		if act ~= nil and act.action ~= ACTIONS.UNEQUIP and not TryNonNetworkedAction(inst, act, item) then
             inst._parent.components.playercontroller:DoActionAutoEquip(act)
             inst._parent.components.playercontroller:RemoteControllerUseItemOnSceneFromInvTile(act, item)
         end
@@ -837,6 +895,18 @@ local function DropItemFromInvTile(inst, item, single)
         inst._parent.components.playercontroller ~= nil then
         inst._parent.components.playercontroller:RemoteDropItemFromInvTile(item, single)
     end
+end
+
+local function CastSpellBookFromInv(inst, item)
+	if not IsBusy(inst) and
+		inst._parent ~= nil and
+		not inst._parent:HasTag("busy") and
+		not (inst._parent.sg ~= nil and
+			inst._parent.sg:HasStateTag("busy")) and
+		item.components.spellbook ~= nil and
+		inst._parent.components.playercontroller ~= nil then
+		inst._parent.components.playercontroller:RemoteCastSpellBookFromInv(item, item.components.spellbook:GetSelectedSpell())
+	end
 end
 
 local function EquipActiveItem(inst)
@@ -987,14 +1057,14 @@ local function GetNextAvailableSlot(inst, item)
         prefabskinname = item.AnimState:GetSkinBuild()
 
         for k, v in pairs(inst:GetEquips()) do
-            if v.prefab == prefabname and v.AnimState:GetSkinBuild() == prefabskinname and v.replica.stackable and not v.replica.stackable:IsPreviewFull() then
+			if v.prefab == prefabname and v.AnimState:GetSkinBuild() == prefabskinname and v.replica.stackable and not v.replica.stackable:IsFull() then
                 return k, "equips"
             end
         end
 
         local inv_slot, inv_pref
         for k, v in pairs(inst:GetItems()) do
-            if v.prefab == prefabname and v.AnimState:GetSkinBuild() == prefabskinname and v.replica.stackable and not v.replica.stackable:IsPreviewFull() then
+			if v.prefab == prefabname and v.AnimState:GetSkinBuild() == prefabskinname and v.replica.stackable and not v.replica.stackable:IsFull() then
                 if prioritize_container then
                     inv_slot, inv_pref = k, "invslots"
                     break
@@ -1006,7 +1076,7 @@ local function GetNextAvailableSlot(inst, item)
 
         if not (item.replica.inventoryitem and item.replica.inventoryitem:CanOnlyGoInPocket()) and overflow then
             for k, v in pairs(overflow:GetItems()) do
-                if v.prefab == prefabname and v.AnimState:GetSkinBuild() == prefabskinname and v.replica.stackable and not v.replica.stackable:IsPreviewFull() then
+				if v.prefab == prefabname and v.AnimState:GetSkinBuild() == prefabskinname and v.replica.stackable and not v.replica.stackable:IsFull() then
                     return k, "overflow"
                 end
             end
@@ -1050,9 +1120,8 @@ local function ReceiveItem(inst, item, count)--, forceslot)
     end
 
     local slot, container_pref = GetNextAvailableSlot(inst, item)
-    local isstackable = item.replica.stackable ~= nil
-    local originalstacksize = isstackable and item.replica.stackable:PreviewStackSize() or 1
-
+	local stackable = item.replica.stackable
+	local originalstacksize = stackable and stackable:StackSize() or 1
     local originalcount = count and math.min(count, originalstacksize) or originalstacksize
     count = originalcount
 
@@ -1066,7 +1135,7 @@ local function ReceiveItem(inst, item, count)--, forceslot)
             local eslot = item.replica.equippable:EquipSlot()
             local equip = inst:GetEquippedItem(eslot)
             if equip then
-                local stacksize = equip.replica.stackable:PreviewStackSize() + count
+				local stacksize = equip.replica.stackable:StackSize() + count
                 local maxsize = equip.replica.stackable:MaxSize()
                 if stacksize > maxsize then
                     count = math.max(stacksize - maxsize, 0)
@@ -1075,13 +1144,11 @@ local function ReceiveItem(inst, item, count)--, forceslot)
                     count = 0
                 end
                 PushStackSize(inst, equip, stacksize, true, nil, nil, nil, SlotEquip(equip, eslot))
-                item.replica.stackable:SetPreviewStackSize(originalstacksize - (originalcount - count))
             end
         else
             local itemInSlot = inst:GetItemInSlot(slot)
             if itemInSlot then
-
-                local stacksize = itemInSlot.replica.stackable:PreviewStackSize() + count
+				local stacksize = itemInSlot.replica.stackable:StackSize() + count
                 local maxsize = itemInSlot.replica.stackable:MaxSize()
                 if stacksize > maxsize then
                     count = math.max(stacksize - maxsize, 0)
@@ -1090,19 +1157,30 @@ local function ReceiveItem(inst, item, count)--, forceslot)
                     count = 0
                 end
                 PushStackSize(inst, itemInSlot, stacksize, true, nil, nil, nil, SlotItem(itemInSlot, slot))
-                item.replica.stackable:SetPreviewStackSize(originalstacksize - (originalcount - count))
             else
                 local giveitem = SlotItem(item, slot)
                 PushItemGet(inst, giveitem)
+				if count ~= originalstacksize then
+					PushStackSize(inst, item, nil, nil, count, false, true)
+				end
                 count = 0
             end
         end
 
         if count > 0 then
+			if count ~= originalcount then
+				if item.stackable_preview_context ~= inst then
+					item = ProxyItem(item, inst)
+				end
+				stackable:SetPreviewStackSize(originalstacksize - (originalcount - count), inst, TIMEOUT)
+			end
             internalloop = true
             local newcount = inst:ReceiveItem(item, count)
             internalloop = false
-            return newcount
+			if newcount then
+				return newcount --return new remainder
+			end
+			--otherwise if nothing changed, return remainder below
         end
     elseif overflow ~= nil then
         local remainder = overflow:ReceiveItem(item, count)
@@ -1158,11 +1236,8 @@ local function ConsumeByName(inst, prefab, amount, overflow, containers)
     end
 
     if containers then
-        for container_inst in pairs(containers) do
-            local container = container_inst.replica.container or container_inst.replica.inventory
-            if container and container.classified and container.classified ~= overflow and not container.excludefromcrafting then
-                container.classified:ConsumeByName(prefab, amount)
-            end
+		for i, container in ipairs(containers) do
+			container.classified:ConsumeByName(prefab, amount)
         end
     end
 end
@@ -1178,7 +1253,20 @@ local function RemoveIngredients(inst, recipe, ingredientmod)
     end
 
     local inventory_replica = inst and inst._parent and inst._parent.replica.inventory
-    local containers = inventory_replica and inventory_replica:GetOpenContainers()
+	local container_insts = inventory_replica and inventory_replica:GetOpenContainers()
+	local containers
+	if container_insts then
+		containers = {}
+		for k in pairs(container_insts) do
+			local container = k.replica.container or k.replica.inventory
+			if container and container.classifed and container.classifed ~= overflow and not container.excludefromcrafting then
+				if container:IsBusy() then
+					return false
+				end
+				table.insert(containers, container)
+			end
+		end
+	end
 
     for i, v in ipairs(recipe.ingredients) do
         local amt = math.max(1, RoundBiasedUp(v.amount * ingredientmod))
@@ -1259,6 +1347,7 @@ local function fn()
         inst.ControllerUseItemOnSceneFromInvTile = ControllerUseItemOnSceneFromInvTile
         inst.InspectItemFromInvTile = InspectItemFromInvTile
         inst.DropItemFromInvTile = DropItemFromInvTile
+		inst.CastSpellBookFromInv = CastSpellBookFromInv
         inst.EquipActiveItem = EquipActiveItem
         inst.EquipActionItem = EquipActionItem
         inst.SwapEquipWithActiveItem = SwapEquipWithActiveItem
@@ -1269,6 +1358,7 @@ local function fn()
         --Exposed for container and builder
         inst.QueueRefresh = QueueRefresh
         inst.PushNewActiveItem = PushNewActiveItem
+		inst.UseActiveItemProxy = UseActiveItemProxy
         inst.ReceiveItem = ReceiveItem
         inst.RemoveIngredients = RemoveIngredients
         inst.IsBusy = IsBusy

@@ -47,7 +47,7 @@ local function SpawnRocks(inst)
     if inst.rocks == nil then
         inst.rocks = {}
         for i = 1, math.random(2, 4) do
-            local theta = math.random() * 2 * PI
+            local theta = math.random() * TWOPI
             local rocktype = math.random(NUM_ROCK_TYPES)
             table.insert(inst.rocks,
             {
@@ -152,7 +152,7 @@ local function fn()
     inst.entity:AddMiniMapEntity()
     inst.entity:AddNetwork()
 
-    MakeSmallObstaclePhysics(inst, 1.95)
+	MakePondPhysics(inst, 1.95)
 
     inst.AnimState:SetBuild("lava_tile")
     inst.AnimState:SetBank("lava_tile")
@@ -160,6 +160,9 @@ local function fn()
     inst.AnimState:SetOrientation(ANIM_ORIENTATION.OnGround)
     inst.AnimState:SetLayer(LAYER_BACKGROUND)
     inst.AnimState:SetSortOrder(3)
+
+    inst.scrapbook_anim = "bubble_lava"
+    inst.scrapbook_specialinfo = "LAVAPOND"
 
     inst.MiniMapEntity:SetIcon("lava_pond.png")
 
@@ -182,7 +185,7 @@ local function fn()
 
     inst.no_wet_prefix = true
 
-    inst:SetDeployExtraSpacing(2)
+	inst:SetDeploySmartRadius(2)
 
     inst.entity:SetPristine()
 

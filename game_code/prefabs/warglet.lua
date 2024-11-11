@@ -2,7 +2,6 @@ local assets =
 {
     Asset("ANIM", "anim/hound_basic.zip"),
     Asset("ANIM", "anim/hound_basic_water.zip"),
-    Asset("ANIM", "anim/hound.zip"),
     Asset("ANIM", "anim/hound_ocean.zip"),
     Asset("ANIM", "anim/hound_warglet.zip"),
     Asset("SOUND", "sound/hound.fsb"),
@@ -12,12 +11,9 @@ local prefabs =
 {
     "houndstooth",
     "monstermeat",
-    "redgem",
-    "bluegem",
     "splash_green",
 	"houndcorpse",
 }
-
 
 local brain = require("brains/wargbrain")
 
@@ -134,7 +130,7 @@ end
 local function GetReturnPos(inst)
     local x, y, z = inst.Transform:GetWorldPosition()
     local rad = 2
-    local angle = math.random() * 2 * PI
+    local angle = math.random() * TWOPI
     return x + rad * math.cos(angle), y, z - rad * math.sin(angle)
 end
 
@@ -273,6 +269,7 @@ local function fncommon()
     end
 
     inst.sounds = sounds
+	inst.chomp_power = 1.5
 
     inst:AddComponent("locomotor") -- locomotor must be constructed before the stategraph
     inst.components.locomotor.runspeed = TUNING.HOUND_SPEED * (1/scale)

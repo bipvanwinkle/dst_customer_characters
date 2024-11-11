@@ -27,15 +27,26 @@ local function on_uses_finished(inst)
     inst:Remove()
 end
 
-local function on_equipped(inst, equipper)
-    equipper.AnimState:OverrideSymbol("swap_object", "swap_trident", "swap_trident")
-    equipper.AnimState:Show("ARM_carry")
-    equipper.AnimState:Hide("ARM_normal")
+local function on_equipped(inst, owner)
+    local skin_build = inst:GetSkinBuild()
+    if skin_build ~= nil then
+        owner:PushEvent("equipskinneditem", inst:GetSkinName())
+        owner.AnimState:OverrideItemSkinSymbol("swap_object", skin_build, "swap_trident", inst.GUID, "swap_trident")
+    else
+        owner.AnimState:OverrideSymbol("swap_object", "swap_trident", "swap_trident")
+    end
+
+    owner.AnimState:Show("ARM_carry")
+    owner.AnimState:Hide("ARM_normal")
 end
 
-local function on_unequipped(inst, equipper)
-    equipper.AnimState:Hide("ARM_carry")
-    equipper.AnimState:Show("ARM_normal")
+local function on_unequipped(inst, owner)
+    owner.AnimState:Hide("ARM_carry")
+    owner.AnimState:Show("ARM_normal")
+    local skin_build = inst:GetSkinBuild()
+    if skin_build ~= nil then
+        owner:PushEvent("unequipskinneditem", inst:GetSkinName())
+    end
 end
 
 local INITIAL_LAUNCH_HEIGHT = 0.1
@@ -54,7 +65,9 @@ local function do_water_explosion_effect(inst, affected_entity, owner, position)
     if affected_entity.components.health then
         local ae_combat = affected_entity.components.combat
         if ae_combat then
-            ae_combat:GetAttacked(owner, TUNING.TRIDENT.SPELL.DAMAGE, inst)
+            if ae_combat:CanBeAttacked(owner) then
+                ae_combat:GetAttacked(owner, TUNING.TRIDENT.SPELL.DAMAGE, inst)
+            end
         else
             affected_entity.components.health:DoDelta(-TUNING.TRIDENT.SPELL.DAMAGE, nil, inst.prefab, nil, owner)
         end
@@ -74,7 +87,7 @@ local function do_water_explosion_effect(inst, affected_entity, owner, position)
 
             local v_position = affected_entity:GetPosition()
             local launch_position = v_position + (v_position - position):Normalize() * SPEED
-            ae_cp:Launch(launch_position, projectile)
+            ae_cp:Launch(launch_position, projectile, ae_cp.owningweapon)
         else
             launch_away(projectile, position)
         end
@@ -87,7 +100,7 @@ local function do_water_explosion_effect(inst, affected_entity, owner, position)
             if loot ~= nil then
                 loot.Transform:SetPosition(ae_x, ae_y, ae_z)
                 if loot.components.inventoryitem ~= nil then
-                    loot.components.inventoryitem:InheritMoisture(TheWorld.state.wetness, TheWorld.state.iswet)
+					loot.components.inventoryitem:InheritWorldWetnessAtTarget(affected_entity)
                 end
                 if loot.components.stackable ~= nil
                         and affected_entity.components.pickable.numtoharvest > 1 then
@@ -213,6 +226,8 @@ local function trident()
     if not TheWorld.ismastersim then
         return inst
     end
+
+    inst.scrapbook_weapondamage = { TUNING.TRIDENT.DAMAGE, TUNING.TRIDENT.OCEAN_DAMAGE }
 
     -------
 

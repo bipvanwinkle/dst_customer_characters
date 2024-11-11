@@ -15,7 +15,6 @@ local UIAnimButton = Class(Button, function(self, bank, build, idle_anim, focus_
     self.loops = {}
 
     self:SetAnimations(idle_anim, focus_anim, disabled_anim, down_anim, selected_anim)
-
 end)
 
 function UIAnimButton:OnGainFocus()
@@ -24,6 +23,7 @@ function UIAnimButton:OnGainFocus()
 
     if self:IsEnabled() then
         if self.focusanimation and not self.animstate:IsCurrentAnimation(self.focusanimation) then
+
             self.animstate:PlayAnimation(self.focusanimation, self.loops[self.focusanimation])
         end
         if self.onfocus then
@@ -35,12 +35,11 @@ end
 function UIAnimButton:OnLoseFocus()
     UIAnimButton._base.OnLoseFocus(self)
 
-    if self:IsSelected() then return end
+	if self:IsSelected() or self:IsDisabledState() then return end
 
     if self:IsEnabled() and self.idleanimation and not self.animstate:IsCurrentAnimation(self.idleanimation) then
         self.animstate:PlayAnimation(self.idleanimation, self.loops[self.idleanimation])
     end
-
 end
 
 function UIAnimButton:OnControl(control, down)
@@ -53,7 +52,9 @@ function UIAnimButton:OnControl(control, down)
                 self.animstate:PlayAnimation(self.downanimation, self.loops[self.downanimation])
             end
 
-            TheFrontEnd:GetSound():PlaySound("dontstarve/HUD/click_move")
+            if not self.stopclicksound then
+				TheFrontEnd:GetSound():PlaySound(self.overrideclicksound or "dontstarve/HUD/click_move")
+            end
 
             self.down = true
             if self.whiledown then
@@ -76,18 +77,9 @@ function UIAnimButton:OnControl(control, down)
     end
 end
 
-function UIAnimButton:OnEnable()
-    UIAnimButton._base.OnEnable(self)
-    if self.focus then
-        self:OnGainFocus()
-    else
-        self:OnLoseFocus()
-    end
-end
-
 function UIAnimButton:OnDisable()
     UIAnimButton._base.OnDisable(self)
-    if not self.animstate:IsCurrentAnimation(self.disabledanimation) then
+	if not self:IsSelected() and not self.animstate:IsCurrentAnimation(self.disabledanimation) then
         self.animstate:PlayAnimation(self.disabledanimation, self.loops[self.disabledanimation])
     end
 end
@@ -96,15 +88,6 @@ function UIAnimButton:OnSelect()
     UIAnimButton._base.OnSelect(self)
     if not self.animstate:IsCurrentAnimation(self.selectedanimation) then
         self.animstate:PlayAnimation(self.selectedanimation, self.loops[self.selectedanimation])
-    end
-end
-
-function UIAnimButton:OnUnselect()
-    UIAnimButton._base.OnUnselect(self)
-    if self:IsEnabled() then
-        self:OnEnable()
-    else
-        self:OnDisable()
     end
 end
 
@@ -136,11 +119,11 @@ end
 -- basically we want to replace an animation after it stopped playing. I didn't think writing
 -- equivalent functions for the other states was worth the time, but be my guest
 function UIAnimButton:PushIdleAnim(idle_anim)
-     if idle_anim then
+    if idle_anim then
         self.idleanimation = idle_anim
     end
 
-    if self:IsEnabled() and not self.focus and not self.selected then
+	if self:IsNormalState() and not self.down then
         self.animstate:PushAnimation(self.idleanimation, self.loops[idle_anim])
     end
 end
@@ -152,7 +135,7 @@ function UIAnimButton:SetIdleAnim(idle_anim, loop)
     self:SetLoop(idle_anim, loop)
     self.idleanimation = idle_anim
 
-    if self:IsEnabled() and not self.focus and not self.selected and not self.animstate:IsCurrentAnimation(self.idleanimation) then
+	if self:IsNormalState() and not self.down and not self.animstate:IsCurrentAnimation(self.idleanimation) then
         self.animstate:PlayAnimation(self.idleanimation, self.loops[idle_anim])
     end
 end
@@ -164,7 +147,7 @@ function UIAnimButton:SetFocusAnim(focus_anim, loop)
     self:SetLoop(focus_anim, loop)
     self.focusanimation = focus_anim
 
-    if self.focus and not self.selected and not self.animstate:IsCurrentAnimation(self.focusanimation) then
+	if self:IsFocusedState() and not self.down and not self.animstate:IsCurrentAnimation(self.focusanimation) then
         self.animstate:PlayAnimation(self.focusanimation, self.loops[focus_anim])
     end
 end
@@ -176,7 +159,7 @@ function UIAnimButton:SetDisabledAnim(disabled_anim, loop)
     self:SetLoop(disabled_anim, loop)
     self.disabledanimation = disabled_anim
 
-    if not self:IsEnabled() and not self.animstate:IsCurrentAnimation(self.disabledanimation) then
+	if self:IsDisabledState() and not self.animstate:IsCurrentAnimation(self.disabledanimation) then
        self.animstate:PlayAnimation(self.disabledanimation, self.loops[disabled_anim])
     end
 end
@@ -188,7 +171,7 @@ function UIAnimButton:SetDownAnim(down_anim, loop)
     self:SetLoop(down_anim, loop)
     self.downanimation = down_anim
 
-    if self.down and self:IsEnabled() and not self.animstate:IsCurrentAnimation(self.downanimation) then
+	if self.down and not self.animstate:IsCurrentAnimation(self.downanimation) then
         self.animstate:PlayAnimation(self.downanimation, self.loops[down_anim])
     end
 end
@@ -200,7 +183,7 @@ function UIAnimButton:SetSelectedAnim(selected_anim, loop)
     self:SetLoop(selected_anim, loop)
     self.selectedanimation = selected_anim
 
-    if self.selected and not self.animstate:IsCurrentAnimation(self.selectedanimation) then
+	if self:IsSelected() and not self.animstate:IsCurrentAnimation(self.selectedanimation) then
         self.animstate:PlayAnimation(self.selectedanimation, self.loops[selected_anim])
     end
 end

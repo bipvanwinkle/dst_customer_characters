@@ -27,7 +27,7 @@ local function onunequip(inst, owner)
     owner.AnimState:Show("ARM_normal")
 end
 
-local function onequipgold(inst, owner)local skin_build = inst:GetSkinBuild()
+local function onequipgold(inst, owner)
     local skin_build = inst:GetSkinBuild()
     if skin_build ~= nil then
         owner:PushEvent("equipskinneditem", inst:GetSkinName())
@@ -68,6 +68,9 @@ local function common_fn(build)
     inst:AddTag("weapon")
 
     MakeInventoryFloatable(inst, "med", 0.05, {0.8, 0.4, 0.8})
+
+    inst.scrapbook_subcat = "tool"
+    inst.scrapbook_specialinfo = "HOE"
 
     inst.entity:SetPristine()
 

@@ -113,9 +113,11 @@ local ERODEIN =
     remove = false,
 }
 local function start_wag_sequence(inst)
+	TheWorld:PushEvent("ms_despawn_wagstaff_npc_pstboss")
+
     local ipos = inst:GetPosition()
 
-    local offset = FindWalkableOffset(ipos, 2*PI*math.random(), 2.5)
+    local offset = FindWalkableOffset(ipos, TWOPI*math.random(), 2.5)
     if offset then
         ipos = ipos + offset
     end
@@ -229,6 +231,8 @@ local function deadfn()
     inst:AddTag("moonglass")
 
     MakeSnowCoveredPristine(inst)
+
+    inst.scrapbook_proxy = "alterguardian_phase1"
 
     inst.entity:SetPristine()
     if not TheWorld.ismastersim then

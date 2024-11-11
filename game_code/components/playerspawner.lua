@@ -107,6 +107,9 @@ local SPAWN_PROTECTION_DANGER_TAGS = {"hostile", "_combat", "trapdamage", "curse
 local SPAWN_PROTECTION_BLOCKED_TAGS = {"blocker", "structure"}
 
 function self:_ShouldEnableSpawnProtection(inst, player, x, y, z, isloading)
+    if BRANCH == "dev" then -- NOTES(JBK): Turning this off for faster local tests.
+        return false
+    end
     if TheWorld.topology.overrides ~= nil and not isloading then
         if TheWorld.topology.overrides.spawnprotection == "always" then
             return true
@@ -219,7 +222,7 @@ local function GetDestinationPortalLocation(player)
     if portal ~= nil then
         print("Player will spawn close to portal #"..tostring(portal.components.worldmigrator.id))
         local x, y, z = portal.Transform:GetWorldPosition()
-        local offset = FindWalkableOffset(Vector3(x, 0, z), math.random() * PI * 2, portal:GetPhysicsRadius(0) + .5, 8, false, true, NoHoles)
+        local offset = FindWalkableOffset(Vector3(x, 0, z), math.random() * TWOPI, portal:GetPhysicsRadius(0) + .5, 8, false, true, NoHoles)
 
         --V2C: Do this after caching physical values, since it might remove itself
         --     and spawn in a new "opened" version, making "portal" invalid.
@@ -232,7 +235,7 @@ local function GetDestinationPortalLocation(player)
     elseif player.migration.dest_x ~= nil and player.migration.dest_y ~= nil and player.migration.dest_z ~= nil then
 		local pt = Vector3(player.migration.dest_x, player.migration.dest_y, player.migration.dest_z)
         print("Player will spawn near ".. tostring(pt))
-        pt = pt + (FindWalkableOffset(pt, math.random() * PI * 2, 2, 8, false, true, NoHoles) or Vector3(0,0,0))
+        pt = pt + (FindWalkableOffset(pt, math.random() * TWOPI, 2, 8, false, true, NoHoles) or Vector3(0,0,0))
         return pt:Get()
 	else
         print("Player will spawn at default location")
@@ -271,7 +274,7 @@ function self:SpawnAtNextLocation(inst, player)
 end
 
 local SPAWNLIGHT_TAGS = { "spawnlight" }
-function self:SpawnAtLocation(inst, player, x, y, z, isloading, platform_uid, rx, ry, rz)
+function self:SpawnAtLocation(inst, player, x, y, z, isloading)
     -- if migrating, resolve map location
     if player.migration ~= nil then
         -- make sure we're not just back in our
@@ -293,18 +296,6 @@ function self:SpawnAtLocation(inst, player, x, y, z, isloading, platform_uid, rx
     end
 
 	_players_spawned[player.userid] = true
-
-    if platform_uid then
-        local walkableplatformmanager = TheWorld.components.walkableplatformmanager
-        if walkableplatformmanager then
-            local platform = walkableplatformmanager:GetPlatformWithUID(platform_uid)
-            if platform then
-                local px, py, pz = platform.Transform:GetWorldPosition()
-                x, y, z = px + rx, py + ry, pz + rz
-                player.components.walkableplatformplayer:TestForPlatform()
-            end
-        end
-    end
 
     print(string.format("Spawning player at: [%s] (%2.2f, %2.2f, %2.2f)", isloading and "Load" or MODES[_mode] or _mode, x, y, z))
     player.Physics:Teleport(x, y, z)

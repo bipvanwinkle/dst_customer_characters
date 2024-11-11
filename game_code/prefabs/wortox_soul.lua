@@ -34,7 +34,7 @@ local function toground(inst)
         inst._task = inst:DoTaskInTime(.4 + math.random() * .7, KillSoul) -- NOTES(JBK): This is 1.1 max keep it in sync with "[WST]"
     end
     if inst.AnimState:IsCurrentAnimation("idle_loop") then
-        inst.AnimState:SetTime(math.random() * inst.AnimState:GetCurrentAnimationLength())
+		inst.AnimState:SetFrame(math.random(inst.AnimState:GetCurrentAnimationNumFrames()) - 1)
     end
 end
 
@@ -88,6 +88,8 @@ local function fn()
     inst:AddTag("rechargeable")
     -- Optional tag to control if the item is not a "cooldown until" meter but a "bonus while" meter.
     inst:AddTag("rechargeable_bonus")
+	--waterproofer (from waterproofer component) added to pristine state for optimization
+	inst:AddTag("waterproofer")
 
     inst.entity:SetPristine()
 
@@ -109,6 +111,9 @@ local function fn()
 
     inst:AddComponent("inspectable")
     inst:AddComponent("soul")
+
+	inst:AddComponent("waterproofer")
+	inst.components.waterproofer:SetEffectiveness(0)
 
     inst:ListenForEvent("onputininventory", topocket)
     inst:ListenForEvent("ondropped", toground)

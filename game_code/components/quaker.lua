@@ -171,7 +171,7 @@ local _GroundDetectionUpdate = _ismastersim and function(debris, override_densit
             debris:PushEvent("detachchild")
             debris:Remove()
         elseif _world.Map:IsPointNearHole(Vector3(x, 0, z)) then
-            if debris.prefab == "mole" or debris.prefab == "rabbit" or debris.prefab == "carrat" then
+            if debris.prefab == "mole" or debris.prefab == "rabbit" or debris.prefab == "rabbitking_lucky" or debris.prefab == "carrat" then
                 debris:PushEvent("detachchild")
                 debris:Remove()
             else
@@ -236,7 +236,7 @@ local _GroundDetectionUpdate = _ismastersim and function(debris, override_densit
 
             if softbounce then
                 local speed = 3.2 + math.random()
-                local angle = math.random() * 2 * PI
+                local angle = math.random() * TWOPI
                 debris.Physics:SetMotorVel(0, 0, 0)
                 debris.Physics:SetVel(
                     speed * math.cos(angle),
@@ -255,6 +255,7 @@ local _GroundDetectionUpdate = _ismastersim and function(debris, override_densit
             if density <= 0 or
                 debris.prefab == "mole" or
                 debris.prefab == "rabbit" or
+                debris.prefab == "rabbitking_lucky" or
                 debris.prefab == "carrat" or
                 not (math.random() < .75 or
                     --NOTE: There will always be at least one found within DENSITYRADIUS, ourself!
@@ -298,7 +299,7 @@ local _GroundDetectionUpdate = _ismastersim and function(debris, override_densit
             end
         end
         debris:PushEvent("stopfalling")
-    elseif debris.prefab == "mole" or debris.prefab == "rabbit" or debris.prefab == "carrat" then
+    elseif debris.prefab == "mole" or debris.prefab == "rabbit" or debris.prefab == "rabbitking_lucky" or debris.prefab == "carrat" then
         --failsafe
         debris:PushEvent("detachchild")
         debris:Remove()
@@ -317,14 +318,30 @@ end or nil
 local SpawnDebris = _ismastersim and function(spawn_point, override_prefab, override_density)
     local node_index = _world.Map:GetNodeIdAtPoint(spawn_point:Get())
 
-    local prefab = override_prefab or GetDebris(_world.topology.nodes[node_index])
+    local prefab = GetDebris(_world.topology.nodes[node_index])
     if prefab ~= nil then
-        local debris = SpawnPrefab(prefab)
+        prefab = override_prefab or prefab
+        local debris
+        if prefab == "rabbit" then
+            if math.random() < TUNING.RABBITKING_LUCKY_ODDS_QUAKER then -- This is a lot cheaper to roll than finding a close player do it first.
+                local rabbitkingmanager = TheWorld.components.rabbitkingmanager
+                if rabbitkingmanager and not rabbitkingmanager:ShouldStopActions() then -- Same with this.
+                    local x, y, z = spawn_point:Get()
+                    local player = FindClosestPlayerInRangeSq(x, y, z, TUNING.RABBITKING_TELEPORT_DISTANCE_SQ, true)
+                    if player then
+                        if rabbitkingmanager:CreateRabbitKingForPlayer(player, spawn_point, "lucky", {nopresentation = true,}) then
+                            debris = rabbitkingmanager:GetRabbitKing()
+                        end
+                    end
+                end
+            end
+        end
+        debris = debris or SpawnPrefab(prefab)
         if debris ~= nil then
             debris.entity:SetCanSleep(false)
             debris.persists = false
 
-            if (prefab == "rabbit" or prefab == "mole" or prefab == "carrat") and debris.sg ~= nil then
+            if (prefab == "rabbit" or prefab == "rabbitking_lucky" or prefab == "mole" or prefab == "carrat") and debris.sg ~= nil then
                 _mammalsremaining = _mammalsremaining - 1
                 debris.sg:GoToState("fall")
             end
@@ -353,8 +370,10 @@ local GetTimeForNextDebris = _ismastersim and function()
     return 1 / _debrispersecond
 end or nil
 
+local QUAKE_BLOCKER_MUST_TAGS = {"quake_blocker"}
+
 local GetSpawnPoint = _ismastersim and function(pt, rad, minrad)
-    local theta = math.random() * 2 * PI
+    local theta = math.random() * TWOPI
     local radius = math.random() * (rad or TUNING.FROG_RAIN_SPAWN_RADIUS)
 
     minrad = minrad ~= nil and minrad > 0 and minrad * minrad or nil
@@ -367,15 +386,30 @@ local GetSpawnPoint = _ismastersim and function(pt, rad, minrad)
             and not _world.Map:IsPointNearHole(Vector3(x, 0, z))
     end)
 
-    return result_offset ~= nil and pt + result_offset or nil
+    if result_offset ~= nil then
+        local newpt = pt + result_offset
+
+        -- DONT DROP NEAR QUAKE BLOCKERS.
+        local num_ents = TheSim:CountEntities(newpt.x, newpt.y, newpt.z, TUNING.QUAKE_BLOCKER_RANGE, QUAKE_BLOCKER_MUST_TAGS)
+
+        return num_ents <= 0 and newpt or nil
+    end
+
 end or nil
 
 local DoDropForPlayer = _ismastersim and function(player, reschedulefn)
     local char_pos = Vector3(player.Transform:GetWorldPosition())
-    local spawn_point = GetSpawnPoint(char_pos)
+    local override_prefab, rad, override_density
+    local riftspawner = _world.components.riftspawner
+    if riftspawner and riftspawner:IsShadowPortalActive() and math.random() < TUNING.RIFT_SHADOW1_QUAKER_ODDS then
+        override_prefab = "cavein_boulder"
+        rad = TUNING.RIFT_SHADOW1_QUAKER_RADIUS
+        override_density = 0
+    end
+	player:ShakeCamera(CAMERASHAKE.FULL, 0.7, 0.02, .75)
+    local spawn_point = GetSpawnPoint(char_pos, rad)
     if spawn_point ~= nil then
-        player:ShakeCamera(CAMERASHAKE.FULL, 0.7, 0.02, .75)
-        SpawnDebris(spawn_point)
+        SpawnDebris(spawn_point, override_prefab, override_density)
     end
     reschedulefn(player)
 end or nil
@@ -442,13 +476,13 @@ EndQuake = _ismastersim and function(inst, continue)
     end
 
     for i, op in ipairs(_originalplayers) do
-	    for j, ap in ipairs(_activeplayers) do
-			if op == ap and not op:HasTag("playerghost") then
-				AwardPlayerAchievement("survive_earthquake", op)
-				break
-			end
-		end
-	end
+        for j, ap in ipairs(_activeplayers) do
+            if op == ap and not op:HasTag("playerghost") then
+                AwardPlayerAchievement("survive_earthquake", op)
+                break
+            end
+        end
+    end
 end or nil
 
 local StartQuake = _ismastersim and function(inst, data, overridetime)
@@ -457,16 +491,16 @@ local StartQuake = _ismastersim and function(inst, data, overridetime)
     _debrispersecond = FunctionOrValue(data.debrispersecond)
     _mammalsremaining = FunctionOrValue(data.mammals)
 
-	_originalplayers = {}
+    _originalplayers = {}
     for i, v in ipairs(_activeplayers) do
         ScheduleDrop(v)
 
         table.insert(_originalplayers, v)
     end
 
-    inst:PushEvent("startquake")
+	local quaketime = overridetime or FunctionOrValue(data.quaketime)
+	inst:PushEvent("startquake", { duration = quaketime, debrisperiod = GetTimeForNextDebris() })
 
-    local quaketime = overridetime or FunctionOrValue(data.quaketime)
     UpdateTask(quaketime, EndQuake, true)
     _state = QUAKESTATE.QUAKING
 end or nil
@@ -639,6 +673,10 @@ function self:SetTagDebris(tile, data)
     if not _ismastersim then return end
 
     _tagdebris[tile] = data
+end
+
+function self:IsQuaking()
+	return _quakesoundintensity:value() > 1 or _miniquakesoundintensity:value()
 end
 
 --------------------------------------------------------------------------

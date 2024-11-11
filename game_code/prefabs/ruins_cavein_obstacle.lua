@@ -1,7 +1,7 @@
 local assets =
 {
     Asset("ANIM", "anim/rock_ruins.zip"),
-    Asset("MINIMAP_IMAGE", "rock"),
+    Asset("MINIMAP_IMAGE", "ruins_cavein_obstacle"),
 }
 
 
@@ -136,7 +136,7 @@ local function droponother(inst,other)
         and other.components.workable:CanBeWorked()
         and other.components.workable.action ~= ACTIONS.NET then
         other.components.workable:Destroy(inst)
-    elseif other.components.health ~= nil and not other.components.health:IsDead() then
+    elseif other.components.health ~= nil and not other.components.health:IsDead() and other.components.combat ~= nil then
         local dist = inst:GetDistanceSqToInst(other)
         if dist < 3*3 then
             other.components.combat:GetAttacked(inst, TUNING.RUINS_CAVEIN_OBSTACLE_FALL_DAMAGE, nil)
@@ -279,6 +279,7 @@ local function baserock_fn(bank, build, anim, icon, tag, multcolour)
     else
         inst.AnimState:PlayAnimation(anim..inst.version)
     end
+    inst.scrapbook_anim = "full1"
 
     MakeSnowCoveredPristine(inst)
 
@@ -319,7 +320,7 @@ local function baserock_fn(bank, build, anim, icon, tag, multcolour)
 end
 
 local function fn()
-    local inst = baserock_fn("rock_ruins", "rock_ruins", "full", "rock.png", "charge_barrier")
+    local inst = baserock_fn("rock_ruins", "rock_ruins", "full", "ruins_cavein_obstacle.png", "charge_barrier")
 
     if not TheWorld.ismastersim then
         return inst

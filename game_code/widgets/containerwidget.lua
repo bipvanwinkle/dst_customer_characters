@@ -26,23 +26,25 @@ function ContainerWidget:Open(container, doer)
     self:Close()
 
     local widget = container.replica.container:GetWidget()
+    local isinfinitestacksize = container.replica.container:IsInfiniteStackSize()
 
     if widget.bgatlas ~= nil and widget.bgimage ~= nil then
         self.bgimage:SetTexture(widget.bgatlas, widget.bgimage)
     end
 
     if widget.animbank ~= nil then
-        self.bganim:GetAnimState():SetBank(widget.animbank)
+        local animbank = isinfinitestacksize and widget.animbank_upgraded or widget.animbank
+        self.bganim:GetAnimState():SetBank(animbank)
     end
 
     if widget.animbuild ~= nil then
-        self.bganim:GetAnimState():SetBuild(widget.animbuild)
+        local animbuild = isinfinitestacksize and widget.animbuild_upgraded or widget.animbuild
+        self.bganim:GetAnimState():SetBuild(animbuild)
     end
 
     if widget.pos ~= nil then
         self:SetPosition(widget.pos)
     end
-
     if widget.buttoninfo ~= nil then
         if doer ~= nil and doer.components.playeractionpicker ~= nil then
             doer.components.playeractionpicker:RegisterContainer(container)
@@ -105,6 +107,9 @@ function ContainerWidget:Open(container, doer)
         self.bgimage:Show()
     else
         self.bganim:GetAnimState():PlayAnimation("open")
+		if widget.animloop then
+			self.bganim:GetAnimState():PushAnimation("open_loop")
+		end
     end
 
     self.onitemlosefn = function(inst, data) self:OnItemLose(data) end
@@ -134,6 +139,9 @@ function ContainerWidget:Open(container, doer)
         if not container.replica.container:IsSideWidget() then
             if widget.top_align_tip ~= nil then
                 slot.top_align_tip = widget.top_align_tip
+
+            elseif widget.bottom_align_tip ~= nil then
+                slot.bottom_align_tip = widget.bottom_align_tip
             else
                 slot.side_align_tip = (widget.side_align_tip or 0) - v.x
             end

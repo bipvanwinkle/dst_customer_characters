@@ -7,6 +7,7 @@ require "components/skinner"
 
 local emotes_to_choose = { "emoteXL_waving1", "emoteXL_waving2", "emoteXL_waving3" }
 local player_emotes_to_choose = {
+	wilson = "idle_wilson",
 	walter = "idle_walter",
 	wathgrithr = "idle_wathgrithr",
 	warly = "idle_warly",
@@ -24,6 +25,7 @@ local player_emotes_to_choose = {
     wx78 = "idle_wx",
 	wonkey = "idle_wonkey",
 	wickerbottom = "idle_wickerbottom",
+	waxwell = function() return math.random() < .7 and "idle_waxwell" or "idle2_waxwell" end, -- Keep odds in sync with SGwilson!
 }
 
 local emote_min_time = 6
@@ -67,8 +69,10 @@ local SkinsPuppet = Class(Button, function(self, emote_min_time, emote_max_time)
 	self.anim:SetFacing(FACING_DOWN)
 
     self.animstate:Hide("ARM_carry")
-    self.animstate:Hide("head_hat")
     self.animstate:Hide("HAIR_HAT")
+	self.animstate:Hide("HEAD_HAT")
+	self.animstate:Hide("HEAD_HAT_NOHELM")
+	self.animstate:Hide("HEAD_HAT_HELM")
 
     self.anim:SetScale(.25)
 
@@ -170,6 +174,9 @@ function SkinsPuppet:DoIdleEmote()
 			elseif self.prefabname == "wanda" then
 				self.override_build = "player_idles_wanda"
 				self.animstate:AddOverrideBuild(self.override_build)
+			elseif self.prefabname == "waxwell" then
+				self.override_build = "player_idles_waxwell"
+				self.animstate:AddOverrideBuild(self.override_build)
 			elseif self.prefabname == "wonkey" then
 				-- Do no special handling.
 			end
@@ -188,6 +195,10 @@ function SkinsPuppet:DoIdleEmote()
 					emote_anim = player_emotes_to_choose["wolfgang"][skin_mode]
 				else
 					emote_anim = player_emotes_to_choose[self.prefabname]
+				end
+
+				if type(emote_anim) == "function" then
+					emote_anim = emote_anim()
 				end
 
 				self:DoEmote( emote_anim, false, true, self.item_equip)

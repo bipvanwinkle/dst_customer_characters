@@ -87,7 +87,7 @@ local function LaunchProjectile(inst)
         if #ents > 0 then
             targetpos = ents[1]:GetPosition()
         else
-            local theta = math.random() * 2 * PI
+            local theta = math.random() * TWOPI
             local offset = math.random() * RANDOM_OFFSET_MAX
             targetpos = Point(x + math.cos(theta) * offset, 0, z + math.sin(theta) * offset)
         end
@@ -175,7 +175,9 @@ end
 
 local function startprojectilelaunch(inst)
     inst.AnimState:PlayAnimation("use_loop")
-    inst.SoundEmitter:PlaySound("dangerous_sea/common/water_pump/LP","pump")
+	if not inst.SoundEmitter:PlayingSound("pump") then
+		inst.SoundEmitter:PlaySound("dangerous_sea/common/water_pump/LP", "pump")
+	end
 
     if inst:GetCurrentPlatform() ~= nil then
         inst._launch_projectile_task = inst:DoTaskInTime(7*FRAMES, LaunchProjectile)
@@ -211,6 +213,8 @@ local function fn()
     inst.entity:AddAnimState()
     inst.entity:AddSoundEmitter()
     inst.entity:AddNetwork()
+
+	inst:SetDeploySmartRadius(0.75) --recipe min_spacing/2
 
     --MakeObstaclePhysics(inst, .25)
     inst:SetPhysicsRadiusOverride(0.25)

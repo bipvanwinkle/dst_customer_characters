@@ -3,12 +3,23 @@ local assets =
     Asset("ANIM", "anim/gold_nugget.zip"),
 }
 
+--common to all gold prefabs below
 local function shine(inst)
+	inst.shinetask = nil
     if not inst.AnimState:IsCurrentAnimation("sparkle") then
         inst.AnimState:PlayAnimation("sparkle")
         inst.AnimState:PushAnimation("idle", false)
     end
-    inst:DoTaskInTime(4 + math.random() * 5, shine)
+	if not inst:IsAsleep() then
+		inst.shinetask = inst:DoTaskInTime(4 + math.random() * 5, shine)
+	end
+end
+
+--common to all gold prefabs below
+local function OnEntityWake(inst)
+	if inst.shinetask == nil then
+		inst.shinetask = inst:DoTaskInTime(4 + math.random() * 5, shine)
+	end
 end
 
 local function fn()
@@ -26,13 +37,14 @@ local function fn()
     inst.AnimState:SetBuild("gold_nugget")
     inst.AnimState:PlayAnimation("idle")
 
+    inst.pickupsound = "metal"
+
     inst:AddTag("molebait")
     inst:AddTag("quakedebris")
 
 	if not IsSpecialEventActive(SPECIAL_EVENTS.YOTP) then
 	    inst:AddTag("minigameitem")
 	end
-
 
     inst.entity:SetPristine()
 
@@ -56,6 +68,7 @@ local function fn()
     MakeHauntableLaunchAndSmash(inst)
 
     shine(inst)
+	inst.OnEntityWake = OnEntityWake
 
     return inst
 end
@@ -116,11 +129,15 @@ local function luckyfn()
 	    inst:AddTag("minigameitem")
 	end
 
+    inst.pickupsound = "metal"
+
     inst.entity:SetPristine()
 
     if not TheWorld.ismastersim then
         return inst
     end
+
+    inst.scrapbook_overridedata = {"nugget", "gold_nugget", "lucky_goldnugget"}
 
     inst:AddComponent("edible")
     inst.components.edible.foodtype = FOODTYPE.ELEMENTAL
@@ -138,6 +155,7 @@ local function luckyfn()
     MakeHauntableLaunch(inst)
 
     shine(inst)
+	inst.OnEntityWake = OnEntityWake
 
     inst:ListenForEvent("knockbackdropped", OnKnockbackDropped)
 

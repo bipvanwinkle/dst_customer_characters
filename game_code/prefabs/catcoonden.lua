@@ -37,12 +37,7 @@ local function onhammered(inst)
     fx.Transform:SetPosition(inst.Transform:GetWorldPosition())
     fx:SetMaterial("wood")
 
-    TheWorld:PushEvent("beginregrowth", inst)
     inst:Remove()
-end
-local function OnBurnt(inst)
-	TheWorld:PushEvent("beginregrowth", inst)
-    DefaultBurntFn(inst)
 end
 
 local function onhit(inst)
@@ -193,7 +188,7 @@ local function getstatus(inst, viewer)
 end
 
 local function canspawn(inst)
-    return not TheWorld.state.israining
+    return not (TheWorld.state.israining and inst.components.rainimmunity == nil)
 end
 
 local function OnPreLoad(inst, data)
@@ -283,7 +278,7 @@ local function fn()
     inst.components.activatable.inactive = true
 
     MakeMediumBurnable(inst)
-    inst.components.burnable:SetOnBurntFn(OnBurnt)
+    AddToRegrowthManager(inst)
     MakeSmallPropagator(inst)
 
     ---------------------

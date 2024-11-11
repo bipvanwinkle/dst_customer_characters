@@ -11,7 +11,7 @@ function MakePlacer(name, bank, build, anim, onground, snap, metersnap, scale, f
 
         inst.entity:AddTransform()
         inst.entity:AddAnimState()
-        if anim ~= nil then
+        if anim then
             inst.AnimState:SetBank(bank)
             inst.AnimState:SetBuild(build)
             inst.AnimState:PlayAnimation(anim, true)
@@ -28,13 +28,14 @@ function MakePlacer(name, bank, build, anim, onground, snap, metersnap, scale, f
             inst.Transform:SetEightFaced()
         end
 
-        inst:AddComponent("placer")
-        inst.components.placer.snaptogrid = snap
-        inst.components.placer.snap_to_meters = metersnap
-        inst.components.placer.fixedcameraoffset = fixedcameraoffset
-        inst.components.placer.onground = onground
+        local placer = inst:AddComponent("placer")
+        placer.snaptogrid = snap
+        placer.snap_to_meters = metersnap
+        placer.fixedcameraoffset = fixedcameraoffset
+        placer.onground = onground
+
         -- If the user clicks when the placement is invalid this gets called
-        inst.components.placer.onfailedplacement = onfailedplacement
+        placer.onfailedplacement = onfailedplacement
 
         if offset ~= nil then
             inst.components.placer.offset = offset
@@ -48,7 +49,7 @@ function MakePlacer(name, bank, build, anim, onground, snap, metersnap, scale, f
             inst.AnimState:SetOrientation(ANIM_ORIENTATION.OnGround)
         end
 
-        if postinit_fn ~= nil then
+        if postinit_fn then
             postinit_fn(inst)
         end
 
@@ -67,7 +68,7 @@ local function deployablekititem_ondeploy(inst, pt, deployer, rot)
     end
 end
 
-function MakeDeployableKitItem(name, prefab_to_deploy, bank, build, anim, assets, floatable_data, tags, burnable, deployable_data, stack_size)
+function MakeDeployableKitItem(name, prefab_to_deploy, bank, build, anim, assets, floatable_data, tags, burnable, deployable_data, stack_size, PostMasterSimfn)
 	deployable_data = deployable_data or {}
 
 	return Prefab(name, function(inst)
@@ -83,23 +84,27 @@ function MakeDeployableKitItem(name, prefab_to_deploy, bank, build, anim, assets
 		inst.AnimState:SetBuild(build or bank)
 		inst.AnimState:PlayAnimation(anim or "idle")
 
-		if floatable_data ~= nil then
+		if floatable_data then
 		    MakeInventoryFloatable(inst, floatable_data.size, floatable_data.y_offset, floatable_data.scale)
 		end
 
-		if tags ~= nil then
+		if tags then
 			for _, tag in pairs(tags) do
 				inst:AddTag(tag)
 			end
         end
         inst:AddTag("deploykititem")
 
-        if deployable_data.custom_candeploy_fn ~= nil then
+        if deployable_data.custom_candeploy_fn then
             inst._custom_candeploy_fn = deployable_data.custom_candeploy_fn
         end
-        if deployable_data.usedeployspacingasoffset ~= nil then
+        if deployable_data.usedeployspacingasoffset then
             inst:AddTag("usedeployspacingasoffset")
         end
+
+		if deployable_data.common_postinit then
+			deployable_data.common_postinit(inst)
+		end
 
 		inst.entity:SetPristine()
 
@@ -107,7 +112,7 @@ function MakeDeployableKitItem(name, prefab_to_deploy, bank, build, anim, assets
 			return inst
 		end
 
-		if burnable ~= nil then
+		if burnable then
 			MakeSmallBurnable(inst)
 			MakeSmallPropagator(inst)
 		end
@@ -115,35 +120,46 @@ function MakeDeployableKitItem(name, prefab_to_deploy, bank, build, anim, assets
 		inst:AddComponent("inspectable")
 
 		inst:AddComponent("inventoryitem")
-		if floatable_data == nil then
+		if not floatable_data then
 			inst.components.inventoryitem:SetSinks(true)
 		end
 
-		if stack_size ~= nil then
+		if stack_size then
 			inst:AddComponent("stackable")
 			inst.components.stackable.maxsize = stack_size
 		end
 
 		inst._prefab_to_deploy = prefab_to_deploy
-		inst:AddComponent("deployable")
-		inst.components.deployable.ondeploy = deployablekititem_ondeploy
-        if deployable_data.deploymode ~= nil then
-            inst.components.deployable:SetDeployMode(deployable_data.deploymode)
+		local deployable = inst:AddComponent("deployable")
+		deployable.ondeploy = deployablekititem_ondeploy
+        if deployable_data.deploymode then
+            deployable:SetDeployMode(deployable_data.deploymode)
         end
-        if deployable_data.deployspacing ~= nil then
-			inst.components.deployable:SetDeploySpacing(deployable_data.deployspacing)
+        if deployable_data.deployspacing then
+			deployable:SetDeploySpacing(deployable_data.deployspacing)
 		end
 
-		if burnable.fuelvalue ~= nil then
+		deployable.restrictedtag = deployable_data.restrictedtag
+		deployable:SetUseGridPlacer(deployable_data.usegridplacer)
+
+		if deployable_data.deploytoss_symbol_override then
+			deployable:SetDeployTossSymbolOverride(deployable_data.deploytoss_symbol_override)
+		end
+
+		if burnable and burnable.fuelvalue then
 			inst:AddComponent("fuel")
 			inst.components.fuel.fuelvalue = burnable.fuelvalue
 		end
 
-        if deployable_data.master_postinit ~= nil then
+        if deployable_data.master_postinit then
             deployable_data.master_postinit(inst)
         end
 
 		MakeHauntableLaunch(inst)
+
+        if PostMasterSimfn then
+            PostMasterSimfn(inst)
+        end
 
 		inst.OnSave = deployable_data.OnSave
 		inst.OnLoad = deployable_data.OnLoad

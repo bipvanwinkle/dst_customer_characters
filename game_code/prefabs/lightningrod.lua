@@ -127,6 +127,8 @@ local function fn()
     inst.entity:AddSoundEmitter()
     inst.entity:AddNetwork()
 
+	inst:SetDeploySmartRadius(0.5) --recipe min_spacing/2
+
     inst.MiniMapEntity:SetIcon("lightningrod.png")
 
     inst.Light:Enable(false)
@@ -143,6 +145,8 @@ local function fn()
     inst.AnimState:PlayAnimation("idle")
 
     MakeSnowCoveredPristine(inst)
+
+    inst.scrapbook_specialinfo = "LIGHTNINGROD"
 
     inst.entity:SetPristine()
 

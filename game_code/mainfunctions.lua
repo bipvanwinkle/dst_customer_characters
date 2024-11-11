@@ -374,14 +374,8 @@ function PrefabExists(name)
     return Prefabs[name] ~= nil
 end
 
-local renames =
-{
-    feather = "feather_crow",
-}
-
 function SpawnPrefab(name, skin, skin_id, creator)
     name = string.sub(name, string.find(name, "[^/]*$"))
-    name = renames[name] or name
     if skin and not IsItemId(skin) then
         print("Unknown skin", skin)
 		skin = nil
@@ -401,6 +395,20 @@ function ReplacePrefab(original_inst, name, skin, skin_id, creator)
     return replacement_inst
 end
 
+local function ResolveSaveRecordPosition(data)
+	if data.puid ~= nil then
+		local walkableplatformmanager = TheWorld.components.walkableplatformmanager
+		if walkableplatformmanager ~= nil then
+			local platform = walkableplatformmanager:GetPlatformWithUID(data.puid)
+			if platform ~= nil then
+				local x, y, z = platform.entity:LocalToWorldSpace(data.rx or 0, data.ry or 0, data.rz or 0)
+				return x, y, z, platform
+			end
+		end
+	end
+	return data.x or 0, data.y or 0, data.z or 0
+end
+
 function SpawnSaveRecord(saved, newents)
     --print(string.format("~~~~~~~~~~~~~~~~~~~~~SpawnSaveRecord [%s, %s, %s]", tostring(saved.id), tostring(saved.prefab), tostring(saved.data)))
     local inst = SpawnPrefab(saved.prefab, saved.skinname, saved.skin_id)
@@ -410,21 +418,25 @@ function SpawnSaveRecord(saved, newents)
 			inst.alt_skin_ids = saved.alt_skin_ids
 		end
 
-        inst.Transform:SetPosition(saved.x or 0, saved.y or 0, saved.z or 0)
+		local x, y, z, platform = ResolveSaveRecordPosition(saved)
+		inst.Transform:SetPosition(x, y, z)
         if not inst.entity:IsValid() then
             --print(string.format("SpawnSaveRecord [%s, %s] FAILED - entity invalid", tostring(saved.id), saved.prefab))
             return nil
-        end
+		elseif saved.is_snapshot_save_record then
+			--V2C: We won't properly attach to platforms when restoring snapshot save records.
+			--     ie. inst:GetCurrentPlatform() will likely return nil
+			--     Workaround for passing our platform over to the GetSaveRecord()
+			inst._snapshot_platform = platform
+		end
 
         if newents then
-
             --this is kind of weird, but we can't use non-saved ids because they might collide
             if saved.id  then
                 newents[saved.id] = {entity=inst, data=saved.data}
             else
                 newents[inst] = {entity=inst, data=saved.data}
             end
-
         end
 
         -- Attach scenario. This is a special component that's added based on save data, not prefab setup.
@@ -1107,6 +1119,20 @@ function SaveGame(isshutdown, cb)
                 end
             end
         end
+
+        local shard_network = ground.shard -- NOTES(JBK): This data is optional.
+        if shard_network ~= nil then
+            local persistdata, new_refs = shard_network:GetPersistData()
+            if persistdata ~= nil then
+                save.shard_network = {}
+                save.shard_network.persistdata = persistdata
+                if new_refs ~= nil then
+                    for k, v in pairs(new_refs) do
+                        references[v] = shard_network
+                    end
+                end
+            end
+        end
     end
 
     if not isshutdown and #AllPlayers > 0 then
@@ -1552,6 +1578,7 @@ function DisplayError(error)
                                                             KnownModIndex:DisableAllMods()
                                                             ForceAssetReset()
                                                             KnownModIndex:Save(function()
+                                                                TheSim:ResetError()
                                                                 SimReset()
                                                             end)
                                                         end},
@@ -1750,7 +1777,7 @@ function OnDemoTimeout()
 end
 
 -- Receive a disconnect notification
-function OnNetworkDisconnect( message, should_reset, force_immediate_reset, details )
+function OnNetworkDisconnect( message, should_reset, force_immediate_reset, details, miscdata)
     -- The client has requested we immediately close this connection
     if force_immediate_reset == true then
         DoRestart(true)
@@ -1763,8 +1790,17 @@ function OnNetworkDisconnect( message, should_reset, force_immediate_reset, deta
 
     local accounts_link = nil
 	local help_button = nil
-    if (IsRail() or TheNet:IsNetOverlayEnabled()) and (message == "E_BANNED") then
-        accounts_link = {text=STRINGS.UI.NETWORKDISCONNECT.ACCOUNTS, cb = function() TheFrontEnd:GetAccountManager():VisitAccountPage() end}
+    local play_offline = nil
+    if message == "E_BANNED" then
+        if (IsRail() or TheNet:IsNetOverlayEnabled()) then
+            accounts_link = {text=STRINGS.UI.NETWORKDISCONNECT.ACCOUNTS, cb = function() TheFrontEnd:GetAccountManager():VisitAccountPage() end}
+        end
+        play_offline = {text=STRINGS.UI.MAINSCREEN.PLAYOFFLINE, cb = function()
+            TheFrontEnd:PopScreen()
+            if miscdata then
+                miscdata()
+            end
+        end}
     end
 
 	if details ~= nil then
@@ -1774,6 +1810,16 @@ function OnNetworkDisconnect( message, should_reset, force_immediate_reset, deta
 			help_button = details.help_button
 		end
 	end
+
+    if play_offline ~= nil then
+        if accounts_link == nil then
+            accounts_link = play_offline
+            play_offline = nil
+        elseif help_button == nil then
+            help_button = play_offline
+            play_offline = nil
+        end
+    end
 
     local title = STRINGS.UI.NETWORKDISCONNECT.TITLE[message] or STRINGS.UI.NETWORKDISCONNECT.TITLE.DEFAULT
     message = STRINGS.UI.NETWORKDISCONNECT.BODY[message] or STRINGS.UI.NETWORKDISCONNECT.BODY.DEFAULT
@@ -1824,7 +1870,7 @@ function OnNetworkDisconnect( message, should_reset, force_immediate_reset, deta
             local cb = TheFrontEnd.fadecb
             TheFrontEnd.fadecb = function()
                 if cb then cb() end
-                TheFrontEnd:PushScreen( PopupDialogScreen(title, message, { {text=STRINGS.UI.NETWORKDISCONNECT.OK, cb = function() doquit( should_reset ) end}, accounts_link, help_button }) )
+                TheFrontEnd:PushScreen( PopupDialogScreen(title, message, { {text=STRINGS.UI.NETWORKDISCONNECT.OK, cb = function() doquit( should_reset ) end}, accounts_link, help_button, play_offline }) )
                 local screen = TheFrontEnd:GetActiveScreen()
                 if screen then
                     screen:Enable()
@@ -1832,7 +1878,7 @@ function OnNetworkDisconnect( message, should_reset, force_immediate_reset, deta
                 TheFrontEnd:Fade(FADE_IN, screen_fade_time)
             end
         else
-            TheFrontEnd:PushScreen( PopupDialogScreen(title, message, { {text=STRINGS.UI.NETWORKDISCONNECT.OK, cb = function() doquit( should_reset ) end}, accounts_link, help_button }) )
+            TheFrontEnd:PushScreen( PopupDialogScreen(title, message, { {text=STRINGS.UI.NETWORKDISCONNECT.OK, cb = function() doquit( should_reset ) end}, accounts_link, help_button, play_offline }) )
             local screen = TheFrontEnd:GetActiveScreen()
             if screen then
                 screen:Enable()
@@ -1841,7 +1887,7 @@ function OnNetworkDisconnect( message, should_reset, force_immediate_reset, deta
         end
     else
         -- TheFrontEnd:Fade(FADE_OUT, screen_fade_time, function()
-            TheFrontEnd:PushScreen( PopupDialogScreen(title, message, { {text=STRINGS.UI.NETWORKDISCONNECT.OK, cb = function() doquit( should_reset ) end}, accounts_link, help_button }) )
+            TheFrontEnd:PushScreen( PopupDialogScreen(title, message, { {text=STRINGS.UI.NETWORKDISCONNECT.OK, cb = function() doquit( should_reset ) end}, accounts_link, help_button, play_offline }) )
             local screen = TheFrontEnd:GetActiveScreen()
             if screen then
                 screen:Enable()
@@ -1886,6 +1932,14 @@ function TintBackground( bg )
     --end
 end
 
+-- NOTES(JBK): Keeping this for PC Steam/RAIL only for now.
+local platforms_supporting_audio_focus = {
+    ["WIN32_STEAM"] = true,
+    ["WIN32_RAIL"] = true,
+    ["LINUX_STEAM"] = true,
+    ["OSX_STEAM"] = true,
+}
+
 -- Global for saving game on Android focus lost event
 function OnFocusLost()
     --check that we are in gameplay, not main menu
@@ -1893,14 +1947,18 @@ function OnFocusLost()
         SetPause(true)
         ShardGameIndex:SaveCurrent()
     end
+    if platforms_supporting_audio_focus[PLATFORM] and Profile:GetMuteOnFocusLost() then
+        TheMixer:SetLevel("master", 0)
+    end
 end
 
 function OnFocusGained()
     --check that we are in gameplay, not main menu
-    if inGamePlay then
-        if PLATFORM == "ANDROID" then
-            SetPause(false)
-        end
+    if PLATFORM == "ANDROID" and inGamePlay then
+        SetPause(false)
+    end
+    if platforms_supporting_audio_focus[PLATFORM] and Profile:GetMuteOnFocusLost() then
+        TheMixer:SetLevel("master", 1)
     end
 end
 
@@ -1910,23 +1968,27 @@ local function OnUserPickedCharacter(char, skin_base, clothing_body, clothing_ha
 
         local starting_skins = {}
         --get the starting inventory skins and send those along to the spawn request
-        local inv_item_list = (TUNING.GAMEMODE_STARTING_ITEMS[TheNet:GetServerGameMode()] or TUNING.GAMEMODE_STARTING_ITEMS.DEFAULT)[string.upper(char)] or {}
+        local inv_item_list = GetUniquePotentialCharacterStartingInventoryItems(char, true)
 
-        local inv_items, item_count = {}, {}
-        for _, v in ipairs(inv_item_list) do
-            if item_count[v] == nil then
-                item_count[v] = 1
-                table.insert(inv_items, v)
-            end
-        end
-        for _, item in ipairs(inv_items) do
+        for _, item in ipairs(inv_item_list) do
             if PREFAB_SKINS[item] then
                 local skin_name = Profile:GetLastUsedSkinForItem(item)
                 starting_skins[item] = skin_name
             end
         end
+        local selection = TheSkillTree:GetPlayerSkillSelection(char)
+        local has_selection = false
+        for _, v in ipairs(selection) do
+            if v ~= 0 then
+                has_selection = true
+                break
+            end
+        end
+        if not has_selection then
+            selection = nil
+        end
 
-        TheNet:SendSpawnRequestToServer(char, skin_base, clothing_body, clothing_hand, clothing_legs, clothing_feet, starting_skins)
+        TheNet:SendSpawnRequestToServer(char, skin_base, clothing_body, clothing_hand, clothing_legs, clothing_feet, starting_skins, selection)
     end
 
     TheFrontEnd:Fade(FADE_OUT, 1, doSpawn, nil, nil, "white")
@@ -1981,7 +2043,11 @@ function ResumeExistingUserSession(data, guid)
             player:EnableLoadingProtection()
 
             -- Spawn the player to last known location
-            TheWorld.components.playerspawner:SpawnAtLocation(TheWorld, player, data.x or 0, data.y or 0, data.z or 0, true, data.puid, data.rx or 0, data.ry or 0, data.rz or 0)
+			local x, y, z, platform = ResolveSaveRecordPosition(data)
+			TheWorld.components.playerspawner:SpawnAtLocation(TheWorld, player, x, y, z, true)
+			if platform ~= nil then
+				player.components.walkableplatformplayer:TestForPlatform()
+			end
 
             return player.player_classified ~= nil and player.player_classified.entity or nil
         end
@@ -1999,19 +2065,17 @@ function RestoreSnapshotUserSession(sessionid, userid)
                     local player = SpawnPrefab(prefab)
                     if player ~= nil then
                         player.userid = userid
+						player.is_snapshot_user_session = true
                         player:SetPersistData(playerdata.data or {})
-                        player.Physics:Teleport(playerdata.x or 0, playerdata.y or 0, playerdata.z or 0)
-                        if playerdata.puid then
-                            local walkableplatformmanager = TheWorld.components.walkableplatformmanager
-                            if walkableplatformmanager then
-                                local platform = walkableplatformmanager:GetPlatformWithUID(playerdata.puid)
-                                if platform then
-                                    local px, py, pz = platform.Transform:GetWorldPosition()
-                                    local x, y, z = px + (playerdata.rx or 0), py + (playerdata.ry or 0), pz + (playerdata.rz or 0)
-                                    player.Physics:Teleport(x, y, z)
-                                    player.components.walkableplatformplayer:TestForPlatform()
-                                end
-                            end
+						local x, y, z, platform = ResolveSaveRecordPosition(playerdata)
+						player.Physics:Teleport(x, y, z)
+						if platform ~= nil then
+							player.components.walkableplatformplayer:TestForPlatform()
+							--V2C: TestForPlatform does NOT do what you think it does in this context...
+							--     player:GetCurrentPlatform() returns unexpected nil
+							--     Might consider refactoring in the future.
+							--     But for now:
+							player._snapshot_platform = platform
                         end
 						--if playerdata.crafting_menu ~= nil then
 						--	TheCraftingMenuProfile:DeserializeLocalClientSessionData(playerdata.crafting_menu)
@@ -2201,3 +2265,103 @@ RCIFileLock = RCINIL
 RCIFileUnlock = RCINIL
 
 require("dlcsupport")
+
+function ShowBadHashUI()
+    if HashesMessageState ~= "SHOW_WARNING" then
+        return
+    end
+    -- Backend does not want to see errors when a game client is in an unstable state.
+    HashesMessageState = "SHOWING_POPUP"
+    --TheNet:SetQuietBackendErrorsReason(HashesMessageState) We faked the HashesMessageState prior to this callback.
+
+    SetGlobalErrorWidget(STRINGS.UI.MAINSCREEN.BAD_HASHES_TITLE, STRINGS.UI.MAINSCREEN.BAD_HASHES_BODY, {
+        {
+            text = STRINGS.UI.MAINSCREEN.BAD_HASHES_PLAY,
+            cb = function()
+                -- Backend especially does not want to see errors when a player chooses to play anyway with an unstable game state.
+                HashesMessageState = "CHOSE_TO_PLAY_ANYWAY"
+                TheNet:SetQuietBackendErrorsReason(HashesMessageState)
+                global_error_widget:GoAway()
+            end
+        },{
+            text = STRINGS.UI.MAINSCREEN.BAD_HASHES_INSTRUCTIONS,
+            cb = function()
+                VisitURL("https://support.klei.com/hc/en-us/articles/360029555352-DST-Is-Crashing-DST-Won-t-Start")
+            end
+        },{
+            text = STRINGS.UI.MAINSCREEN.ASKQUIT,
+            cb = function()
+                RequestShutdown()
+            end
+        },
+    })
+end
+
+-- Login flow sync.
+local login_button = nil
+local function TurnOffLoginButton()
+    if login_button then
+        login_button:_TurnOff()
+    end
+end
+local function TurnOnLoginButton()
+    if login_button then
+        login_button:_TurnOn()
+    end
+end
+function HookLoginButtonForDataBundleFileHashes(button)
+    login_button = button
+end
+
+-- Integrity check callbacks.
+function BeginDataBundleFileHashes()
+    -- The integrity checker is running things use this to let the game try to be synchronous and wait for its completion before login flow starts.
+    IsIntegrityChecking = true
+    TurnOffLoginButton()
+end
+
+function DataBundleFileHashes(calculatedhashes)
+    -- NOTES(JBK): General integrity check in case the platform did not patch the files in data/databundles/*.zip properly.
+    -- Generally the game binary always succeeds in patching and sometimes the databundles do not.
+    -- This is made in the hope that players will be able to self serve a fix before experiencing issues when loading a game world or inside a game world.
+    -- If a player chooses to play anyway we do not want to see errors pop up from malformed backend requests that are harder to debug.
+    -- This function is only currently being called for platforms that allow the macro DO_GAMEFILE_INTEGRITY_CHECKS.
+    IsIntegrityChecking = nil -- This is the response we are done here.
+    TurnOnLoginButton()
+    login_button = nil
+    local hashesfile = io.open("databundles/hashes.txt", "r")
+    if hashesfile == nil then
+        -- No hash file to do basic checks with bail out and quiet backend errors.
+        HashesMessageState = "MISSING_HASHES"
+        TheNet:SetQuietBackendErrorsReason(HashesMessageState)
+        return
+    end
+
+    for line in hashesfile:lines() do
+        local filename, hash = line:match("^(.+) (.-)$")
+        if filename and hash then
+            hash = hash:gsub("[\r\n]", "") -- Remove any newlines from the over extending pattern above.
+            hash = hash:gsub("\\", "/") -- Consistent path delimiters.
+            if hash ~= "" then
+                local calculatedhash = calculatedhashes[filename]
+                if calculatedhash then
+                    if calculatedhash ~= hash then
+                        print("A bad filehash was detected for:", filename, hash, "got this:", calculatedhash)
+                        HashesMessageState = "SHOW_WARNING"
+                        TheNet:SetQuietBackendErrorsReason("SHOWING_POPUP") -- Fake the value of HashesMessageState we do not differentiate if the warning is pending to show.
+                    end
+                elseif HashesMessageState ~= "SHOW_WARNING" then
+                    -- We have a hash in hashes.txt that we did not calculate a hash for.
+                    -- This can happen if a player extracts a databundle for modding and deletes the zip.
+                    -- If this happens it is highly likely the player manually deleted a databundle zip and should know that crashes are from their activities.
+                    -- Backend team does not want to get alerted to these crashes.
+                    HashesMessageState = "MISSING_DATABUNDLES"
+                    TheNet:SetQuietBackendErrorsReason(HashesMessageState)
+                end
+            end
+        end
+    end
+
+    io.close(hashesfile)
+    hashesfile = nil
+end

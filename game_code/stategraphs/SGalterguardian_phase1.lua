@@ -20,6 +20,7 @@ local events =
     CommonHandlers.OnFreeze(),
     CommonHandlers.OnDeath(),
     CommonHandlers.OnSink(),
+    CommonHandlers.OnFallInVoid(),
 
     EventHandler("locomote", function(inst)
         if not inst.sg:HasStateTag("charge") then
@@ -64,23 +65,65 @@ local events =
     end),
 }
 
+local AOE_RANGE_PADDING = 3
 local TARGET_MUSTHAVE_TAGS = { "_health", "_combat" }
-local TARGET_CANT_TAGS = { "brightmareboss", "brightmare", "INLIMBO" }
-local TARGET_ONEOF_TAGS = { "animal", "character", "monster", "shadowminion", "smallcreature" }
+local TARGET_CANT_TAGS = { "brightmareboss", "brightmare", "INLIMBO", "flight", "invisible", "notarget", "noattack" }
+local TARGET_ONEOF_TAGS = { "animal", "character", "monster", "shadowminion", "smallcreature", "largecreature" }
 local function DoAOEAttack(inst, range)
     local x,y,z = inst.Transform:GetWorldPosition()
     local targets = TheSim:FindEntities(
-        x, y, z, range,
+		x, y, z, range + AOE_RANGE_PADDING,
         TARGET_MUSTHAVE_TAGS, TARGET_CANT_TAGS, TARGET_ONEOF_TAGS
     )
 
-    inst.components.combat:SetDefaultDamage(TUNING.ALTERGUARDIAN_PHASE1_AOEDAMAGE)
-    for _, target in ipairs(targets) do
-        if target ~= inst then
-            inst.components.combat:DoAttack(target)
-        end
-    end
-    inst.components.combat:SetDefaultDamage(TUNING.ALTERGUARDIAN_PHASE1_ROLLDAMAGE)
+	if #targets > 0 then
+		inst.components.combat:SetDefaultDamage(TUNING.ALTERGUARDIAN_PHASE1_AOEDAMAGE)
+		for _, target in ipairs(targets) do
+			if target:IsValid() and not (target.components.health ~= nil and target.components.health:IsDead()) then
+				local range1 = range + target:GetPhysicsRadius(0)
+				if target:GetDistanceSqToPoint(x, y, z) < range1 * range1 then
+					inst.components.combat:DoAttack(target)
+				end
+			end
+		end
+		inst.components.combat:SetDefaultDamage(TUNING.ALTERGUARDIAN_PHASE1_ROLLDAMAGE)
+	end
+end
+
+local ROLL_RANGE_OFFSET = .5
+local ROLL_CANT_TAGS = shallowcopy(TARGET_CANT_TAGS)
+table.insert(ROLL_CANT_TAGS, "wall")
+table.insert(ROLL_CANT_TAGS, "structure")
+local function OnUpdateRollAttack(inst)
+	local hits = inst.sg.statemem.rollhits
+	if hits == nil then
+		return
+	end
+	local x, y, z = inst.Transform:GetWorldPosition()
+	local theta = inst.Transform:GetRotation() * DEGREES
+	x = x + math.cos(theta) * ROLL_RANGE_OFFSET
+	z = z - math.sin(theta) * ROLL_RANGE_OFFSET
+	local targets = TheSim:FindEntities(x, y, z, TUNING.ALTERGUARDIAN_PHASE1_ROLLRANGE + AOE_RANGE_PADDING, TARGET_MUSTHAVE_TAGS, ROLL_CANT_TAGS, TARGET_ONEOF_TAGS)
+	if #targets > 0 then
+		local hit = false
+		for _, target in ipairs(targets) do
+			if not hits[target] and target:IsValid() and target.components.health ~= nil and not target.components.health:IsDead() then
+				local range = TUNING.ALTERGUARDIAN_PHASE1_ROLLRANGE + target:GetPhysicsRadius(0)
+				if target:GetDistanceSqToPoint(x, y, z) < range * range then
+					if target:HasTag("player") then
+						inst.sg.statemem.hitplayer = true
+					end
+					inst.components.combat:DoAttack(target)
+					hits[target] = true
+					hit = true
+				end
+			end
+		end
+		if hit then
+			ShakeAllCameras(CAMERASHAKE.SIDE, .5, .05, .1, inst, 40)
+			inst.SoundEmitter:PlaySound("moonstorm/creatures/boss/alterguardian1/onothercollide")
+		end
+	end
 end
 
 local function go_to_idle(inst)
@@ -187,7 +230,7 @@ local states =
 
     State{
         name = "roll_start",
-        tags = {"atk_pre", "busy", "canrotate", "charge", "moving", "running"},
+		tags = { "atk_pre", "busy", "canrotate", "charge" },
 
         onenter = function(inst)
             if inst.components.combat and inst.components.combat.target then
@@ -238,7 +281,7 @@ local states =
 
     State{
         name = "roll",
-        tags = {"attack", "busy", "charge", "moving", "running"},
+		tags = { "attack", "busy", "charge" },
 
         onenter = function(inst)
             inst:EnableRollCollision(true)
@@ -246,6 +289,7 @@ local states =
             inst.components.locomotor:Stop()
             inst.components.locomotor:EnableGroundSpeedMultiplier(false)
             inst.Physics:SetMotorVelOverride(10, 0, 0)
+			inst.sg.statemem.rollhits = {}
 
             inst.AnimState:PlayAnimation("roll_loop", true)
 
@@ -260,6 +304,8 @@ local states =
             inst.components.combat:RestartCooldown()
         end,
 
+		onupdate = OnUpdateRollAttack,
+
         timeline =
         {
             TimeEvent(1*FRAMES, function(inst)
@@ -268,13 +314,6 @@ local states =
                 roll_screenshake(inst)
 
                 spawn_landfx(inst)
-            end),
-        },
-
-        events =
-        {
-            EventHandler("rollcollidedwithplayer", function(inst)
-                inst.sg.statemem.hitplayer = true
             end),
         },
 
@@ -323,13 +362,14 @@ local states =
 
     State{
         name = "roll_stop",
-        tags = {"busy", "canrotate", "charge", "idle"},
+		tags = { "attack", "busy", "charge" },
 
         onenter = function(inst)
             inst.AnimState:PlayAnimation("roll_pst")
 
             roll_screenshake(inst)
 
+			inst.components.timer:StopTimer("roll_cooldown")
             inst.components.timer:StartTimer("roll_cooldown", TUNING.ALTERGUARDIAN_PHASE1_ROLLCOOLDOWN)
 
             inst:EnableRollCollision(true)
@@ -337,7 +377,10 @@ local states =
             inst.components.locomotor:Stop()
             inst.components.locomotor:EnableGroundSpeedMultiplier(false)
             inst.Physics:SetMotorVelOverride(10, 0, 0)
+			inst.sg.statemem.rollhits = {}
         end,
+
+		onupdate = OnUpdateRollAttack,
 
         timeline =
         {
@@ -364,6 +407,7 @@ local states =
                 -- Velocity overrides are a stack, so we have to clear our 10 off first.
                 inst.Physics:ClearMotorVelOverride()
                 inst.Physics:SetMotorVelOverride(3, 0, 0)
+				inst.sg.statemem.rollhits = nil
             end),
             TimeEvent(35*FRAMES, function(inst)
                 inst.SoundEmitter:PlaySound("moonstorm/creatures/boss/alterguardian1/step")
@@ -696,6 +740,6 @@ CommonStates.AddWalkStates(states,
 
 CommonStates.AddHitState(states)
 CommonStates.AddFrozenStates(states)
-CommonStates.AddSinkAndWashAsoreStates(states, {washashore = "shield_pst"})
+CommonStates.AddSinkAndWashAshoreStates(states, {washashore = "shield_pst"})
 
 return StateGraph("alterguardian_phase1", states, events, "idle", actionhandlers)

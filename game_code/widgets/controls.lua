@@ -35,10 +35,13 @@ local WorldResetTimer = require "widgets/worldresettimer"
 local PlayerDeathNotification = require "widgets/playerdeathnotification"
 local GiftItemToast = require "widgets/giftitemtoast"
 local YotbToast = require "widgets/yotbtoast"
+local SkillTreeToast = require "widgets/skilltreetoast"
+local ScrapbookToast = require "widgets/scrapbooktoast"
 local VoteDialog = require "widgets/votedialog"
 local TEMPLATES = require "widgets/templates"
 local easing = require("easing")
 local TeamStatusBars = require("widgets/teamstatusbars")
+local Wheel = require "widgets/wheel"
 
 local Controls = Class(Widget, function(self, owner)
     Widget._ctor(self, "Controls")
@@ -80,16 +83,30 @@ local Controls = Class(Widget, function(self, owner)
     self.blackoverlay:Hide()
 
     self.containerroot = self:AddChild(Widget(""))
+    self.containerroot_side_behind = self:AddChild(Widget(""))
     self:MakeScalingNodes()
 
     self.saving = self.topright_over_root:AddChild(SavingIndicator(self.owner))
     self.saving:SetPosition(-440, 0, 0)
 
-    self.item_notification = self.topleft_root:AddChild(GiftItemToast(self.owner))
+    self.toastlocations = {
+        {pos=Vector3(115, 150, 0)},
+        {pos=Vector3(215, 150, 0)},
+        {pos=Vector3(315, 150, 0)},
+        {pos=Vector3(415, 150, 0)},        
+    }
+
+    self.item_notification = self.topleft_root:AddChild(GiftItemToast(self.owner, self))
     self.item_notification:SetPosition(115, 150, 0)
 
-    self.yotb_notification = self.topleft_root:AddChild(YotbToast(self.owner))
+    self.yotb_notification = self.topleft_root:AddChild(YotbToast(self.owner, self))
     self.yotb_notification:SetPosition(215, 150, 0)
+
+    self.skilltree_notification = self.topleft_root:AddChild(SkillTreeToast(self.owner, self))
+    self.skilltree_notification:SetPosition(315, 150, 0)
+
+    self.scrapbook_notification = self.topleft_root:AddChild(ScrapbookToast(self.owner, self))
+    self.scrapbook_notification:SetPosition(415, 0, 0)
 
     --self.worldresettimer = self.bottom_root:AddChild(WorldResetTimer(self.owner))
     self.worldresettimer = self.bottom_root:AddChild(PlayerDeathNotification(self.owner))
@@ -231,6 +248,12 @@ local Controls = Class(Widget, function(self, owner)
     self.containerroot:SetMaxPropUpscale(MAX_HUD_SCALE)
     self.containerroot = self.containerroot:AddChild(Widget(""))
 
+    self.containerroot_side_behind:SetHAnchor(ANCHOR_RIGHT)
+    self.containerroot_side_behind:SetVAnchor(ANCHOR_MIDDLE)
+    self.containerroot_side_behind:SetScaleMode(SCALEMODE_PROPORTIONAL)
+    self.containerroot_side_behind:SetMaxPropUpscale(MAX_HUD_SCALE)
+    self.containerroot_side_behind = self.containerroot_side_behind:AddChild(Widget("containerroot_side_behind"))
+
     self.containerroot_side = self:AddChild(Widget(""))
     self.containerroot_side:SetHAnchor(ANCHOR_RIGHT)
     self.containerroot_side:SetVAnchor(ANCHOR_MIDDLE)
@@ -238,6 +261,8 @@ local Controls = Class(Widget, function(self, owner)
     self.containerroot_side:SetMaxPropUpscale(MAX_HUD_SCALE)
     self.containerroot_side = self.containerroot_side:AddChild(Widget("contaierroot_side"))
     self.containerroot_side:Hide()
+
+
 
     if not is_splitscreen then
         -- This assumes that splitscreen means console; consoles are forced to use
@@ -260,6 +285,16 @@ local Controls = Class(Widget, function(self, owner)
 	    self.craftingmenu = self.right_root:AddChild(CraftingMenu(self.owner, false))
 	end
 	self.crafttabs = self.craftingmenu -- self.crafttabs is deprecated
+
+	self.commandwheelroot = self:AddChild(Widget("CommandWheelRoot"))
+    self.commandwheelroot:SetHAnchor(ANCHOR_MIDDLE)
+    self.commandwheelroot:SetVAnchor(ANCHOR_MIDDLE)
+    self.commandwheelroot:SetScaleMode(SCALEMODE_PROPORTIONAL)
+
+	self.spellwheel = self.commandwheelroot:AddChild(Wheel("SpellWheel", owner, {ignoreleftstick = true,}))
+	self.spellwheel.selected_label:SetSize(26)
+	self.spellwheel.OnCancel = function() owner.HUD:CloseSpellWheel() end
+	self.spellwheel.OnExecute = function() owner.HUD:CloseSpellWheel(true) end
 
     if TheNet:GetIsClient() then
         --Not using topleft_root because we need to be on top of containerroot
@@ -302,6 +337,32 @@ function Controls:ShowStatusNumbers()
     end
     if self.secondary_status ~= nil then
         self.secondary_status:ShowStatusNumbers()
+    end
+end
+
+function Controls:ManageToast(toast, remove)
+    local collapse = false
+    for i,spot in ipairs(self.toastlocations) do
+        if remove then
+            if spot.toast == toast then
+                spot.toast = nil
+            end
+            collapse = true
+        else
+            if not spot.toast then                
+               spot.toast = toast 
+               spot.toast:SetPosition(spot.pos.x,spot.pos.y,spot.pos.z)
+               break
+            end
+        end
+
+        if collapse then
+            if self.toastlocations[i+1] and self.toastlocations[i+1].toast then
+                spot.toast = self.toastlocations[i+1].toast
+                self.toastlocations[i+1].toast = nil
+                spot.toast:SetPosition(spot.pos.x,spot.pos.y,spot.pos.z)
+            end
+        end
     end
 end
 
@@ -402,6 +463,8 @@ function Controls:SetHUDSize()
     self.bottomright_root:SetScale(scale)
     self.containerroot:SetScale(scale)
     self.containerroot_side:SetScale(scale)
+    self.containerroot_side_behind:SetScale(scale)
+
     self.hover:SetScale(scale)
     self.topright_over_root:SetScale(scale)
 
@@ -463,7 +526,7 @@ function Controls:OnUpdate(dt)
     local shownItemIndex = nil
     local itemInActions = false     -- the item is either shown through the actionhint or the groundaction
 
-    if controller_mode and not (self.inv.open or self.craftingmenu:IsCraftingOpen()) and self.owner:IsActionsVisible() then
+    if controller_mode and not (self.inv.open or self.craftingmenu:IsCraftingOpen() or self.spellwheel:IsOpen()) and self.owner:IsActionsVisible() then
         local ground_l, ground_r = self.owner.components.playercontroller:GetGroundUseAction()
         local ground_cmds = {}
         local isplacing = self.owner.components.playercontroller.deployplacer ~= nil or self.owner.components.playercontroller.placer ~= nil
@@ -565,7 +628,11 @@ function Controls:OnUpdate(dt)
 				(self.owner.sg == nil or self.owner.sg:HasStateTag("moving") or self.owner.sg:HasStateTag("idle") or self.owner.sg:HasStateTag("channeling")) and
 				(self.owner:HasTag("moving") or self.owner:HasTag("idle") or self.owner:HasTag("channeling")) and
                 controller_target:HasTag("inspectable") then
-                table.insert(cmds, TheInput:GetLocalizedControl(controller_id, CONTROL_INSPECT) .. " " .. STRINGS.UI.HUD.INSPECT)
+				local actionstr =
+					CLOSEINSPECTORUTIL.CanCloseInspect(self.owner, controller_target) and
+					STRINGS.ACTIONS.LOOKAT.CLOSEINSPECT or
+					STRINGS.UI.HUD.INSPECT
+				table.insert(cmds, TheInput:GetLocalizedControl(controller_id, CONTROL_INSPECT).." "..actionstr)
             end
             if l ~= nil then
                 table.insert(cmds, TheInput:GetLocalizedControl(controller_id, CONTROL_CONTROLLER_ACTION) .. " " .. l:GetActionString())
@@ -600,16 +667,20 @@ function Controls:OnUpdate(dt)
             else
                 textblock:SetString(table.concat(cmds, "\n"))
             end
-        elseif not self.groundactionhint.shown
-            and self.dismounthintdelay <= 0
-            and self.owner.replica.rider ~= nil
-            and self.owner.replica.rider:IsRiding() then
-            self.playeractionhint.text:SetString(TheInput:GetLocalizedControl(controller_id, CONTROL_CONTROLLER_ALTACTION).." "..STRINGS.ACTIONS.DISMOUNT)
-            self.playeractionhint:Show()
-            self.playeractionhint:SetTarget(self.owner)
-        else
-            self.playeractionhint:Hide()
-            self.playeractionhint:SetTarget(nil)
+		elseif not self.groundactionhint.shown then
+			if self.dismounthintdelay <= 0
+				and self.owner.replica.rider ~= nil
+				and self.owner.replica.rider:IsRiding() then
+				self.playeractionhint.text:SetString(TheInput:GetLocalizedControl(controller_id, CONTROL_CONTROLLER_ALTACTION).." "..STRINGS.ACTIONS.DISMOUNT)
+				self.playeractionhint:Show()
+				self.playeractionhint:SetTarget(self.owner)
+			else
+				self.playeractionhint:Hide()
+				self.playeractionhint:SetTarget(nil)
+			end
+		else
+			self.playeractionhint:Hide()
+			self.playeractionhint:SetTarget(nil)
         end
 
         if controller_attack_target ~= nil and not attack_shown then
@@ -785,6 +856,7 @@ function Controls:ToggleMap()
     end
 end
 
+-- NOTES(JBK): .stay_open_on_hide containers must be hidden and shown in ShowCraftingAndInventory and HideCraftingAndInventory!
 function Controls:ShowCraftingAndInventory()
     if not self.craftingandinventoryshown then
         self.craftingandinventoryshown = true
@@ -793,8 +865,13 @@ function Controls:ShowCraftingAndInventory()
         end
         self.inv:Show()
         self.containerroot_side:Show()
+        self.containerroot_side_behind:Show()
+        if self.secondary_status and self.secondary_status.side_inv then
+            self.secondary_status.side_inv:Show()
+        end
         self.item_notification:ToggleCrafting(false)
         self.yotb_notification:ToggleCrafting(false)
+        self.skilltree_notification:ToggleCrafting(false)
         if self.status.ToggleCrafting ~= nil then
             self.status:ToggleCrafting(false)
         end
@@ -808,11 +885,17 @@ function Controls:HideCraftingAndInventory()
         self.craftingmenu:Hide()
         self.inv:Hide()
         self.containerroot_side:Hide()
+        self.containerroot_side_behind:Hide()
+        if self.secondary_status and self.secondary_status.side_inv then
+            self.secondary_status.side_inv:Hide()
+        end
         self.item_notification:ToggleCrafting(true)
         self.yotb_notification:ToggleCrafting(true)
+        self.skilltree_notification:ToggleCrafting(true)
         if self.status.ToggleCrafting ~= nil then
             self.status:ToggleCrafting(true)
         end
+		self.spellwheel:Close()
     end
 end
 

@@ -16,14 +16,12 @@ local prefabs =
 {
     "twigs",
     "dug_sapling",
-    "spoiled_food",
 }
 
 local moon_prefabs =
 {
     "twigs",
     "dug_sapling_moon",
-    "spoiled_food",
 }
 
 local function ontransplantfn(inst)
@@ -93,6 +91,18 @@ local function moonconversionoverridefn(inst)
 	return inst, nil
 end
 
+local function OnSave(inst, data)
+    data.was_herd = inst.components.herdmember and true or nil
+end
+
+local function OnPreLoad(inst, data)
+    if data and data.was_herd then
+        if TheWorld.components.lunarthrall_plantspawner then
+            TheWorld.components.lunarthrall_plantspawner:setHerdsOnPlantable(inst)
+        end
+    end    
+end
+
 local function sapling_common(inst, is_moon)
     inst.entity:AddTransform()
     inst.entity:AddAnimState()
@@ -100,6 +110,8 @@ local function sapling_common(inst, is_moon)
     inst.entity:AddNetwork()
 
     inst.MiniMapEntity:SetIcon("sapling.png")
+
+	inst:SetDeploySmartRadius(DEPLOYSPACING_RADIUS[DEPLOYSPACING.MEDIUM] / 2) --plantables deployspacing/2
 
     inst.AnimState:SetRayTestOnBB(true)
     local anims_name = (is_moon and "sapling_moon") or "sapling"
@@ -110,6 +122,7 @@ local function sapling_common(inst, is_moon)
     inst:AddTag("plant")
     inst:AddTag("renewable")
 	inst:AddTag("silviculture") -- for silviculture book
+    inst:AddTag("lunarplant_target")
 
     --witherable (from witherable component) added to pristine state for optimization
     inst:AddTag("witherable")
@@ -120,7 +133,7 @@ local function sapling_common(inst, is_moon)
         return inst
     end
 
-    inst.AnimState:SetTime(math.random() * 2)
+	inst.AnimState:SetFrame(math.random(inst.AnimState:GetCurrentAnimationNumFrames()) - 1)
 
     inst:AddComponent("pickable")
     inst.components.pickable.picksound = "dontstarve/wilson/harvest_sticks"
@@ -149,8 +162,13 @@ local function sapling_common(inst, is_moon)
     MakeSmallPropagator(inst)
     MakeNoGrowInWinter(inst)
     MakeHauntableIgnite(inst)
+    MakeWaxablePlant(inst)
+
     ---------------------
     inst._is_moon = is_moon
+
+    inst.OnSave = OnSave
+    inst.OnPreLoad = OnPreLoad
 
     if TheNet:GetServerGameMode() == "quagmire" then
         event_server_data("quagmire", "prefabs/sapling").master_postinit(inst)

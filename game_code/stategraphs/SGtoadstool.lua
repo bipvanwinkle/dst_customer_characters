@@ -159,6 +159,7 @@ local events =
     CommonHandlers.OnFreeze(),
     CommonHandlers.OnSleepEx(),
     CommonHandlers.OnWakeEx(),
+    CommonHandlers.OnFallInVoid(),
     EventHandler("doattack", function(inst)
         if not (inst.sg:HasStateTag("busy") or inst.components.health:IsDead()) then
             ChooseAttack(inst)
@@ -868,7 +869,7 @@ local states =
             TimeEvent(11 * FRAMES, function(inst)
                 inst.SoundEmitter:PlaySound("dontstarve/creatures/together/toad_stool/roar")
             end),
-            TimeEvent(37 * FRAMES, function(inst)
+			FrameEvent(36, function(inst)
                 DoPoundShake(inst)
                 inst.components.groundpounder:GroundPound()
                 inst.SoundEmitter:PlaySound("dontstarve_DLC001/creatures/bearger/groundpound")
@@ -895,7 +896,7 @@ local states =
 
         timeline =
         {
-            TimeEvent(8 * FRAMES, function(inst)
+			FrameEvent(7, function(inst)
                 TheWorld:PushEvent("ms_miniquake", { rad = 20, num = 20, duration = 2.5, target = inst })
                 inst.components.groundpounder:GroundPound()
                 BounceStuff(inst)
@@ -986,5 +987,6 @@ CommonStates.AddSleepExStates(states,
         inst.sg:AddStateTag("caninterrupt")
     end,
 })
+CommonStates.AddVoidFallStates(states)
 
 return StateGraph("SGtoadstool", states, events, "idle")

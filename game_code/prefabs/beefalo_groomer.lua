@@ -154,6 +154,7 @@ local function fn()
     inst.entity:AddMiniMapEntity()
     inst.entity:AddNetwork()
 
+	inst:SetDeploySmartRadius(DEPLOYSPACING_RADIUS[DEPLOYSPACING.DEFAULT] / 2) --match kit item
     MakeObstaclePhysics(inst, 0.4)
 
     inst:AddTag("structure")
@@ -170,6 +171,8 @@ local function fn()
     inst.AnimState:OverrideSymbol("splode", "shadow_skinchangefx", "splode")
 
     MakeSnowCoveredPristine(inst)
+
+    inst.scrapbook_specialinfo = "BEEFALOGROOMER"
 
     inst.entity:SetPristine()
 

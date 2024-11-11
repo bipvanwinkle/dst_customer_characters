@@ -2,6 +2,8 @@ require("stategraphs/commonstates")
 
 --------------------------------------------------------------------------
 
+local AREAATTACK_EXCLUDETAGS = { "INLIMBO", "notarget", "invisible", "noattack", "flight", "playerghost", "shadow", "shadowchesspiece", "shadowcreature" }
+
 local function ShakeIfClose(inst)
     ShakeAllCameras(CAMERASHAKE.FULL, .5, .02, .2, inst, 30)
 end
@@ -114,6 +116,7 @@ local events =
 {
     CommonHandlers.OnLocomote(false, true),
     CommonHandlers.OnSink(),
+    CommonHandlers.OnFallInVoid(),
     EventHandler("death", function(inst)
         if not inst.sg:HasStateTag("delaydeath") then
             if inst.atriumstalker then
@@ -711,7 +714,9 @@ local states =
                 if inst.persists then
                     inst.persists = false
                     local pos = inst:GetPosition()
-                    SpawnPrefab("flower_rose").Transform:SetPosition(pos:Get())
+                    local rose = SpawnPrefab("flower_rose")
+                    rose.planted = true
+                    rose.Transform:SetPosition(pos:Get())
                     inst.components.lootdropper:DropLoot(pos)
                 end
             end),
@@ -816,7 +821,7 @@ local states =
             TimeEvent(24 * FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve/creatures/together/stalker/attack1_pbaoe") end),
             TimeEvent(25.5 * FRAMES, function(inst)
                 ShakePound(inst)
-                inst.components.combat:DoAreaAttack(inst, 3.5, nil, nil, nil, { "INLIMBO", "notarget", "invisible", "noattack", "flight", "playerghost", "shadow", "shadowchesspiece", "shadowcreature" })
+                inst.components.combat:DoAreaAttack(inst, 3.5, nil, nil, nil, AREAATTACK_EXCLUDETAGS)
                 if inst.sg.statemem.targets ~= nil then
                     inst:SpawnSnares(inst.sg.statemem.targets)
                 end
@@ -864,7 +869,7 @@ local states =
             TimeEvent(50 * FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve/creatures/together/stalker/attack1_pbaoe") end),
             TimeEvent(51 * FRAMES, function(inst)
                 ShakePound(inst)
-                inst.components.combat:DoAreaAttack(inst, 3.5, nil, nil, nil, { "INLIMBO", "notarget", "invisible", "noattack", "flight", "playerghost", "shadow", "shadowchesspiece", "shadowcreature" })
+                inst.components.combat:DoAreaAttack(inst, 3.5, nil, nil, nil, AREAATTACK_EXCLUDETAGS)
             end),
             TimeEvent(61 * FRAMES, function(inst)
                 inst.sg:RemoveStateTag("busy")
@@ -1531,6 +1536,6 @@ local states =
     },
 }
 
-CommonStates.AddSinkAndWashAsoreStates(states, {washashore = "taunt2_pst"})
+CommonStates.AddSinkAndWashAshoreStates(states, {washashore = "taunt2_pst"})
 
 return StateGraph("SGstalker", states, events, "idle")

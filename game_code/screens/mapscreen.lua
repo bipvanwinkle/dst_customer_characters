@@ -5,15 +5,18 @@ local MapControls = require "widgets/mapcontrols"
 local HudCompass = require "widgets/hudcompass"
 local HoverText = require("widgets/hoverer")
 local Text = require("widgets/text")
+local UIAnim = require("widgets/uianim")
 
 -- NOTES(JBK): These constants are from MiniMapRenderer ZOOM_CLAMP_MIN and ZOOM_CLAMP_MAX
 local ZOOM_CLAMP_MIN = 1
 local ZOOM_CLAMP_MAX = 20
 
+local MAP_SELECT_WORMHOLE_MUST = {"CLASSIFIED", "globalmapicon", "wormholetrackericon"}
+
 local MapScreen = Class(Screen, function(self, owner)
     self.owner = owner
     Screen._ctor(self, "MapScreen")
-    self.minimap = self:AddChild(MapWidget(self.owner))
+    self.minimap = self:AddChild(MapWidget(self.owner, self))
 
     self.bottomright_root = self:AddChild(Widget("br_root"))
     self.bottomright_root:SetScaleMode(SCALEMODE_PROPORTIONAL)
@@ -42,15 +45,22 @@ local MapScreen = Class(Screen, function(self, owner)
     self.zoom_old = self.zoom_target
     self.zoom_target_time = 0
     self.zoomsensitivity = 15
-    self.decorationdata = {}
+    self.decorationdata = {
+        staticdecorations = {},
+    }
     local decorationroot = self.minimap:AddChild(Widget("decor_root"))
     decorationroot:SetHAnchor(ANCHOR_MIDDLE)
     decorationroot:SetVAnchor(ANCHOR_MIDDLE)
+    self.decorationrootstatic = decorationroot:AddChild(Widget("decorstatic_root"))
     self.decorationrootlmb = decorationroot:AddChild(Widget("decorlmb_root"))
     self.decorationrootrmb = decorationroot:AddChild(Widget("decorrmb_root"))
 
     SetAutopaused(true)
 end)
+
+function MapScreen:RemoveStaticDecorations()
+    self.decorationrootstatic:KillAllChildren()
+end
 
 function MapScreen:RemoveLMBDecorations()
     self.decorationdata.lmbents = nil
@@ -63,6 +73,7 @@ function MapScreen:RemoveRMBDecorations()
 end
 
 function MapScreen:RemoveDecorations()
+    --self:RemoveStaticDecorations() -- NOTES(JBK): Do not remove static decorations here they are static!
     self:RemoveLMBDecorations()
     self:RemoveRMBDecorations()
 end
@@ -125,7 +136,9 @@ function MapScreen:OnDestroy()
     --V2C: Don't set pause in multiplayer, all it does is change the
     --     audio settings, which we don't want to do now
     --SetPause(false)
-    SetAutopaused(false)
+    if not self.quitting then
+        SetAutopaused(false)
+    end
 
 	MapScreen._base.OnDestroy(self)
 end
@@ -161,6 +174,7 @@ function MapScreen:DoZoomOut(positivedelta)
 end
 
 function MapScreen:SetZoom(zoom_target)
+    self.decorationdata.dirty = true
     self.zoom_target = zoom_target
     self.zoom_old = zoom_target
     self.zoom_target_time = 0
@@ -174,12 +188,94 @@ function MapScreen:SetZoom(zoom_target)
 end
 
 function MapScreen:UpdateMapActions(x, y, z)
-    if ThePlayer and ThePlayer.components.playeractionpicker and ThePlayer.components.playercontroller then
-        local pc = ThePlayer.components.playercontroller
-        pc.LMBaction, pc.RMBaction = pc:GetMapActions(Vector3(x, y, z))
-        return pc.LMBaction, pc.RMBaction
+    local playercontroller = ThePlayer and ThePlayer.components.playercontroller or nil
+    if playercontroller and ThePlayer.components.playeractionpicker then
+        return playercontroller:UpdateActionsToMapActions(Vector3(x, y, z), self.maptarget)
     end
     return nil, nil
+end
+
+function MapScreen:ProcessStaticDecorations()
+    local staticdecorations = self.decorationdata.staticdecorations
+    local zoomscale = 0.75 / self.minimap:GetZoom()
+    local w, h = TheSim:GetScreenSize()
+    w, h = w * 0.5, h * 0.5
+
+    if self.maptarget then
+        local charlieresidue = nil
+        if self.maptarget then -- From local client map.
+            if self.maptarget.prefab == "charlieresidue" then
+                charlieresidue = self.maptarget
+            end
+        end
+        if charlieresidue and charlieresidue:IsValid() then
+            local residuetarget = charlieresidue:GetTarget()
+            local rx, ry, rz = residuetarget.Transform:GetWorldPosition()
+            local context = charlieresidue:GetMapActionContext()
+            if context > CHARLIERESIDUE_MAP_ACTIONS.NONE then
+                if context == CHARLIERESIDUE_MAP_ACTIONS.WORMHOLE then
+                    local minzoomscale = 0.18
+                    local maxzoomscale = 0.55
+                    local overallzoomscaler = 3.6
+                    local zoomradius = TUNING.SKILLS.WINONA.WORMHOLE_DETECTION_RADIUS
+                    local zoomscale_clamped = math.clamp(zoomscale, minzoomscale or zoomscale, maxzoomscale or zoomscale) * overallzoomscaler
+                    local ents = TheSim:FindEntities(rx, ry, rz, 9001, MAP_SELECT_WORMHOLE_MUST) -- FIXME(JBK): Collect these types of entities into a pool to iterate over.
+                    for _, ent in ipairs(ents) do
+                        local ex, ey, ez = ent.Transform:GetWorldPosition()
+                        if ex ~= rx and ez ~= rz and self.owner.CanSeePointOnMiniMap and self.owner:CanSeePointOnMiniMap(ex, ey, ez) then
+                            local decoration = self.decorationrootstatic:AddChild(UIAnim())
+                            staticdecorations[ent.GUID .. "_WORMHOLE"] = {
+                                ent = ent,
+                                decoration = decoration,
+                                minzoomscale = minzoomscale,
+                                maxzoomscale = maxzoomscale,
+                                overallzoomscaler = overallzoomscaler,
+                                zoomradius = zoomradius,
+                                animgainfocus = { "proximity_pre", "proximity_loop" },
+                                animlosefocus = { "proximity_pst", "idle" },
+                            }
+                            local animstate = decoration:GetAnimState()
+                            animstate:SetBank("roseglasses_minimap_indicator")
+                            animstate:SetBuild("roseglasses_minimap_indicator")
+                            animstate:PlayAnimation("idle", true)
+                            local x, y = self.minimap:WorldPosToMapPos(ex, ez, 0)
+                            decoration:SetPosition(x * w, y * h)
+                            decoration:SetScale(zoomscale_clamped, zoomscale_clamped, 1)
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+function MapScreen:UpdateStaticDecorations()
+    local staticdecorations = self.decorationdata.staticdecorations
+    local zoomscale = 0.75 / self.minimap:GetZoom()
+    local w, h = TheSim:GetScreenSize()
+    w, h = w * 0.5, h * 0.5
+    local simstep = TheSim:GetStep()
+    for _, decorationdata in pairs(staticdecorations) do
+        local ent = decorationdata.ent
+        local decoration = decorationdata.decoration
+        if ent:IsValid() then
+            local ex, ey, ez = ent.Transform:GetWorldPosition()
+            decoration:Show()
+            local zoomscale_clamped = math.clamp(zoomscale, decorationdata.minzoomscale or zoomscale, decorationdata.maxzoomscale or zoomscale) * (decorationdata.overallzoomscaler or 1)
+            local x, y = self.minimap:WorldPosToMapPos(ex, ez, 0)
+            decoration:SetPosition(x * w, y * h)
+            decoration:SetScale(zoomscale_clamped, zoomscale_clamped, 1)
+            if decorationdata.mapfocus ~= nil and decorationdata.mapfocus < simstep then
+                decoration:GetAnimState():PlayAnimation(decorationdata.animlosefocus[1], true)
+                for i = 2, #decorationdata.animlosefocus do
+                    decoration:GetAnimState():PushAnimation(decorationdata.animlosefocus[i])
+                end
+                decorationdata.mapfocus = nil
+            end
+        else
+            decoration:Hide()
+        end
+    end
 end
 
 function MapScreen:ProcessLMBDecorations(lmb, fresh)
@@ -189,99 +285,211 @@ function MapScreen:ProcessLMBDecorations(lmb, fresh)
     -- Nothing yet!
 end
 
-function MapScreen:ProcessRMBDecorations(rmb, fresh)
+function MapScreen:ProcessRMBDecorations_BLINK_MAP(rmb, fresh)
+    local decor1, decor2, decor3
     if fresh then
-        self.decorationdata.rmbents = {}
+        local image = "wortox_soul.tex"
+        local atlas = GetInventoryItemAtlas(image)
+        decor1 = self.decorationrootrmb:AddChild(Image(atlas, image))
+        decor1.text = decor1:AddChild(Text(NUMBERFONT, 42))
+        decor2 = self.decorationrootrmb:AddChild(Image(atlas, image))
+        decor2.text = decor2:AddChild(Text(NUMBERFONT, 42))
+        decor3 = self.decorationrootrmb:AddChild(Image(atlas, image))
+        decor3.text = decor3:AddChild(Text(NUMBERFONT, 42))
+        self.decorationdata.rmbents[1] = decor1
+        self.decorationdata.rmbents[2] = decor2
+        self.decorationdata.rmbents[3] = decor3
+    else
+        decor1 = self.decorationdata.rmbents[1]
+        decor2 = self.decorationdata.rmbents[2]
+        decor3 = self.decorationdata.rmbents[3]
     end
-    if rmb.action == ACTIONS.BLINK_MAP then
-        local decor1, decor2, decor3
+    local rmb_pos = rmb:GetActionPoint()
+    local px, py, pz = 0, 0, 0
+    if rmb.doer then
+        px, py, pz = rmb.doer.Transform:GetWorldPosition()
+    end
+    local dx, dz = rmb_pos.x - px, rmb_pos.z - pz
+    local dist = math.sqrt(dx * dx + dz * dz)
+    local zoomscale = 0.75 / self.minimap:GetZoom()
+    local alphascaler = math.clamp(rmb.distancecount - rmb.distancefloat, 0, 1)
+    local alphascale1 = alphascaler * 5 - 4
+    local alphascale2 = (1 - alphascaler) * 3 - 2
+    local w, h = TheSim:GetScreenSize()
+    w, h = w * 0.5, h * 0.5
+    -- TODO(JBK): Clean this up.
+    -- With the math the alphascale# no two icons will be present at any time now so this can simplify further.
+    -- Keeping the blob here for now in case this needs to change more.
+    if rmb.aimassisted then
+        decor3:Show()
+        local x, y = self.minimap:WorldPosToMapPos(rmb_pos.x, rmb_pos.z, 0)
+        decor3:SetPosition(x * w, y * h)
+        decor3:SetScale(zoomscale, zoomscale, 1)
+        decor3.text:SetString(tostring(rmb.distancecount))
+    else
+        decor3:Hide()
+    end
+    if dist < 0.1 then
+        decor1:Hide()
+        decor2:Hide()
+    elseif dist < rmb.distanceperhop - rmb.distancemod then
+        decor1:Hide()
+        decor2:Show()
+        local r = (rmb.distancecount * rmb.distanceperhop - rmb.distancemod) / dist
+        local ndx, ndz = dx * r + px, dz * r + pz
+        local x, y = self.minimap:WorldPosToMapPos(ndx, ndz, 0)
+        decor2:SetPosition(x * w, y * h)
+        decor2:SetTint(alphascale2, alphascale2, alphascale2, alphascale2)
+        decor2:SetScale(zoomscale, zoomscale, 1)
+        decor2.text:SetString(tostring(rmb.distancecount + 1))
+        decor2.text:SetColour(alphascale2, alphascale2, alphascale2, alphascale2)
+    elseif dist < (rmb.distanceperhop - rmb.distancemod) * (rmb.maxsouls - 1) then
+        decor1:Show()
+        decor2:Show()
+        local r = ((rmb.distancecount - 1) * rmb.distanceperhop - rmb.distancemod) / dist
+        local ndx, ndz = dx * r + px, dz * r + pz
+        local x, y = self.minimap:WorldPosToMapPos(ndx, ndz, 0)
+        decor1:SetPosition(x * w, y * h)
+        decor1:SetTint(alphascale1, alphascale1, alphascale1, alphascale1)
+        decor1:SetScale(zoomscale, zoomscale, 1)
+        decor1.text:SetString(tostring(rmb.distancecount))
+        decor1.text:SetColour(alphascale1, alphascale1, alphascale1, alphascale1)
+        r = (rmb.distancecount * rmb.distanceperhop - rmb.distancemod) / dist
+        ndx, ndz = dx * r + px, dz * r + pz
+        x, y = self.minimap:WorldPosToMapPos(ndx, ndz, 0)
+        decor2:SetPosition(x * w, y * h)
+        decor2:SetTint(alphascale2, alphascale2, alphascale2, alphascale2)
+        decor2:SetScale(zoomscale, zoomscale, 1)
+        decor2.text:SetString(tostring(rmb.distancecount + 1))
+        decor2.text:SetColour(alphascale2, alphascale2, alphascale2, alphascale2)
+    else
+        decor1:Show()
+        decor2:Hide()
+        local r = ((rmb.distancecount - 1) * rmb.distanceperhop - rmb.distancemod) / dist
+        local ndx, ndz = dx * r + px, dz * r + pz
+        local x, y = self.minimap:WorldPosToMapPos(ndx, ndz, 0)
+        decor1:SetPosition(x * w, y * h)
+        decor1:SetTint(alphascale1, alphascale1, alphascale1, alphascale1)
+        decor1:SetScale(zoomscale, zoomscale, 1)
+        decor1.text:SetString(tostring(rmb.distancecount))
+        decor1.text:SetColour(alphascale1, alphascale1, alphascale1, alphascale1)
+    end
+end
+
+function MapScreen:ProcessRMBDecorations_TOSS_MAP(rmb, fresh)
+    local equippedhands = self.owner.replica.inventory:GetEquippedItem(EQUIPSLOTS.HANDS)
+    if equippedhands == nil or not equippedhands:IsValid() then
+        return
+    end
+    
+    local does_custom = equippedhands.InitMapDecorations ~= nil and equippedhands.CalculateMapDecorations ~= nil
+    if does_custom then
         if fresh then
-            local image = "wortox_soul.tex"
-            local atlas = GetInventoryItemAtlas(image)
-            decor1 = self.decorationrootrmb:AddChild(Image(atlas, image))
-            decor1.text = decor1:AddChild(Text(NUMBERFONT, 42))
-            decor2 = self.decorationrootrmb:AddChild(Image(atlas, image))
-            decor2.text = decor2:AddChild(Text(NUMBERFONT, 42))
-            decor3 = self.decorationrootrmb:AddChild(Image(atlas, image))
-            decor3.text = decor3:AddChild(Text(NUMBERFONT, 42))
-            self.decorationdata.rmbents[1] = decor1
-            self.decorationdata.rmbents[2] = decor2
-            self.decorationdata.rmbents[3] = decor3
-        else
-            decor1 = self.decorationdata.rmbents[1]
-            decor2 = self.decorationdata.rmbents[2]
-            decor3 = self.decorationdata.rmbents[3]
+            local decordatas = equippedhands:InitMapDecorations()
+            for i, decordata in ipairs(decordatas) do
+                self.decorationdata.rmbents[i] = self.decorationrootrmb:AddChild(Image(decordata.atlas, decordata.image))
+                self.decorationdata.rmbents[i].scale = decordata.scale
+            end
         end
+
+        local zoomscale = 1 / self.minimap:GetZoom()
+        local w, h = TheSim:GetScreenSize()
+        w, h = w * 0.5, h * 0.5
+
         local rmb_pos = rmb:GetActionPoint()
         local px, py, pz = 0, 0, 0
         if rmb.doer then
             px, py, pz = rmb.doer.Transform:GetWorldPosition()
         end
-        local dx, dz = rmb_pos.x - px, rmb_pos.z - pz
-        local dist = math.sqrt(dx * dx + dz * dz)
-        local zoomscale = 0.75 / self.minimap:GetZoom()
-        local alphascaler = math.clamp(rmb.distancecount - rmb.distancefloat, 0, 1)
-        local alphascale1 = alphascaler * 5 - 4
-        local alphascale2 = (1 - alphascaler) * 3 - 2
-        local w, h = TheSim:GetScreenSize()
-        w, h = w * 0.5, h * 0.5
-        -- TODO(JBK): Clean this up.
-        -- With the math the alphascale# no two icons will be present at any time now so this can simplify further.
-        -- Keeping the blob here for now in case this needs to change more.
-        if rmb.aimassisted then
-            decor3:Show()
-            local x, y = self.minimap:WorldPosToMapPos(rmb_pos.x, rmb_pos.z, 0)
-            decor3:SetPosition(x * w, y * h)
-            decor3:SetScale(zoomscale, zoomscale, 1)
-            decor3.text:SetString(tostring(rmb.distancecount))
-        else
-            decor3:Hide()
+        equippedhands:CalculateMapDecorations(self.decorationdata.rmbents, px, pz, rmb_pos.x, rmb_pos.z)
+        for _, decor in ipairs(self.decorationdata.rmbents) do
+            local scaler = decor.scale or 1
+            local x, y = self.minimap:WorldPosToMapPos(decor.worldx, decor.worldz, 0)
+            decor:SetPosition(x * w, y * h)
+            decor:SetScale(zoomscale * scaler, zoomscale * scaler, 1)
         end
-        if dist < 0.1 then
-            decor1:Hide()
-            decor2:Hide()
-        elseif dist < rmb.distanceperhop - rmb.distancemod then
-            decor1:Hide()
-            decor2:Show()
-            local r = (rmb.distancecount * rmb.distanceperhop - rmb.distancemod) / dist
-            local ndx, ndz = dx * r + px, dz * r + pz
-            local x, y = self.minimap:WorldPosToMapPos(ndx, ndz, 0)
-            decor2:SetPosition(x * w, y * h)
-            decor2:SetTint(alphascale2, alphascale2, alphascale2, alphascale2)
-            decor2:SetScale(zoomscale, zoomscale, 1)
-            decor2.text:SetString(tostring(rmb.distancecount + 1))
-            decor2.text:SetColour(alphascale2, alphascale2, alphascale2, alphascale2)
-        elseif dist < (rmb.distanceperhop - rmb.distancemod) * (rmb.maxsouls - 1) then
-            decor1:Show()
-            decor2:Show()
-            local r = ((rmb.distancecount - 1) * rmb.distanceperhop - rmb.distancemod) / dist
-            local ndx, ndz = dx * r + px, dz * r + pz
-            local x, y = self.minimap:WorldPosToMapPos(ndx, ndz, 0)
-            decor1:SetPosition(x * w, y * h)
-            decor1:SetTint(alphascale1, alphascale1, alphascale1, alphascale1)
-            decor1:SetScale(zoomscale, zoomscale, 1)
-            decor1.text:SetString(tostring(rmb.distancecount))
-            decor1.text:SetColour(alphascale1, alphascale1, alphascale1, alphascale1)
-            r = (rmb.distancecount * rmb.distanceperhop - rmb.distancemod) / dist
-            ndx, ndz = dx * r + px, dz * r + pz
-            x, y = self.minimap:WorldPosToMapPos(ndx, ndz, 0)
-            decor2:SetPosition(x * w, y * h)
-            decor2:SetTint(alphascale2, alphascale2, alphascale2, alphascale2)
-            decor2:SetScale(zoomscale, zoomscale, 1)
-            decor2.text:SetString(tostring(rmb.distancecount + 1))
-            decor2.text:SetColour(alphascale2, alphascale2, alphascale2, alphascale2)
-        else
-            decor1:Show()
-            decor2:Hide()
-            local r = ((rmb.distancecount - 1) * rmb.distanceperhop - rmb.distancemod) / dist
-            local ndx, ndz = dx * r + px, dz * r + pz
-            local x, y = self.minimap:WorldPosToMapPos(ndx, ndz, 0)
-            decor1:SetPosition(x * w, y * h)
-            decor1:SetTint(alphascale1, alphascale1, alphascale1, alphascale1)
-            decor1:SetScale(zoomscale, zoomscale, 1)
-            decor1.text:SetString(tostring(rmb.distancecount))
-            decor1.text:SetColour(alphascale1, alphascale1, alphascale1, alphascale1)
+        return
+    end
+
+
+    -- Default behaviour is one default icon to toss towards a point.
+    local decor
+    if fresh then
+        local image = equippedhands.replica.inventoryitem:GetImage()
+        decor = self.decorationrootrmb:AddChild(Image(GetInventoryItemAtlas(image), image))
+        self.decorationdata.rmbents[1] = decor
+    else
+        decor = self.decorationdata.rmbents[1]
+    end
+
+    if decor == nil then
+        return
+    end
+    
+    local rmb_pos = rmb:GetActionPoint()
+    local px, py, pz = 0, 0, 0
+    if rmb.doer then
+        px, py, pz = rmb.doer.Transform:GetWorldPosition()
+    end
+    local dx, dz = rmb_pos.x - px, rmb_pos.z - pz
+    local zoomscale = 1 / self.minimap:GetZoom()
+    local w, h = TheSim:GetScreenSize()
+    w, h = w * 0.5, h * 0.5
+    
+    local r = 1
+    local ndx, ndz = dx * r + px, dz * r + pz
+    local x, y = self.minimap:WorldPosToMapPos(ndx, ndz, 0)
+    decor:SetPosition(x * w, y * h)
+    decor:SetScale(zoomscale, zoomscale, 1)
+end
+
+function MapScreen:ProcessRMBDecorations_JUMPIN_MAP(rmb, fresh)
+    local rmb_pos = rmb:GetActionPoint()
+    local charlieresidue = nil
+    if self.maptarget then -- From local client map.
+        if self.maptarget.prefab == "charlieresidue" then
+            charlieresidue = self.maptarget
         end
+    end
+    if charlieresidue and charlieresidue:IsValid() then
+        local residuetarget = charlieresidue:GetTarget()
+        local rx, ry, rz = residuetarget.Transform:GetWorldPosition()
+        local context = charlieresidue:GetMapActionContext()
+        if context > CHARLIERESIDUE_MAP_ACTIONS.NONE then
+            if context == CHARLIERESIDUE_MAP_ACTIONS.WORMHOLE then
+                local ents = TheSim:FindEntities(rmb_pos.x, rmb_pos.y, rmb_pos.z, TUNING.SKILLS.WINONA.WORMHOLE_DETECTION_RADIUS, MAP_SELECT_WORMHOLE_MUST)
+                for _, ent in ipairs(ents) do
+                    local ex, ey, ez = ent.Transform:GetWorldPosition()
+                    if ex ~= rx and ez ~= rz then
+                        local decorationdata = self.decorationdata.staticdecorations[ent.GUID .. "_WORMHOLE"]
+                        if decorationdata then
+                            local decoration = decorationdata.decoration
+                            if not decorationdata.mapfocus then
+                                decoration:GetAnimState():PlayAnimation(decorationdata.animgainfocus[1], true)
+                                for i = 2, #decorationdata.animgainfocus do
+                                    decoration:GetAnimState():PushAnimation(decorationdata.animgainfocus[i])
+                                end
+                            end
+                            decorationdata.mapfocus = TheSim:GetStep() --screens use wallupdate and don't pause like simtick
+                            break
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+function MapScreen:ProcessRMBDecorations(rmb, fresh)
+    if fresh then
+        self.decorationdata.rmbents = {}
+    end
+    if rmb.action == ACTIONS.BLINK_MAP then
+        self:ProcessRMBDecorations_BLINK_MAP(rmb, fresh)
+    elseif rmb.action == ACTIONS.TOSS_MAP then
+        self:ProcessRMBDecorations_TOSS_MAP(rmb, fresh)
+    elseif rmb.action == ACTIONS.JUMPIN_MAP then
+        self:ProcessRMBDecorations_JUMPIN_MAP(rmb, fresh)
     end
 end
 
@@ -308,19 +516,52 @@ function MapScreen:UpdateMapActionsDecorations(x, y, z, LMBaction, RMBaction)
         if rmb and rmb.map_action then
             self:ProcessRMBDecorations(RMBaction, rmbfresh)
         end
+        self:UpdateStaticDecorations()
     end
 end
 
+function MapScreen:AutoAimToStaticDecorations(x, y, z)
+    local staticdecorations = self.decorationdata.staticdecorations
+    if next(staticdecorations) ~= nil then
+        local closestdsq, rx, ry, rz
+        local zoomscale = 0.75 / self.minimap:GetZoom()
+        for _, decorationdata in pairs(staticdecorations) do
+            local ent = decorationdata.ent
+            if ent:IsValid() then
+                local ex, ey, ez = ent.Transform:GetWorldPosition()
+                local zoomscale_clamped = math.clamp(zoomscale, decorationdata.minzoomscale or zoomscale, decorationdata.maxzoomscale or zoomscale) * (decorationdata.overallzoomscaler or 1)
+                local radius = ((decorationdata.zoomradius or 1) * zoomscale_clamped) * self.minimap:GetZoom() * 0.5
+                local dsq = distsq(x, z, ex, ez)
+                if (closestdsq == nil or dsq < closestdsq) and dsq < radius * radius then
+                    closestdsq = dsq
+                    rx, ry, rz = ex, ey, ez
+                end
+            end
+        end
+        if rx ~= nil then
+            return rx, ry, rz
+        end
+    end
+    return x, y, z
+end
+
 function MapScreen:OnUpdate(dt)
+    if self._hack_ignore_held_controls then
+        self._hack_ignore_held_controls = self._hack_ignore_held_controls - dt
+        if self._hack_ignore_held_controls < 0 then
+            self._hack_ignore_held_controls = nil
+        end
+    end
     local s = -100 * dt -- now per second, not per repeat
 
     -- NOTES(JBK): Controllers apply smooth analog input so use it for more precision with joysticks.
     local xdir = TheInput:GetAnalogControlValue(CONTROL_MOVE_RIGHT) - TheInput:GetAnalogControlValue(CONTROL_MOVE_LEFT)
     local ydir = TheInput:GetAnalogControlValue(CONTROL_MOVE_UP) - TheInput:GetAnalogControlValue(CONTROL_MOVE_DOWN)
     local xmag = xdir * xdir + ydir * ydir
-    local deadzonesq = 0.3 * 0.3 -- TODO(JBK): Global controller deadzone setting.
-    if xmag >= deadzonesq then
+    local deadzone = TUNING.CONTROLLER_DEADZONE_RADIUS
+    if xmag >= deadzone * deadzone then
         self.minimap:Offset(xdir * s, ydir * s)
+        self.decorationdata.dirty = true
     end
 
     -- NOTES(JBK): In order to change digital to analog without causing issues engine side with prior binds we emulate it.
@@ -349,7 +590,8 @@ function MapScreen:OnUpdate(dt)
     end
 
     local x, y, z = self:GetWorldPositionAtCursor()
-    local LMBaction, RMBaction = self:UpdateMapActions(x, y, z)
+    local aax, aay, aaz = self:AutoAimToStaticDecorations(x, y, z)
+    local LMBaction, RMBaction = self:UpdateMapActions(aax, aay, aaz)
     self:UpdateMapActionsDecorations(x, y, z, LMBaction, RMBaction)
 end
 
@@ -377,6 +619,15 @@ end
 function MapScreen:OnControl(control, down)
     if MapScreen._base.OnControl(self, control, down) then return true end
 
+    if down and self._hack_ignore_held_controls then
+        self._hack_ignore_ups_for[control] = true
+        return true
+    end
+    if not down and self._hack_ignore_ups_for and self._hack_ignore_ups_for[control] then
+        self._hack_ignore_ups_for[control] = nil
+        return true
+    end
+
     if not down and (control == CONTROL_MAP or control == CONTROL_CANCEL) then
         TheFrontEnd:PopScreen()
         return true
@@ -386,21 +637,44 @@ function MapScreen:OnControl(control, down)
         return false
     end
 
-    local pc = ThePlayer and ThePlayer.components.playercontroller
+	local playercontroller = ThePlayer and ThePlayer.components.playercontroller or nil
 
-    if pc and control == CONTROL_ROTATE_LEFT then
-        pc:RotLeft()
-    elseif pc and control == CONTROL_ROTATE_RIGHT then
-        pc:RotRight()
+	if playercontroller and control == CONTROL_ROTATE_LEFT then
+		playercontroller:RotLeft()
+	elseif playercontroller and control == CONTROL_ROTATE_RIGHT then
+		playercontroller:RotRight()
     elseif control == CONTROL_MAP_ZOOM_IN then -- NOTES(JBK): Keep these here for mods but modify their value to do nothing with new code.
         self:DoZoomIn(0)
     elseif control == CONTROL_MAP_ZOOM_OUT then
         self:DoZoomOut(0)
-    elseif pc and (control == CONTROL_SECONDARY or control == CONTROL_CONTROLLER_ATTACK) then
+	elseif playercontroller then
         local x, y, z = self:GetWorldPositionAtCursor()
-        local _, RMBaction = self:UpdateMapActions(x, y, z)
-        if RMBaction then
-            pc:OnMapAction(RMBaction.action.code, Vector3(x, y, z))
+        local aax, aay, aaz = self:AutoAimToStaticDecorations(x, y, z)
+        local LMBaction, RMBaction = self:UpdateMapActions(aax, aay, aaz)
+        if LMBaction and (control == CONTROL_PRIMARY or control == CONTROL_CONTROLLER_ACTION) then
+            if not self.quitting then
+                SetAutopaused(false)
+                self.quitting = true
+            end
+			playercontroller:OnMapAction(LMBaction.action.code, Vector3(aax, aay, aaz), self.maptarget, LMBaction.action.mod_name)
+            if LMBaction.action.closes_map then
+                self.maptarget = nil
+                TheFrontEnd:PopScreen()
+                playercontroller._hack_ignore_held_controls = 0.1
+                playercontroller._hack_ignore_ups_for = {}
+            end
+        elseif RMBaction and (control == CONTROL_SECONDARY or control == CONTROL_CONTROLLER_ATTACK) then
+            if not self.quitting then
+                SetAutopaused(false)
+                self.quitting = true
+            end
+			playercontroller:OnMapAction(RMBaction.action.code, Vector3(aax, aay, aaz), self.maptarget, RMBaction.action.mod_name)
+            if RMBaction.action.closes_map then
+                self.maptarget = nil
+                TheFrontEnd:PopScreen()
+                playercontroller._hack_ignore_held_controls = 0.1
+                playercontroller._hack_ignore_ups_for = {}
+            end
         end
     else
         return false
@@ -417,9 +691,9 @@ function MapScreen:GetHelpText()
     table.insert(t,  TheInput:GetLocalizedControl(controller_id, CONTROL_MAP_ZOOM_IN) .. " " .. STRINGS.UI.HELP.ZOOM_IN)
     table.insert(t,  TheInput:GetLocalizedControl(controller_id, CONTROL_MAP_ZOOM_OUT) .. " " .. STRINGS.UI.HELP.ZOOM_OUT)
     table.insert(t,  TheInput:GetLocalizedControl(controller_id, CONTROL_CANCEL) .. " " .. STRINGS.UI.HELP.BACK)
-    local pc = ThePlayer and ThePlayer.components.playercontroller or nil
-    if pc and pc.RMBaction then
-        table.insert(t,  TheInput:GetLocalizedControl(controller_id, CONTROL_CONTROLLER_ATTACK) .. " " .. pc.RMBaction:GetActionString())
+	local playercontroller = ThePlayer and ThePlayer.components.playercontroller or nil
+	if playercontroller and playercontroller.RMBaction then
+		table.insert(t,  TheInput:GetLocalizedControl(controller_id, CONTROL_CONTROLLER_ATTACK) .. " " .. playercontroller.RMBaction:GetActionString())
     end
 
     return table.concat(t, "  ")

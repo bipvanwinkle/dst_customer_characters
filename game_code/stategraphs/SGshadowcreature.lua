@@ -29,6 +29,10 @@ local events =
     CommonHandlers.OnLocomote(false, true),
 }
 
+local function onattackreflected(inst)
+	inst.sg.statemem.attackreflected = true
+end
+
 local function FinishExtendedSound(inst, soundid)
     inst.SoundEmitter:KillSound("sound_"..tostring(soundid))
     inst.sg.mem.soundcache[soundid] = nil
@@ -58,6 +62,23 @@ local function OnAnimOverRemoveAfterSounds(inst)
     end
 end
 
+local function TryDropTarget(inst)
+	if inst.ShouldKeepTarget then --nightmarecreatures don't drop target
+		local target = inst.components.combat.target
+		if target and not inst:ShouldKeepTarget(target) then
+			inst.components.combat:DropTarget()
+			return true
+		end
+	end
+end
+
+local function TryDespawn(inst)
+	if inst.sg.mem.forcedespawn or (inst.wantstodespawn and not inst.components.combat:HasTarget()) then
+		inst.sg:GoToState("disappear")
+		return true
+	end
+end
+
 local states =
 {
     State{
@@ -65,25 +86,23 @@ local states =
         tags = { "idle", "canrotate" },
 
         onenter = function(inst)
-            if inst.wantstodespawn then
-                local t = GetTime()
-                if t > inst.components.combat:GetLastAttackedTime() + 5 then
-                    local target = inst.components.combat.target
-                    if target == nil or
-                        target.components.combat == nil or
-                        not target.components.combat:IsRecentTarget(inst) or
-                        t > (target.components.combat.laststartattacktime or 0) + 5 then
-                        inst.sg:GoToState("disappear")
-                        return
-                    end
-                end
-            end
-
+			local dropped = TryDropTarget(inst)
+			if TryDespawn(inst) then
+				return
+			elseif dropped then
+				inst.sg:GoToState("taunt")
+				return
+			end
             inst.components.locomotor:StopMoving()
             if not inst.AnimState:IsCurrentAnimation("idle_loop") then
                 inst.AnimState:PlayAnimation("idle_loop", true)
             end
+			inst.sg:SetTimeout(inst.AnimState:GetCurrentAnimationLength())
         end,
+
+		ontimeout = function(inst)
+			inst.sg:GoToState("idle")
+		end,
     },
 
     State{
@@ -102,14 +121,26 @@ local states =
         timeline =
         {
             TimeEvent(14*FRAMES, function(inst) PlayExtendedSound(inst, "attack") end),
-            TimeEvent(16*FRAMES, function(inst) inst.components.combat:DoAttack(inst.sg.statemem.target) end),
+			TimeEvent(16*FRAMES, function(inst)
+				--The stategraph event handler is delayed, so it won't be
+				--accurate for detecting attacks due to damage reflection
+				inst:ListenForEvent("attacked", onattackreflected)
+				inst.components.combat:DoAttack(inst.sg.statemem.target)
+				inst:RemoveEventCallback("attacked", onattackreflected)
+			end),
+			FrameEvent(17, function(inst)
+				if inst.sg.statemem.attackreflected and not inst.components.health:IsDead() then
+					inst.sg:GoToState("hit")
+				end
+			end),
         },
 
         events =
         {
             EventHandler("animqueueover", function(inst)
                 if math.random() < .333 then
-                    inst.components.combat:SetTarget(nil)
+					TryDropTarget(inst)
+					inst.forceretarget = true --V2C: try to keep legacy behaviour; it used SetTarget(nil) here, which would always result in a retarget
                     inst.sg:GoToState("taunt")
                 else
                     inst.sg:GoToState("idle")
@@ -130,14 +161,12 @@ local states =
         events =
         {
             EventHandler("animover", function(inst)
-                local max_tries = 4
-                for k = 1, max_tries do
-                    local x, y, z = inst.Transform:GetWorldPosition()
-                    local offset = 10
-                    x = x + math.random(2 * offset) - offset
-                    z = z + math.random(2 * offset) - offset
-                    if TheWorld.Map:IsPassableAtPoint(x, y, z) then
-                        inst.Physics:Teleport(x, y, z)
+				local x0, y0, z0 = inst.Transform:GetWorldPosition()
+				for k = 1, 4 --[[# of attempts]] do
+					local x = x0 + math.random() * 20 - 10
+					local z = z0 + math.random() * 20 - 10
+					if TheWorld.Map:IsPassableAtPoint(x, 0, z) then
+						inst.Physics:Teleport(x, 0, z)
                         break
                     end
                 end
@@ -168,6 +197,7 @@ local states =
         tags = { "busy" },
 
         onenter = function(inst)
+			TryDropTarget(inst)
             inst.AnimState:PlayAnimation("appear")
             inst.Physics:Stop()
             PlayExtendedSound(inst, "appear")
@@ -256,7 +286,7 @@ local states =
         {
             TimeEvent(40*FRAMES, function(inst)
                 local x,y,z = inst.Transform:GetWorldPosition()
-                print("TELEPORT OUT TERRORBEAK")
+				--print("TELEPORT OUT TERRORBEAK")
                 local fx = SpawnPrefab("shadow_teleport_out")
                 fx.Transform:SetPosition(x,y,z)
             end),
@@ -265,13 +295,27 @@ local states =
         events =
         {
             EventHandler("animqueueover", function(inst)
-                print("EXCHANGE TERROR BEAK")
+				--print("EXCHANGE TERROR BEAK")
                 inst:ExchangeWithOceanTerror()
                 inst:Remove()
             end),
         },
     },
 }
-CommonStates.AddWalkStates(states)
+
+CommonStates.AddWalkStates(states,
+{
+	walktimeline =
+	{
+		FrameEvent(0, function(inst)
+			local dropped = TryDropTarget(inst)
+			if TryDespawn(inst) then
+				return
+			elseif dropped then
+				inst.sg:GoToState("taunt")
+			end
+		end),
+	},
+})
 
 return StateGraph("shadowcreature", states, events, "appear", actionhandlers)

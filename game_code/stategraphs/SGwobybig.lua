@@ -16,6 +16,7 @@ local events=
     CommonHandlers.OnFreeze(),
     CommonHandlers.OnHop(),
     CommonHandlers.OnSink(),
+    CommonHandlers.OnFallInVoid(),
 
     EventHandler("transform", function(inst, data)
         if inst.sg.currentstate.name ~= "transform" then
@@ -537,7 +538,8 @@ CommonStates.AddWalkStates(
     })
 
 CommonStates.AddFrozenStates(states)
-CommonStates.AddSinkAndWashAsoreStates(states)
+CommonStates.AddSinkAndWashAshoreStates(states)
+CommonStates.AddVoidFallStates(states)
 CommonStates.AddHopStates(states, true, { pre = "boat_jump_pre", loop = "boat_jump_loop", pst = "boat_jump_pst"},
 {
     hop_pre =

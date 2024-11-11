@@ -559,6 +559,7 @@ local function moon_tree(name, stage, data)
         inst.entity:AddNetwork()
 
         MakeObstaclePhysics(inst, .5)
+		inst:SetDeploySmartRadius(DEPLOYSPACING_RADIUS[DEPLOYSPACING.PLACER_DEFAULT] / 2) --seed/planted_tree deployspacing/2
 
         inst.MiniMapEntity:SetIcon("moon_tree.png")
         inst.MiniMapEntity:SetPriority(-1)
@@ -571,6 +572,10 @@ local function moon_tree(name, stage, data)
         inst.AnimState:SetBuild("moon_tree")
         inst:SetPrefabName("moon_tree")
         inst:AddTag("moon_tree") -- for plantregrowth
+
+        inst.scrapbook_specialinfo = "TREE"
+        inst.scrapbook_proxy = "moon_tree_tall"
+        inst.scrapbook_speechname = inst.prefab
 
         MakeSnowCoveredPristine(inst)
 
@@ -636,6 +641,8 @@ local function moon_tree(name, stage, data)
 
         -------------------
         MakeHauntableWorkAndIgnite(inst)
+
+        MakeWaxablePlant(inst)
 
         -------------------
         inst.OnSave = on_save

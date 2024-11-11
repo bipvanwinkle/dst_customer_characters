@@ -25,10 +25,13 @@ local function fn()
     inst:AddTag("cattoy")
     inst:AddTag("renewable")
 	inst:AddTag("oceanfishing_bobber")
+    inst:AddTag("twigs")
 
     MakeInventoryFloatable(inst, "med", nil, 0.68)
 
     inst.entity:SetPristine()
+
+    inst.pickupsound = "wood"
 
     if not TheWorld.ismastersim then
         return inst

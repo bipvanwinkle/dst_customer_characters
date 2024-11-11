@@ -85,6 +85,7 @@ end
 local events =
 {
     CommonHandlers.OnLocomote(true, true),
+    CommonHandlers.OnFallInVoid(),
     CommonHandlers.OnSleep(),
     CommonHandlers.OnFreeze(),
     CommonHandlers.OnAttack(),
@@ -354,6 +355,11 @@ local states =
 
             local chest = SpawnPrefab("minotaurchestspawner")
             chest.Transform:SetPosition(inst.Transform:GetWorldPosition())
+            for i = 1, 8 do
+                if chest:PutBackOnGround(TILE_SCALE * i) then
+                    break
+                end
+            end
             chest.minotaur = inst
 
             inst:AddTag("NOCLICK")
@@ -388,10 +394,10 @@ local states =
 
         timeline =
         {
-            TimeEvent(39*FRAMES, function(inst)
+			FrameEvent(52, function(inst) inst.SoundEmitter:PlaySound("ancientguardian_rework/minotaur2/groundpound") end),
+			FrameEvent(58, function(inst)
                 inst.components.groundpounder:GroundPound()
                 BounceStuff(inst)
-                inst.SoundEmitter:PlaySound("ancientguardian_rework/minotaur2/groundpound")
             end),
         },
 
@@ -440,7 +446,6 @@ local states =
         
         onenter = function(inst)
             inst.hasrammed = true
-            inst.components.timer:StartTimer("leapattack_cooldown", 15)
             inst.components.locomotor:Stop()
             inst.AnimState:PlayAnimation("jump_atk_pre")
             inst.sg.statemem.startpos = Vector3(inst.Transform:GetWorldPosition())
@@ -475,6 +480,12 @@ local states =
         tags = {"attack", "busy", "leapattack"},
         
         onenter = function(inst,data)
+			if inst.components.timer:TimerExists("leapattack_cooldown") then
+				inst.components.timer:SetTimeLeft("leapattack_cooldown", TUNING.MINOTAUR_LEAP_CD)
+			else
+				inst.components.timer:StartTimer("leapattack_cooldown", TUNING.MINOTAUR_LEAP_CD)
+			end
+
             inst.sg.statemem.targetpos = data.targetpos
             
             inst.AnimState:PlayAnimation("jump_atk_loop")
@@ -504,8 +515,16 @@ local states =
             inst.Physics:CollidesWith(COLLISION.WORLD)
         end,
 
-        onexit = function(inst)
+		timeline =
+		{
+			FrameEvent(8, function(inst) inst.SoundEmitter:PlaySound("ancientguardian_rework/minotaur2/groundpound") end),
+			FrameEvent(14, function(inst)
+				inst.components.groundpounder:GroundPound()
+				BounceStuff(inst)
+			end),
+		},
 
+        onexit = function(inst)
             inst.Physics:ClearMotorVelOverride()
 
             inst.components.locomotor:Stop()
@@ -513,19 +532,14 @@ local states =
             inst.sg.statemem.startpos = nil
             inst.sg.statemem.targetpos = nil
 
-            inst.OnChangeToObstacle(inst)
+			inst:OnChangeToObstacle()
         end,
         
         events=
         {
             EventHandler("animover", function(inst)
-                
-                inst.components.groundpounder:GroundPound()
-                BounceStuff(inst)
-
-                if inst.jumpland(inst) then
+				if inst:jumpland() then
                     inst.sg:GoToState("leap_attack_pst")
-                    inst.SoundEmitter:PlaySound("ancientguardian_rework/minotaur2/groundpound")
                 else
                     inst.sg:GoToState("stun",{land_stun=true})
                 end
@@ -541,11 +555,6 @@ local states =
         onenter = function(inst)
             inst.components.locomotor:Stop()
             inst.AnimState:PlayAnimation("jump_atk_pst")
-            inst.SoundEmitter:PlaySound("ancientguardian_rework/minotaur2/groundpound")
-        end,
-
-        onexit = function(inst)
-            inst.components.groundpounder.numRings = 3
         end,
 
         events=
@@ -686,5 +695,6 @@ CommonStates.AddSleepStates(states,
 })
 
 CommonStates.AddFrozenStates(states)
+CommonStates.AddVoidFallStates(states, {voiddrop = "hit",})
 
 return StateGraph("minotaur", states, events, "idle")

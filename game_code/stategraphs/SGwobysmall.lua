@@ -16,6 +16,7 @@ local events =
     CommonHandlers.OnLocomote(false,true),
     CommonHandlers.OnHop(),
 	CommonHandlers.OnSink(),
+    CommonHandlers.OnFallInVoid(),
 
 	EventHandler("transform", function(inst, data)
 		if inst.sg.currentstate.name ~= "transform" then
@@ -178,6 +179,7 @@ CommonStates.AddSleepExStates(states,
 	})
 
 CommonStates.AddHopStates(states, true)
-CommonStates.AddSinkAndWashAsoreStates(states)
+CommonStates.AddSinkAndWashAshoreStates(states)
+CommonStates.AddVoidFallStates(states)
 
 return StateGraph("SGcritter_puppy", states, events, "idle", actionhandlers)

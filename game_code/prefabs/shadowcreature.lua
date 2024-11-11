@@ -36,12 +36,59 @@ local function retargetfn(inst)
         end
     end
 
+	local forcechange = inst.forceretarget
+	inst.forceretarget = nil
+
     if target1 ~= nil and rangesq1 <= math.max(rangesq2, maxrangesq * .25) then
         --Targets with shadow dominance have higher priority within half targeting range
         --Force target switch if current target does not have shadow dominance
         return target1, not inst.components.shadowsubmissive:TargetHasDominance(inst.components.combat.target)
     end
-    return target2
+	return target2, forcechange
+end
+
+--V2C: called from SG instead of combat component
+local function keeptargetfn(inst, target)
+	if inst.sg.mem.forcedespawn then
+		return true
+	elseif target.components.sanity == nil then
+		--not player; could be bernie or other creature
+		if inst.wantstodespawn then
+			--don't deaggro, so you can actually see the despawn
+			inst.sg.mem.forcedespawn = true
+		end
+		return true
+	elseif target.components.sanity:IsCrazy() then
+		inst._deaggrotime = nil
+		return true
+	end
+
+	--start deaggro timer when target is becomes sane
+	local t = GetTime()
+	if inst._deaggrotime == nil then
+		inst._deaggrotime = t
+		return true
+	end
+
+	--V2C: NOTE: -combat cmp sets lastwasattackedbytargettime when retargeting also
+	--           -so it may use the longer delay sometimes even when not attacked
+	--           -this is fine XD
+	--
+	--Deaggro if target has been sane for 2.5s, hasn't hit us in 6s, and hasn't tried to attack us for 5s
+	if inst._deaggrotime + 2.5 >= t or
+		inst.components.combat.lastwasattackedbytargettime + 6 >= t or
+		(	target.components.combat and
+			target.components.combat:IsRecentTarget(inst) and
+			(target.components.combat.laststartattacktime or 0) + 5 >= t
+		)
+	then
+		return true
+	elseif inst.wantstodespawn then
+		--don't deaggro, so you can actually see the despawn
+		inst.sg.mem.forcedespawn = true
+		return true
+	end
+	return false
 end
 
 local function onkilledbyother(inst, attacker)
@@ -74,6 +121,9 @@ end
 
 local function OnNewCombatTarget(inst, data)
     NotifyBrainOfTarget(inst, data.target)
+
+	--Reset deaggro delay when we change targets
+	inst._deaggrotime = nil
 end
 
 local function OnDeath(inst, data)
@@ -117,6 +167,21 @@ local function ExchangeWithOceanTerror(inst)
     end
 end
 
+local function CLIENT_ShadowSubmissive_HostileToPlayerTest(inst, player)
+	if player:HasTag("shadowdominance") then
+		return false
+	end
+	local combat = inst.replica.combat
+	if combat ~= nil and combat:GetTarget() == player then
+		return true
+	end
+	local sanity = player.replica.sanity
+	if sanity ~= nil and sanity:IsCrazy() then
+		return true
+	end
+	return false
+end
+
 local function MakeShadowCreature(data)
     local assets =
     {
@@ -156,6 +221,10 @@ local function MakeShadowCreature(data)
         inst:AddTag("hostile")
         inst:AddTag("shadow")
         inst:AddTag("notraptrigger")
+        inst:AddTag("shadow_aligned")
+
+		--shadowsubmissive (from shadowsubmissive component) added to pristine state for optimization
+		inst:AddTag("shadowsubmissive")
 
         inst.AnimState:SetBank(data.bank)
         inst.AnimState:SetBuild(data.build)
@@ -167,6 +236,8 @@ local function MakeShadowCreature(data)
             inst:AddComponent("transparentonsanity")
             inst.components.transparentonsanity:ForceUpdate()
         end
+
+		inst.HostileToPlayerTest = CLIENT_ShadowSubmissive_HostileToPlayerTest
 
         inst.entity:SetPristine()
 
@@ -180,9 +251,6 @@ local function MakeShadowCreature(data)
         inst.components.locomotor.pathcaps = { ignorecreep = true }
 
         inst.sounds = sounds
-        inst:SetStateGraph("SGshadowcreature")
-
-        inst:SetBrain(brain)
 
         inst:AddComponent("sanityaura")
         inst.components.sanityaura.aurafn = CalcSanityAura
@@ -197,6 +265,8 @@ local function MakeShadowCreature(data)
         inst.components.combat:SetDefaultDamage(data.damage)
         inst.components.combat:SetAttackPeriod(data.attackperiod)
         inst.components.combat:SetRetargetFunction(3, retargetfn)
+		--inst.components.combat:SetKeepTargetFunction(keeptargetfn)
+		inst.ShouldKeepTarget = keeptargetfn --V2C: call from SG instead!
         inst.components.combat.onkilledbyother = onkilledbyother
 
         inst:AddComponent("shadowsubmissive")
@@ -213,6 +283,8 @@ local function MakeShadowCreature(data)
             inst.ExchangeWithOceanTerror = ExchangeWithOceanTerror
         end
 
+		inst:SetStateGraph("SGshadowcreature")
+		inst:SetBrain(brain)
 
         inst.persists = false
 
@@ -247,6 +319,7 @@ local data =
         sanityreward = TUNING.SANITY_LARGE,
     },
 }
+
 local ret = {}
 for i, v in ipairs(data) do
     table.insert(ret, MakeShadowCreature(v))

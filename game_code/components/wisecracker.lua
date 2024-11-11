@@ -154,7 +154,12 @@ local Wisecracker = Class(function(self, inst)
     end)
 
     inst:ListenForEvent("wormholespit", function(inst, data)
-        inst.components.talker:Say(GetString(inst, "ANNOUNCE_WORMHOLE"))
+        if inst._failed_doneteleporting then
+            inst._failed_doneteleporting = nil
+            inst.components.talker:Say(GetString(inst, "ANNOUNCE_WORMHOLE_SAMESPOT"))
+        else
+            inst.components.talker:Say(GetString(inst, "ANNOUNCE_WORMHOLE"))
+        end
     end)
 
     inst:ListenForEvent("townportalteleport", function(inst, data)
@@ -168,6 +173,22 @@ local Wisecracker = Class(function(self, inst)
     inst:ListenForEvent("huntbeastnearby", function(inst, data)
         inst.components.talker:Say(GetString(inst, "ANNOUNCE_HUNT_BEAST_NEARBY"))
     end)
+
+	inst:ListenForEvent("huntstartfork", function(inst)
+		inst.components.talker:Say(GetString(inst, "ANNOUNCE_HUNT_START_FORK"))
+	end)
+
+	inst:ListenForEvent("huntsuccessfulfork", function(inst)
+		inst.components.talker:Say(GetString(inst, "ANNOUNCE_HUNT_SUCCESSFUL_FORK"))
+	end)
+
+	inst:ListenForEvent("huntwrongfork", function(inst)
+		inst.components.talker:Say(GetString(inst, "ANNOUNCE_HUNT_WRONG_FORK"))
+	end)
+
+	inst:ListenForEvent("huntavoidfork", function(inst) -- TODO(JBK): Add this for other hunt mechanics.
+		inst.components.talker:Say(GetString(inst, "ANNOUNCE_HUNT_AVOID_FORK"))
+	end)
 
     inst:ListenForEvent("lightningdamageavoided", function(inst, data)
         inst.components.talker:Say(GetString(inst, "ANNOUNCE_LIGHTNING_DAMAGE_AVOIDED"))
@@ -185,6 +206,10 @@ local Wisecracker = Class(function(self, inst)
         inst.components.talker:Say(GetString(inst, "ANNOUNCE_BOAT_SINK"))
     end)
 
+    inst:ListenForEvent("onprefallinvoid", function(inst)
+        inst.components.talker:Say(GetString(inst, "ANNOUNCE_PREFALLINVOID"))
+    end)
+
     inst:ListenForEvent("on_standing_on_new_leak", function(inst)
         inst.components.talker:Say(GetString(inst, "ANNOUNCE_BOAT_LEAK"))
     end)
@@ -200,6 +225,10 @@ local Wisecracker = Class(function(self, inst)
     inst:ListenForEvent("hungrybuild", function(inst)
         inst.components.talker:Say(GetString(inst, "ANNOUNCE_HUNGRY_FASTBUILD"))
     end)
+
+	inst:ListenForEvent("tooltooweak", function(inst, data)
+		inst.components.talker:Say(GetString(inst, "ANNOUNCE_TOOL_TOOWEAK"))
+	end)
 
     if inst:HasTag("soulstealer") then
         inst:ListenForEvent("soulempty", function(inst)
@@ -243,6 +272,67 @@ local Wisecracker = Class(function(self, inst)
     inst:ListenForEvent("foodbuffattached", OnFoodBuff)
     inst:ListenForEvent("foodbuffdetached", OnFoodBuff)
 
+	local function dochaironfire(inst, chair)
+		if chair ~= nil and chair:IsValid() and
+			chair.components.sittable ~= nil and
+			chair.components.sittable:IsOccupiedBy(inst) and
+			chair.components.burnable ~= nil and
+			chair.components.burnable:IsBurning()
+		then
+			inst.components.talker:Say(GetString(inst, "ANNOUNCE_CHAIR_ON_FIRE"))
+		end
+	end
+	inst:ListenForEvent("sittableonfire", function(inst, chair)
+		inst:DoTaskInTime(0.5, dochaironfire, chair)
+	end)
+
+    inst:ListenForEvent("otterboaterosion_begin", function(inst, reason)
+        local announce_string = (reason ~= nil and reason == "deepwater" and "ANNOUNCE_OTTERBOAT_OUTOFSHALLOWS")
+            or "ANNOUNCE_OTTERBOAT_DENBROKEN" -- "dengone"
+        inst.components.talker:Say(GetString(inst, announce_string))
+    end)
+
+    local function OnFishBuff(_, data)
+        if data ~= nil and data.buff ~= nil and
+                (   self.fishbuffname == nil or
+                    self.fishbuffpriority == nil or
+                    (data.priority ~= nil and data.priority > self.fishbuffpriority)
+                ) then
+            self.fishbuffname = data.buff
+            self.fishbuffpriority = data.priority
+        end
+    end
+    inst:ListenForEvent("fishbuffattached", OnFishBuff)
+    inst:ListenForEvent("fishbuffdetached", OnFishBuff)
+
+	local exitgelblobtask
+	local function doexitgelblob(inst)
+		exitgelblobtask = nil
+		inst.components.talker:Say(GetString(inst, "ANNOUNCE_EXIT_GELBLOB"))
+	end
+	inst:ListenForEvent("exit_gelblob", function(inst, gelblob)
+		if exitgelblobtask then
+			exitgelblobtask:Cancel()
+		end
+		exitgelblobtask = inst:DoTaskInTime(1.6, doexitgelblob)
+	end)
+
+	local last_shadowthrall_stealth_bite = -999
+	local shadowthrall_stealth_bite_task
+	local function dobitbyshadowthrallstealth(inst)
+		shadowthrall_stealth_bite_task = nil
+		inst.components.talker:Say(GetString(inst, "ANNOUNCE_SHADOWTHRALL_STEALTH"))
+	end
+	inst:ListenForEvent("bit_by_shadowthrall_stealth", function(inst, thrall)
+		if shadowthrall_stealth_bite_task == nil then
+			local t = GetTime()
+			if last_shadowthrall_stealth_bite + 10 < t then
+				last_shadowthrall_stealth_bite = t
+				shadowthrall_stealth_bite_task = inst:DoTaskInTime(2 + math.random(), dobitbyshadowthrallstealth)
+			end
+		end
+	end)
+
     if TheNet:GetServerGameMode() == "quagmire" then
         event_server_data("quagmire", "components/wisecracker").AddQuagmireEventListeners(inst)
     end
@@ -274,6 +364,12 @@ function Wisecracker:OnUpdate(dt)
         end
         self.foodbuffname = nil
         self.foodbuffpriority = nil
+    elseif self.fishbuffname ~= nil then
+        if not is_talker_busy then
+            self.inst.components.talker:Say(GetString(self.inst, self.fishbuffname))
+        end
+        self.fishbuffname = nil
+        self.fishbuffpriority = nil
     end
 end
 

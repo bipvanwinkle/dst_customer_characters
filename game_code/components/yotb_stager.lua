@@ -984,14 +984,6 @@ local function LaunchGameItem(inst, item, angle, minorspeedvariance, target)
     item.Physics:SetVel(math.cos(angle) * spd, 11.5, math.sin(angle) * spd)
     item:DoTaskInTime(.6, OnRestoreItemPhysics)
     item:PushEvent("knockbackdropped", { owner = inst, knocker = inst, delayinteraction = .75, delayplayerinteraction = .5 })
-    if item.components.burnable ~= nil then
-        inst:ListenForEvent("onignite", function()
-            for k, v in pairs(inst._minigame_elites) do
-                k:SetCheatFlag()
-            end
-        end, item)
-    end
-
    	item:ListenForEvent("onland")
 end
 
@@ -1035,7 +1027,7 @@ function YOTB_Stager:Tossprize(target, pattern, other)
 		end
 	else
 		local pattern = SpawnPrefab("yotb_pattern_fragment_"..math.random(1,3))
-		LaunchGameItem(self.inst, pattern, math.random()*2*PI, true)
+		LaunchGameItem(self.inst, pattern, math.random()*TWOPI, true)
 	end
 end
 

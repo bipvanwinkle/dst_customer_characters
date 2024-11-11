@@ -89,12 +89,15 @@ local function fn()
 
     MakeObstaclePhysics(inst, 0.66)
 
-    inst.entity:AddTag("statue")
+    inst:AddTag("statue")
 
     inst.AnimState:SetBank("statue_small")
     inst.AnimState:SetBuild("statue_small")
     inst.AnimState:OverrideSymbol("swap_statue", "statue_small_harp_build", "swap_statue")
     inst.AnimState:PlayAnimation("full")
+
+    inst.scrapbook_build = "statue_small_harp_build"
+    inst.scrapbook_anim = "full"
 
     inst.MiniMapEntity:SetIcon("statue_small.png")
 
@@ -121,6 +124,8 @@ local function fn()
     inst.OnSave = OnSave  
 
     MakeHauntableWork(inst)
+
+    MakeRoseTarget_CreateFuel(inst)
 
     return inst
 end

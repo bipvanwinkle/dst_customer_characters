@@ -89,7 +89,7 @@ local function fn()
     inst.entity:AddNetwork()
 
     inst:AddTag("maxwell")
-    inst.entity:AddTag("statue")
+    inst:AddTag("statue")
 
     MakeObstaclePhysics(inst, .66)
 
@@ -98,6 +98,7 @@ local function fn()
     inst.AnimState:SetBank("statue_maxwell")
     inst.AnimState:SetBuild("statue_maxwell_build")
     inst.AnimState:PlayAnimation("idle_full")
+    inst.scrapbook_anim = "idle_full"
 
     inst.entity:SetPristine()
 
@@ -123,6 +124,8 @@ local function fn()
     inst.OnSave = OnSave
 
     MakeHauntableWork(inst)
+
+    MakeRoseTarget_CreateFuel(inst)
 
     return inst
 end

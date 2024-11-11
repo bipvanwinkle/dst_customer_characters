@@ -22,7 +22,9 @@ local function onfinished_normal(inst)
 end
 
 local function DoThorns(inst, pos)
-    SpawnPrefab("bramblefx_trap").Transform:SetPosition(pos:Get())
+    local thorns = SpawnPrefab("bramblefx_trap")
+	thorns.Transform:SetPosition(pos:Get())
+	thorns.canhitplayers = TheNet:GetPVPEnabled()
 end
 
 local function OnExplode(inst)--, target)
@@ -37,6 +39,8 @@ local function OnExplode(inst)--, target)
 end
 
 local function OnReset(inst)
+    inst.last_reset = GetTime()
+
     if inst.components.inventoryitem ~= nil then
         inst.components.inventoryitem.nobounce = true
     end
@@ -104,6 +108,7 @@ local function fn()
     inst.entity:AddNetwork()
 
     MakeInventoryPhysics(inst)
+	inst:SetDeploySmartRadius(DEPLOYSPACING_RADIUS[DEPLOYSPACING.LESS] / 2)
 
     inst.MiniMapEntity:SetIcon("trap_bramble.png")
 
@@ -111,7 +116,10 @@ local function fn()
     inst.AnimState:SetBuild("trap_bramble")
     inst.AnimState:PlayAnimation("idle")
 
+    inst.scrapbook_damage = TUNING.TRAP_BRAMBLE_DAMAGE
+
     inst:AddTag("trap")
+    inst:AddTag("trap_bramble")
 
     MakeInventoryFloatable(inst, "small", nil, {1.2, 0.8, 1.2})
 

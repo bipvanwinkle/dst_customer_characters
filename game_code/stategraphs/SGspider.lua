@@ -2,7 +2,7 @@ require("stategraphs/commonstates")
 
 local actionhandlers =
 {
-    ActionHandler(ACTIONS.EAT, 
+    ActionHandler(ACTIONS.EAT,
         function(inst, action)
             if action.target:HasTag("spidermutator") and action.target.components.spidermutator:CanMutate(inst) then
                 action.target.components.spidermutator:Mutate(inst, true)
@@ -22,11 +22,12 @@ local events =
     CommonHandlers.OnSleep(),
     CommonHandlers.OnFreeze(),
     CommonHandlers.OnSink(),
+    CommonHandlers.OnFallInVoid(),
 
     EventHandler("attacked", function(inst)
         if not inst.components.health:IsDead() then
             if inst:HasTag("spider_warrior") or inst:HasTag("spider_spitter") or inst:HasTag("spider_moon") then
-                if not inst.sg:HasStateTag("attack") then -- don't interrupt attack or exit shield
+                if not inst.sg:HasAnyStateTag("attack", "moving") then -- don't interrupt attack, exit shield or moviment
                     inst.sg:GoToState("hit") -- can still attack
                 end
             elseif not inst.sg:HasStateTag("shield") then
@@ -106,19 +107,7 @@ local events =
 }
 
 local function SoundPath(inst, event)
-    local creature = "spider"
-    if inst:HasTag("spider_healer") then
-        return "webber1/creatures/spider_cannonfodder/" .. event
-    elseif inst:HasTag("spider_moon") then
-		return "turnoftides/creatures/together/spider_moon/" .. event
-    elseif inst:HasTag("spider_warrior") then
-        creature = "spiderwarrior"
-    elseif inst:HasTag("spider_hider") or inst:HasTag("spider_spitter") then
-        creature = "cavespider"
-    else
-        creature = "spider"
-    end
-    return "dontstarve/creatures/" .. creature .. "/" .. event
+    return inst:SoundPath(event)
 end
 
 local states =
@@ -131,9 +120,21 @@ local states =
             inst.SoundEmitter:PlaySound(SoundPath(inst, "die"))
             inst.AnimState:PlayAnimation("death")
             inst.Physics:Stop()
-            RemovePhysicsColliders(inst)
-            inst.components.lootdropper:DropLoot(Vector3(inst.Transform:GetWorldPosition()))
+
+            if not inst.shadowthrall_parasite_hosted_death or not TheWorld.components.shadowparasitemanager then
+                RemovePhysicsColliders(inst)
+                inst.components.lootdropper:DropLoot(inst:GetPosition())
+            end
         end,
+
+        events =
+        {
+            EventHandler("animover", function(inst)
+                if inst.shadowthrall_parasite_hosted_death and TheWorld.components.shadowparasitemanager then
+                    TheWorld.components.shadowparasitemanager:ReviveHosted(inst)
+                end
+            end),
+        },
     },
 
     State{
@@ -360,32 +361,54 @@ local states =
 
     State{
         name = "spitter_attack",
-        tags = {"attack", "canrotate", "busy", "spitting"},
+        tags = {"attack", "busy", "spitting"},
 
         onenter = function(inst, target)
-            if inst.weapon and inst.components.inventory then
+            if inst.weapon ~= nil and inst.components.inventory ~= nil then
                 inst.components.inventory:Equip(inst.weapon)
             end
-            if inst.components.locomotor then
-                inst.components.locomotor:StopMoving()
-            end
+
+            inst.components.locomotor:Stop()
             inst.AnimState:PlayAnimation("spit")
-            inst.sg.statemem.target = target
+
+            if target ~= nil and target:IsValid() then
+                inst.sg.statemem.target = target
+                inst.sg.statemem.targetpos = target:GetPosition()
+                inst:ForceFacePoint(inst.sg.statemem.targetpos)
+            end
+        end,
+
+        onupdate = function(inst)
+            if inst.sg.statemem.target ~= nil then
+                if inst.sg.statemem.target:IsValid() then
+                    local pos = inst.sg.statemem.targetpos
+
+                    pos.x, pos.y, pos.z = inst.sg.statemem.target.Transform:GetWorldPosition()
+                else
+                    inst.sg.statemem.target = nil
+                end
+            end
+
+            inst:ForceFacePoint(inst.sg.statemem.targetpos)
         end,
 
         onexit = function(inst)
-            if inst.components.inventory then
+            if inst.components.inventory ~= nil then
                 inst.components.inventory:Unequip(EQUIPSLOTS.HANDS)
             end
         end,
 
         timeline =
         {
-            TimeEvent(7*FRAMES, function(inst)
-            inst.SoundEmitter:PlaySound(SoundPath(inst, "spit_web")) end),
+            FrameEvent(7, function(inst)
+                inst.SoundEmitter:PlaySound(SoundPath(inst, "spit_web"))
+            end),
 
-            TimeEvent(21*FRAMES, function(inst) inst.components.combat:DoAttack(inst.sg.statemem.target)
-                inst.SoundEmitter:PlaySound(SoundPath(inst, "spit_voice"))
+            FrameEvent(21, function(inst)
+                if inst.sg.statemem.target ~= nil then
+                    inst.components.combat:DoAttack(inst.sg.statemem.target)
+                    inst.SoundEmitter:PlaySound(SoundPath(inst, "spit_voice"))
+                end
             end),
         },
 
@@ -452,7 +475,7 @@ local states =
         timeline=
         {
             TimeEvent(30*FRAMES, function(inst)
-                
+
                 -- DANY
                 --inst.SoundEmitter:PlaySound("SPIDER SMOKE SOUND")
 
@@ -573,20 +596,20 @@ local states =
 
         timeline=
         {
-            TimeEvent(15*FRAMES, function(inst) 
+            TimeEvent(15*FRAMES, function(inst)
                 inst.SoundEmitter:KillSound("eating")
-                inst.SoundEmitter:PlaySound("webber2/common/mutate") 
+                inst.SoundEmitter:PlaySound("webber2/common/mutate")
             end),
         },
 
         events=
         {
-            EventHandler("animover", function(inst) 
-                local x,y,z = inst.Transform:GetWorldPosition()        
+            EventHandler("animover", function(inst)
+                local x,y,z = inst.Transform:GetWorldPosition()
                 local fx = SpawnPrefab("spider_mutate_fx")
                 fx.Transform:SetPosition(x,y,z)
 
-                inst:DoTaskInTime(0.25, function() 
+                inst:DoTaskInTime(0.25, function()
 
                     inst.components.inventory:DropEverything()
 
@@ -628,6 +651,31 @@ local states =
             EventHandler("animqueueover", function(inst) inst.sg:GoToState("idle") end),
         },
     },
+
+    State{
+        name = "parasite_revive",
+        tags = {"busy"},
+
+        onenter = function(inst)
+            inst.sg.statemem.bank = inst.AnimState:GetBankHash()
+
+            inst.AnimState:SetBank("spider") -- To play parasite_death_pst...
+
+            inst.AnimState:PlayAnimation("parasite_death_pst")
+            inst.Physics:Stop()
+        end,
+
+        onexit = function(inst)
+            if inst.sg.statemem.bank ~= nil then
+                inst.AnimState:SetBank(inst.sg.statemem.bank)
+            end
+        end,
+
+        events=
+        {
+            EventHandler("animover", function(inst) inst.sg:GoToState("idle") end ),
+        },
+    },
 }
 
 CommonStates.AddSleepStates(states,
@@ -646,6 +694,7 @@ CommonStates.AddSleepStates(states,
 
 CommonStates.AddFrozenStates(states)
 CommonStates.AddHopStates(states, true, { pre = "boat_jump_pre", loop = "boat_jump", pst = "boat_jump_pst"})
-CommonStates.AddSinkAndWashAsoreStates(states)
+CommonStates.AddSinkAndWashAshoreStates(states)
+CommonStates.AddVoidFallStates(states)
 
 return StateGraph("spider", states, events, "idle", actionhandlers)

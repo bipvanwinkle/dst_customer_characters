@@ -121,7 +121,8 @@ local function fn()
     inst.entity:AddMiniMapEntity()
     inst.entity:AddNetwork()
 
-    inst:SetPhysicsRadiusOverride(.8)
+	inst:SetDeploySmartRadius(1.25) --recipe min_spacing/2
+    inst:SetPhysicsRadiusOverride(.75)
     MakeObstaclePhysics(inst, inst.physicsradiusoverride)
 
     inst:AddTag("structure")
@@ -136,6 +137,8 @@ local function fn()
     inst.MiniMapEntity:SetIcon("wardrobe.png")
 
     MakeSnowCoveredPristine(inst)
+
+    inst.scrapbook_anim = "closed"
 
     inst.entity:SetPristine()
 

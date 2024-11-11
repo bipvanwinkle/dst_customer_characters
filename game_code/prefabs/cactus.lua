@@ -21,7 +21,7 @@ local function onpickedfn(inst, picker)
     inst.AnimState:PushAnimation("empty", true)
 
     if picker ~= nil then
-        if picker.components.combat ~= nil and not (picker.components.inventory ~= nil and picker.components.inventory:EquipHasTag("bramble_resistant")) then
+        if picker.components.combat ~= nil and not (picker.components.inventory ~= nil and picker.components.inventory:EquipHasTag("bramble_resistant")) and not picker:HasTag("shadowminion") then
             picker.components.combat:GetAttacked(inst, TUNING.CACTUS_DAMAGE)
             picker:PushEvent("thorns")
         end
@@ -29,7 +29,7 @@ local function onpickedfn(inst, picker)
         if inst.has_flower then
             -- You get a cactus flower, yay.
             local loot = SpawnPrefab("cactus_flower")
-            loot.components.inventoryitem:InheritMoisture(TheWorld.state.wetness, TheWorld.state.iswet)
+			loot.components.inventoryitem:InheritWorldWetnessAtTarget(inst)
             if picker.components.inventory ~= nil then
                 picker.components.inventory:GiveItem(loot, nil, inst:GetPosition())
             else
@@ -71,11 +71,6 @@ local function OnEntityWake(inst)
     end
 end
 
-local function OnBurnt(inst)
-	TheWorld:PushEvent("beginregrowth", inst)
-    DefaultBurntFn(inst)
-end
-
 local function MakeCactus(name)
     local function cactusfn()
         local inst = CreateEntity()
@@ -104,7 +99,7 @@ local function MakeCactus(name)
             return inst
         end
 
-        inst.AnimState:SetTime(math.random() * 2)
+		inst.AnimState:SetFrame(math.random(inst.AnimState:GetCurrentAnimationNumFrames()) - 1)
 
         inst:AddComponent("pickable")
         inst.components.pickable.picksound = "dontstarve/wilson/harvest_sticks"
@@ -118,7 +113,7 @@ local function MakeCactus(name)
         inst:AddComponent("inspectable")
 
         MakeLargeBurnable(inst)
-        inst.components.burnable:SetOnBurntFn(OnBurnt)
+        AddToRegrowthManager(inst)
         MakeMediumPropagator(inst)
 
         inst.OnEntityWake = OnEntityWake

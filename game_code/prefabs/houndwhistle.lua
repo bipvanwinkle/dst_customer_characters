@@ -27,7 +27,7 @@ end
 local function HearHoundWhistle(inst, musician, instrument)
     if musician.components.leader ~= nil and
         (inst:HasTag("hound") or inst:HasTag("warg")) and
-		not inst:HasTag("hound_mutated") and
+		not inst:HasTag("lunar_aligned") and
         not (inst.sg ~= nil and inst.sg:HasStateTag("statue")) then
         if inst.components.combat ~= nil and inst.components.combat:HasTarget() then
             inst.components.combat:GiveUp()
@@ -64,7 +64,7 @@ local function fn()
 
     inst:AddComponent("inspectable")
     inst:AddComponent("instrument")
-    inst.components.instrument.range = TUNING.HOUNDWHISTLE_RANGE
+    inst.components.instrument:SetRange(TUNING.HOUNDWHISTLE_RANGE)
     inst.components.instrument:SetOnHeardFn(HearHoundWhistle)
 
     inst:AddComponent("tool")

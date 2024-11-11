@@ -117,7 +117,12 @@ function PlayerActionPicker:GetSceneActions(useitem, right)
         useitem:HasTag("inspectable") and
         (self.inst.sg == nil or self.inst.sg:HasStateTag("moving") or self.inst.sg:HasStateTag("idle")) and
         (self.inst:HasTag("moving") or self.inst:HasTag("idle")) then
-        sorted_acts = self:SortActionList({ ACTIONS.WALKTO }, useitem)
+
+		--@V2C: #FORGE_AOE_RCLICK *searchable*
+		--      -Forge used to strip ALL r.click actions, so now we manually strip WALKTO action.
+		if not right or (self.inst.components.playercontroller ~= nil and not self.inst.components.playercontroller:HasAOETargeting()) then
+			sorted_acts = self:SortActionList({ ACTIONS.WALKTO }, useitem)
+		end
     end
 
     return sorted_acts
@@ -184,8 +189,15 @@ function PlayerActionPicker:GetPointActions(pos, useitem, right, target)
     return sorted_acts
 end
 
-function PlayerActionPicker:GetPointSpecialActions(pos, useitem, right)
-    return self.pointspecialactionsfn ~= nil and self:SortActionList(self.pointspecialactionsfn(self.inst, pos, useitem, right), pos) or {}
+function PlayerActionPicker:GetPointSpecialActions(pos, useitem, right, usereticulepos)
+	--V2C: usereticulepos is new
+	--     pos2 may be returned (when usereticulepos is true)
+	--     keep support for legacy pointspecialactionsfn, which won't have the pos2 return
+	if self.pointspecialactionsfn then
+		local actions, pos2 = self.pointspecialactionsfn(self.inst, pos, useitem, right, usereticulepos)
+		return self:SortActionList(actions, usereticulepos and pos2 or pos, useitem)
+	end
+	return {}
 end
 
 function PlayerActionPicker:GetEquippedItemActions(target, useitem, right)
@@ -222,6 +234,8 @@ end
 local function TargetIsHostile(inst, target)
     if inst.HostileTest ~= nil then
         return inst:HostileTest(target)
+	elseif target.HostileToPlayerTest ~= nil then
+		return target:HostileToPlayerTest(inst)
     else
         return target:HasTag("hostile")
     end
@@ -238,7 +252,6 @@ function PlayerActionPicker:GetLeftClickActions(position, target)
     local actions = nil
     local useitem = self.inst.replica.inventory:GetActiveItem()
     local equipitem = self.inst.replica.inventory:GetEquippedItem(EQUIPSLOTS.HANDS)
-    local ispassable = self.map:IsPassableAtPoint(position:Get())
 
     self.disable_right_click = false
 
@@ -288,7 +301,7 @@ function PlayerActionPicker:GetLeftClickActions(position, target)
         end
     end
 
-    if actions == nil and target == nil and ispassable then
+    if actions == nil and target == nil and self.map:IsPassableAtPoint(position:Get()) then
         if equipitem ~= nil and equipitem:IsValid() then
             --can we use our equipped item at the point?
             actions = self:GetPointActions(position, equipitem, nil, target)
@@ -310,8 +323,7 @@ function PlayerActionPicker:GetLeftClickActions(position, target)
     return actions or {}
 end
 
-function PlayerActionPicker:GetRightClickActions(position, target)
-
+function PlayerActionPicker:GetRightClickActions(position, target, spellbook)
     if self.disable_right_click then
         return {}
     end
@@ -337,7 +349,6 @@ function PlayerActionPicker:GetRightClickActions(position, target)
     local actions = nil
     local useitem = self.inst.replica.inventory:GetActiveItem()
     local equipitem = self.inst.replica.inventory:GetEquippedItem(EQUIPSLOTS.HANDS)
-    local ispassable = self.map:IsPassableAtPoint(position:Get())
 
     if target ~= nil and self.containers[target] then
         --check if we have container widget actions
@@ -362,7 +373,10 @@ function PlayerActionPicker:GetRightClickActions(position, target)
             actions = self:GetEquippedItemActions(target, equipitem, true)
 
             --strip out all other actions for weapons with right click special attacks
-            if equipitem.components.aoetargeting ~= nil then
+			--@V2C: #FORGE_AOE_RCLICK *searchable*
+			--      -Forge used to strip all r.click actions even before starting aoe targeting.
+			--if equipitem.components.aoetargeting ~= nil then
+			if equipitem.components.aoetargeting and self.inst.components.playercontroller:IsAOETargeting() then
                 return (#actions <= 0 or actions[1].action == ACTIONS.CASTAOE) and actions or {}
             end
         end
@@ -370,23 +384,50 @@ function PlayerActionPicker:GetRightClickActions(position, target)
         if actions == nil or #actions == 0 then
             actions = self:GetSceneActions(target, true)
             if (#actions == 0 or (#actions == 1 and actions[1].action == ACTIONS.LOOKAT)) and target:HasTag("walkableperipheral") then
-                if equipitem ~= nil and equipitem:IsValid() and (ispassable or equipitem:HasTag("allow_action_on_impassable") or (equipitem.components.aoetargeting ~= nil and equipitem.components.aoetargeting.alwaysvalid and equipitem.components.aoetargeting:IsEnabled())) then
-                    actions = self:GetPointActions(position, equipitem, true, target)
+                if equipitem ~= nil and equipitem:IsValid() then
+					local alwayspassable, allowwater--, deployradius
+					local aoetargeting = equipitem.components.aoetargeting
+					if aoetargeting ~= nil and aoetargeting:IsEnabled() then
+						alwayspassable = aoetargeting.alwaysvalid
+						allowwater = aoetargeting.allowwater
+						--deployradius = aoetargeting.deployradius
+					end
+					alwayspassable = alwayspassable or equipitem:HasTag("allow_action_on_impassable")
+					--V2C: just do passable check here, componentactions tends to redo the full check
+					--if self.map:CanCastAtPoint(position, alwayspassable, allowwater, deployradius) then
+					if alwayspassable or self.map:IsPassableAtPoint(position.x, 0, position.z, allowwater) then
+						actions = self:GetPointActions(position, equipitem, true, target)
+					end
                 end
             end
         end
-    elseif equipitem ~= nil and equipitem:IsValid() and (ispassable or equipitem:HasTag("allow_action_on_impassable") or (equipitem.components.aoetargeting ~= nil and equipitem.components.aoetargeting.alwaysvalid and equipitem.components.aoetargeting:IsEnabled())) then
-        actions = self:GetPointActions(position, equipitem, true, target)
-    end
+	else
+		local item = spellbook or equipitem
+		if item ~= nil and item:IsValid() then
+			local alwayspassable, allowwater--, deployradius
+			local aoetargeting = item.components.aoetargeting
+			if aoetargeting ~= nil and aoetargeting:IsEnabled() then
+				alwayspassable = item.components.aoetargeting.alwaysvalid
+				allowwater = item.components.aoetargeting.allowwater
+				--deployradius = item.components.aoetargeting.deployradius
+			end
+			alwayspassable = alwayspassable or item:HasTag("allow_action_on_impassable")
+			--V2C: just do passable check here, componentactions tends to redo the full check
+			--if self.map:CanCastAtPoint(position, alwayspassable, allowwater, deployradius) then
+			if alwayspassable or self.map:IsPassableAtPoint(position.x, 0, position.z, allowwater) then
+				actions = self:GetPointActions(position, item, true, target)
+			end
+		end
+	end
 
-    if (actions == nil or #actions <= 0) and (target == nil or target:HasTag("walkableplatform") or target:HasTag("walkableperipheral")) and ispassable then
+    if (actions == nil or #actions <= 0) and (target == nil or target:HasTag("walkableplatform") or target:HasTag("walkableperipheral")) and self.map:IsPassableAtPoint(position:Get()) then
         actions = self:GetPointSpecialActions(position, useitem, true)
     end
 
     return actions or {}
 end
 
-function PlayerActionPicker:DoGetMouseActions(position, target)
+function PlayerActionPicker:DoGetMouseActions(position, target, spellbook)
     local isaoetargeting = false
     local wantsaoetargeting = false
 
@@ -396,12 +437,19 @@ function PlayerActionPicker:DoGetMouseActions(position, target)
         end
 
         isaoetargeting = self.inst.components.playercontroller:IsAOETargeting()
-        wantsaoetargeting = not isaoetargeting and self.inst.components.playercontroller:HasAOETargeting()
+		--@V2C: #FORGE_AOE_RCLICK *searchable*
+		--      -Forge used to strip all r.click actions to force r.click to start aoe targeting no matter what.
+		--      -Now we only want to start aoe targeting if there are no other meaningful actions.
+		--      -GetRightClickActions will naturally return nil in that case now.
+		--wantsaoetargeting = not isaoetargeting and self.inst.components.playercontroller:HasAOETargeting()
 
-        if target == nil and not isaoetargeting then
-            target = TheInput:GetWorldEntityUnderMouse()
-        end
-        position = isaoetargeting and self.inst.components.playercontroller:GetAOETargetingPos() or TheInput:GetWorldPosition()
+		if isaoetargeting then
+			position = self.inst.components.playercontroller:GetAOETargetingPos()
+			spellbook = spellbook or self.inst.components.playercontroller:GetActiveSpellBook()
+		else
+			position = TheInput:GetWorldPosition()
+			target = target or TheInput:GetWorldEntityUnderMouse()
+		end
 
         local cansee
         if target == nil then
@@ -426,7 +474,7 @@ function PlayerActionPicker:DoGetMouseActions(position, target)
                     end
                 end
 
-                local rmbs = self:GetRightClickActions(position)
+                local rmbs = self:GetRightClickActions(position, nil, spellbook)
                 for i, v in ipairs(rmbs) do
                     if (v.action == ACTIONS.STOP_STEERING_BOAT) or
                         v.action == ACTIONS.BOAT_CANNON_STOP_AIMING then
@@ -440,7 +488,7 @@ function PlayerActionPicker:DoGetMouseActions(position, target)
     end
 
     local lmb = not isaoetargeting and self:GetLeftClickActions(position, target)[1] or nil
-    local rmb = not wantsaoetargeting and self:GetRightClickActions(position, target)[1] or nil
+    local rmb = not wantsaoetargeting and self:GetRightClickActions(position, target, spellbook)[1] or nil
 
     return lmb, rmb ~= nil and (lmb == nil or lmb.action ~= rmb.action) and rmb or nil
 end

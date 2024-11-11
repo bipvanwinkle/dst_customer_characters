@@ -113,11 +113,9 @@ function Wardrobe:CanBeginChanging(doer)
         doer.sg == nil or
         (doer.sg:HasStateTag("busy") and doer.sg.currentstate.name ~= "opengift") then
         return false
-    elseif self.shareable then
-        return true
-    elseif self.inst.burnable ~= nil and self.inst.burnable:IsBurning() then
-        return false, "BURNING"
-    elseif next(self.changers) ~= nil then
+	elseif self.inst.components.burnable and self.inst.components.burnable:IsBurning() then
+		return false, "BURNING"
+	elseif not self.canbeshared and next(self.changers) then
         return false, "INUSE"
     end
     return true
@@ -157,6 +155,7 @@ function Wardrobe:EndChanging(doer)
         self.inst:RemoveEventCallback("ms_closepopup", self.onclosepopup, doer)
 
         self.changers[doer] = nil
+        doer:PushEvent("onskinschanged") -- NOTES(JBK): Yay.
 
         if doer.sg:HasStateTag("inwardrobe") and not doer.sg.statemem.isclosingwardrobe then
             doer.sg.statemem.isclosingwardrobe = true

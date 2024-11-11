@@ -1,10 +1,10 @@
 require "behaviours/wander"
 require "behaviours/runaway"
 require "behaviours/doaction"
-require "behaviours/panic"
 require "behaviours/standstill"
 require "behaviours/attackwall"
 require "behaviours/leash"
+local BrainCommon = require("brains/braincommon")
 
 local SEE_DIST = 30
 local MIN_FOLLOW_DIST = 1
@@ -87,11 +87,13 @@ local function PrepareForNight(inst)
     return TheWorld.state.isnight or (TheWorld.state.isdusk and TheWorld.state.timeinphase > .8) or inst.components.sleeper:IsAsleep()
 end
 
+local NO_TAGS = { "outofreach" }
+
 -- Return array of items within the given radius that satisfies the check function
 local function FindItems(inst, radius, fn, tags)
     if inst and inst:IsValid() then
 		local x,y,z = inst.Transform:GetWorldPosition()
-		local ents = TheSim:FindEntities(x,y,z, radius, tags)
+		local ents = TheSim:FindEntities(x,y,z, radius, tags, NO_TAGS)
         local lst = {}
 		for k, v in ipairs(ents) do
 			if v ~= inst and v.entity:IsValid() and v.entity:IsVisible() and (not fn or fn(v)) then
@@ -350,8 +352,7 @@ function PenguinBrain:OnStart()
         IfNode(function() return  self.inst.sg:HasStateTag("flight") end, "Flying",
             ActionNode(function() return FlyAway(self.inst) end)),
 
-        WhileNode( function() return self.inst.components.hauntable and self.inst.components.hauntable.panic end, "PanicHaunted", Panic(self.inst)),
-        WhileNode( function() return self.inst.components.health.takingfiredamage end, "OnFire", Panic(self.inst)),
+		BrainCommon.PanicTrigger(self.inst),
 
         -- Penguins will panic and pick up eggs if player comes too close
 		DoAction(self.inst, function() return StealAction(self.inst) end, "PickUp Egg Action", true ),

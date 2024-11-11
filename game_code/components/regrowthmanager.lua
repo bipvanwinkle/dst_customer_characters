@@ -56,7 +56,7 @@ local function AppendTimer(key, timer)
     _lists[key]:Append(timer)
 end
 
-local REGROWBLOCKER_ONEOF_TAGS = { "structure", "wall" }
+local REGROWBLOCKER_ONEOF_TAGS = { "structure", "wall", "regrowth_blocker" }
 local function TestForRegrow(x, y, z, orig_tile)
     if _map:GetTileAtPoint(x, y, z) ~= orig_tile or
         not _map:CanPlantAtPoint(x, y, z) or
@@ -85,10 +85,10 @@ local function DoRegrowth(key, product, position)
 
     local orig_tile = _map:GetTileAtPoint(x,y,z)
 
-    local theta = math.random() * 2 * PI
+    local theta = math.random() * TWOPI
     local radius = math.random() * JITTER_RADIUS
-    local x = x + radius * math.cos(theta)
-    local z = z - radius * math.sin(theta)
+    x = x + radius * math.cos(theta)
+    z = z - radius * math.sin(theta)
 
     if not IsAnyPlayerInRange(x,y,z, MIN_PLAYER_DISTANCE, nil) then
         if TestForRegrow(x,y,z, orig_tile) then
@@ -190,6 +190,26 @@ local function CactusRegrowth()
 end
 self:SetRegrowthForType("cactus", TUNING.CACTUS_REGROWTH_TIME, "cactus", CactusRegrowth)
 self:SetRegrowthForType("oasis_cactus", TUNING.CACTUS_REGROWTH_TIME, "oasis_cactus", CactusRegrowth)
+self:SetRegrowthForType("cave_banana_tree", TUNING.CAVE_BANANA_TREE_REGROWTH_TIME, "cave_banana_tree", function()
+    return TUNING.CAVE_BANANA_TREE_REGROWTH_TIME_MULT
+end)
+
+-- NOTES(JBK): Not doing the season type for when mushrooms spore because mushrooms do not grow in Winter making the blue ones get no bonuses.
+local function RedMushroomRegrowth()
+    return _worldstate.isday and TUNING.MUSHROOM_REGROWTH_TIME_FAST_MULT or
+    TUNING.MUSHROOM_REGROWTH_TIME_MULT
+end
+local function GreenMushroomRegrowth()
+    return _worldstate.isdusk and TUNING.MUSHROOM_REGROWTH_TIME_FAST_MULT or
+    TUNING.MUSHROOM_REGROWTH_TIME_MULT
+end
+local function BlueMushroomRegrowth()
+    return _worldstate.isnight and TUNING.MUSHROOM_REGROWTH_TIME_FAST_MULT or
+    TUNING.MUSHROOM_REGROWTH_TIME_MULT
+end
+self:SetRegrowthForType("red_mushroom", TUNING.MUSHROOM_REGROWTH_TIME, "red_mushroom", RedMushroomRegrowth)
+self:SetRegrowthForType("green_mushroom", TUNING.MUSHROOM_REGROWTH_TIME, "green_mushroom", GreenMushroomRegrowth)
+self:SetRegrowthForType("blue_mushroom", TUNING.MUSHROOM_REGROWTH_TIME, "blue_mushroom", BlueMushroomRegrowth)
 
 --------------------------------------------------------------------------
 --[[ Update ]]

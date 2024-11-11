@@ -109,6 +109,36 @@ function FindClosestPlayerToInstOnLand(inst, range, isalive)
     return FindClosestPlayerOnLandInRangeSq(x, y, z, range * range, isalive)
 end
 
+local function SortByDistanceSq(a, b)
+    return a.distsq < b.distsq
+end
+function FindPlayersInRangeSqSortedByDistance(x, y, z, rangesq, isalive)
+    local players = {}
+    for _, player in ipairs(AllPlayers) do
+        if (isalive == nil or isalive ~= IsEntityDeadOrGhost(player)) and player.entity:IsVisible() then
+            local distsq = player:GetDistanceSqToPoint(x, y, z)
+            if distsq < rangesq then
+                table.insert(players, {
+                    player = player,
+                    distsq = distsq,
+                })
+            end
+        end
+    end
+    if players[1] then
+        if players[2] then
+            table.sort(players, SortByDistanceSq)
+        end
+        for i = 1, #players do
+            players[i] = players[i].player
+        end
+    end
+    return players
+end
+function FindPlayersInRangeSortedByDistance(x, y, z, range, isalive)
+    return FindPlayersInRangeSqSortedByDistance(x, y, z, range * range, isalive)
+end
+
 function FindPlayersInRangeSq(x, y, z, rangesq, isalive)
     local players = {}
     for i, v in ipairs(AllPlayers) do
@@ -168,7 +198,7 @@ function FindSafeSpawnLocation(x, y, z)
 end
 
 function FindNearbyLand(position, range)
-    local finaloffset = FindValidPositionByFan(math.random() * 2 * PI, range or 8, 8, function(offset)
+    local finaloffset = FindValidPositionByFan(math.random() * TWOPI, range or 8, 8, function(offset)
         local x, z = position.x + offset.x, position.z + offset.z
         return TheWorld.Map:IsAboveGroundAtPoint(x, 0, z)
             and not TheWorld.Map:IsPointNearHole(Vector3(x, 0, z))
@@ -181,7 +211,7 @@ function FindNearbyLand(position, range)
 end
 
 function FindNearbyOcean(position, range)
-    local finaloffset = FindValidPositionByFan(math.random() * 2 * PI, range or 8, 8, function(offset)
+    local finaloffset = FindValidPositionByFan(math.random() * TWOPI, range or 8, 8, function(offset)
         local x, z = position.x + offset.x, position.z + offset.z
         return TheWorld.Map:IsOceanAtPoint(x, 0, z)
             and not TheWorld.Map:IsPointNearHole(Vector3(x, 0, z))
@@ -196,7 +226,7 @@ end
 function GetRandomInstWithTag(tag, inst, radius)
     local x, y, z = inst.Transform:GetWorldPosition()
     local ents = TheSim:FindEntities(x, y, z, radius, type(tag) == "string" and { tag } or tag)
-    return #ents > 0 and ents[math.random(1, #ents)] or nil
+    return (#ents > 0 and ents[math.random(1, #ents)]) or nil
 end
 
 function GetClosestInstWithTag(tag, inst, radius)
@@ -208,8 +238,8 @@ end
 function DeleteCloseEntsWithTag(tag, inst, radius)
     local x, y, z = inst.Transform:GetWorldPosition()
     local ents = TheSim:FindEntities(x, y, z, radius, type(tag) == "string" and { tag } or tag)
-    for i, v in ipairs(ents) do
-        v:Remove()
+    for _, ent in ipairs(ents) do
+        ent:Remove()
     end
 end
 
@@ -255,7 +285,6 @@ end
 function FindValidPositionByFan(start_angle, radius, attempts, test_fn)
     attempts = attempts or 8
 
-    local TWOPI = 2 * PI
     local attempt_angle = TWOPI / attempts
     local tmp_angles = {}
     for i = 0, attempts - 1 do
@@ -324,42 +353,130 @@ function FindSwimmableOffset(position, start_angle, radius, attempts, check_los,
             end)
 end
 
-local PICKUP_MUST_TAGS = { "_inventoryitem" }
+local function NoHoles(pt)
+    return not TheWorld.Map:IsPointNearHole(pt)
+end
+local NO_CHARLIE_TAGS = {"lunacyarea"}
+function FindCharlieRezSpotFor(inst)
+    local x, y, z
+    local nightlightmanager = TheWorld.components.nightlightmanager
+    if nightlightmanager ~= nil then
+        local nightlights = nightlightmanager:GetNightLightsWithFilter(nightlightmanager.Filter_OnlyOutTags, NO_CHARLIE_TAGS)
+        local nightlight = nightlightmanager:FindClosestNightLightFromListToInst(nightlights, inst)
+        if nightlight ~= nil then
+            x, y, z = nightlight.Transform:GetWorldPosition()
+        end
+    end
+    if x == nil then
+        if TheWorld.components.playerspawner ~= nil then
+            x, y, z = TheWorld.components.playerspawner:GetAnySpawnPoint()
+        end
+    end
+    if x == nil then
+        x, y, z = inst.Transform:GetWorldPosition() -- We tried.
+    end
+
+    local theta = math.random() * PI2
+    local offset = FindWalkableOffset(Vector3(x, y, z), theta, 2 + math.random() * 3, 8, false, false, NoHoles, false, false)
+    if offset then
+        x, z = x + offset.x, z + offset.z
+    end
+
+    return x, y, z
+end
+
+local PICKUP_MUST_ONEOF_TAGS = { "_inventoryitem", "pickable" }
 local PICKUP_CANT_TAGS = {
-    "INLIMBO", "NOCLICK", "irreplaceable", "knockbackdelayinteraction",
+    -- Items
+    "INLIMBO", "NOCLICK", "irreplaceable", "knockbackdelayinteraction", "event_trigger",
     "minesprung", "mineactive", "catchable",
-    "fire", "spider", "cursed", "paired", "bundle"
+    "fire", "light", "spider", "cursed", "paired", "bundle",
+    "heatrock", "deploykititem", "boatbuilder", "singingshell",
+    "archive_lockbox", "simplebook", "furnituredecor",
+    -- Pickables
+    "flower", "gemsocket", "structure",
+    -- Either
+    "donotautopick",
 }
+local function FindPickupableItem_filter(v, ba, owner, radius, furthestfirst, positionoverride, ignorethese, onlytheseprefabs, allowpickables, ispickable, worker, extra_filter)
+    if extra_filter ~= nil and not extra_filter(worker, v, owner) then
+        return false
+    end
+    
+    if AllBuilderTaggedRecipes[v.prefab] then
+        return false
+    end
+    -- NOTES(JBK): "donotautopick" for general class components here.
+    if v.components.armor or v.components.weapon or v.components.tool or v.components.equippable or v.components.sewing or v.components.erasablepaper then
+        return false
+    end
+    if v.components.burnable ~= nil and (v.components.burnable:IsBurning() or v.components.burnable:IsSmoldering()) then
+        return false
+    end
+    if ispickable then
+        if not allowpickables then
+            return false
+        end
+    else
+        if not (v.components.inventoryitem ~= nil and
+            v.components.inventoryitem.canbepickedup and
+            v.components.inventoryitem.cangoincontainer and
+            not v.components.inventoryitem:IsHeld()) then
+            return false
+        end
+    end
+    if ignorethese ~= nil and ignorethese[v] ~= nil and ignorethese[v].worker ~= worker then
+        return false
+    end
+    if onlytheseprefabs ~= nil and onlytheseprefabs[ispickable and v.components.pickable.product or v.prefab] == nil then
+        return false
+    end
+    if v.components.container ~= nil then -- Containers are most likely sorted and placed by the player do not pick them up.
+        return false
+    end
+    if v.components.bundlemaker ~= nil then -- Bundle creators are aesthetically placed do not pick them up.
+        return false
+    end
+    if v.components.bait ~= nil and v.components.bait.trap ~= nil then -- Do not steal baits.
+        return false
+    end
+    if v.components.trap ~= nil and not (v.components.trap:IsSprung() and v.components.trap:HasLoot()) then -- Only interact with traps that have something in it to take.
+        return false
+    end
+    if not ispickable and owner.components.inventory:CanAcceptCount(v, 1) <= 0 then -- TODO(JBK): This is not correct for traps nor pickables but they do not have real prefabs made yet to check against.
+        return false
+    end
+    if ba ~= nil and ba.target == v and (ba.action == ACTIONS.PICKUP or ba.action == ACTIONS.CHECKTRAP or ba.action == ACTIONS.PICK) then
+        return false
+    end
+
+    return v, ispickable
+end
 -- This function looks for an item on the ground that could be ACTIONS.PICKUP (or ACTIONS.CHECKTRAP if a trap) by the owner and subsequently put into the owner's inventory.
-function FindPickupableItem(owner, radius, furthestfirst)
+function FindPickupableItem(owner, radius, furthestfirst, positionoverride, ignorethese, onlytheseprefabs, allowpickables, worker, extra_filter)
     if owner == nil or owner.components.inventory == nil then
         return nil
     end
     local ba = owner:GetBufferedAction()
-    local x, y, z = owner.Transform:GetWorldPosition()
-    local ents = TheSim:FindEntities(x, y, z, radius, PICKUP_MUST_TAGS, PICKUP_CANT_TAGS)
+    local x, y, z
+    if positionoverride then
+        x, y, z = positionoverride:Get()
+    else
+        x, y, z = owner.Transform:GetWorldPosition()
+    end
+    local ents = TheSim:FindEntities(x, y, z, radius, nil, PICKUP_CANT_TAGS, PICKUP_MUST_ONEOF_TAGS)
     local istart, iend, idiff = 1, #ents, 1
     if furthestfirst then
         istart, iend, idiff = iend, istart, -1
     end
     for i = istart, iend, idiff do
         local v = ents[i]
-        if v.components.container == nil and -- Containers are most likely sorted and placed by the player do not pick them up.
-            v.components.bundlemaker == nil and -- Bundle creators are aesthetically placed do not pick them up.
-            v.components.inventoryitem ~= nil and
-            v.components.inventoryitem.canbepickedup and
-            v.components.inventoryitem.cangoincontainer and
-            not v.components.inventoryitem:IsHeld() and
-            (v.components.bait == nil or v.components.bait.trap == nil) and -- Do not steal baits.
-            owner.components.inventory:CanAcceptCount(v, 1) > 0 and -- TODO(JBK): This is not correct for traps but they do not have real prefabs made yet to check against.
-            (ba == nil or (ba.action ~= ACTIONS.PICKUP and ba.action ~= ACTIONS.CHECKTRAP) or ba.target ~= v) then
-            -- Only interact with traps that have something in it to take.
-            if v.components.trap == nil or v.components.trap:IsSprung() and v.components.trap:HasLoot() then
-                return v
-            end
+        local ispickable = v:HasTag("pickable")
+        if FindPickupableItem_filter(v, ba, owner, radius, furthestfirst, positionoverride, ignorethese, onlytheseprefabs, allowpickables, ispickable, worker, extra_filter) then
+            return v, ispickable
         end
     end
-    return nil
+    return nil, nil
 end
 
 local function _CanEntitySeeInDark(inst)
@@ -390,13 +507,14 @@ function CanEntitySeeInStorm(inst)
     return inst ~= nil and inst:IsValid() and _CanEntitySeeInStorm(inst)
 end
 
-local function _GetEntityStormLevel(inst)
-    --NOTE: GetStormLevel is available on players on server
-    --      and clients, but only accurate for local players.
-    --      stormwatcher is a server-side component.
-    return (inst.GetStormLevel ~= nil and inst:GetStormLevel())
-        or (inst.components.stormwatcher ~= nil and inst.components.stormwatcher.sandstormlevel)
-        or 0
+local function _IsEntityInAnyStormOrCloud(inst)
+	--NOTE: IsInAnyStormOrCloud is available on players on server and clients, but only accurate for local players.
+	if inst.IsInAnyStormOrCloud ~= nil then
+		return inst:IsInAnyStormOrCloud()
+	end
+	-- stormwatcher and miasmawatcher are a server-side components.
+	return (inst.components.stormwatcher ~= nil and inst.components.stormwatcher:GetStormLevel() >= TUNING.SANDSTORM_FULL_LEVEL)
+		or (inst.components.miasmawatcher ~= nil and inst.components.miasmawatcher:IsInMiasma())
 end
 
 function CanEntitySeePoint(inst, x, y, z)
@@ -405,7 +523,7 @@ function CanEntitySeePoint(inst, x, y, z)
         and (not inst.components.inkable or not inst.components.inkable.inked)
         and (TheSim:GetLightAtPoint(x, y, z) > TUNING.DARK_CUTOFF or
             _CanEntitySeeInDark(inst))
-        and (_GetEntityStormLevel(inst) < TUNING.SANDSTORM_FULL_LEVEL or
+		and (not _IsEntityInAnyStormOrCloud(inst) or
             _CanEntitySeeInStorm(inst) or
             inst:GetDistanceSqToPoint(x, y, z) < TUNING.SANDSTORM_VISION_RANGE_SQ)
 end
@@ -418,8 +536,11 @@ function CanEntitySeeTarget(inst, target)
     return CanEntitySeePoint(inst, x, y, z)
 end
 
-function SpringCombatMod(amount)
-    return TheWorld.state.isspring and amount * TUNING.SPRING_COMBAT_MOD or amount
+function SpringCombatMod(amount, forced) -- NOTES(JBK): This is an amplification modifier to increase damage.
+    return (forced or TheWorld.state.isspring) and amount * TUNING.SPRING_COMBAT_MOD or amount
+end
+function SpringGrowthMod(amount, forced) -- NOTES(JBK): This is a reduction modifier to reduce timer durations.
+    return (forced or TheWorld.state.isspring) and amount * TUNING.SPRING_GROWTH_MODIFIER or amount
 end
 
 function TemporarilyRemovePhysics(obj, time)
@@ -438,6 +559,9 @@ function ErodeAway(inst, erode_time)
 
     if inst.DynamicShadow ~= nil then
         inst.DynamicShadow:Enable(false)
+    end
+    if inst.components.floater ~= nil then
+        inst.components.floater:Erode(time_to_erode)
     end
 
     inst:StartThread(function()
@@ -528,20 +652,183 @@ function RegisterInventoryItemAtlas(atlas, imagename)
 	end
 end
 
+function GetInventoryItemAtlas_Internal(imagename, no_fallback)
+    local images1 = "images/inventoryimages1.xml"
+    local images2 = "images/inventoryimages2.xml"
+    local images3 = "images/inventoryimages3.xml"
+    return TheSim:AtlasContains(images1, imagename) and images1
+            or TheSim:AtlasContains(images2, imagename) and images2
+            or (not no_fallback or TheSim:AtlasContains(images3, imagename)) and images3
+            or nil
+end
+
+-- Testing and viewing skins on a more close level.
+if CAN_USE_DBUI then
+    require("dbui_no_package/debug_skins_data/hooks").Hooks("inventoryimages")
+end
+
 function GetInventoryItemAtlas(imagename, no_fallback)
 	local atlas = inventoryItemAtlasLookup[imagename]
 	if atlas then
 		return atlas
 	end
-	local images1 = "images/inventoryimages1.xml"
-	local images2 = "images/inventoryimages2.xml"
-	local images3 = "images/inventoryimages3.xml"
-	atlas =    TheSim:AtlasContains(images1, imagename) and images1
-			or TheSim:AtlasContains(images2, imagename) and images2
-			or (not no_fallback or TheSim:AtlasContains(images3, imagename)) and images3
-			or nil
+
+    atlas = GetInventoryItemAtlas_Internal(imagename, no_fallback)
+
 	if atlas ~= nil then
 		inventoryItemAtlasLookup[imagename] = atlas
 	end
 	return atlas
 end
+
+----------------------------------------------------------------------------------------------
+function GetMinimapAtlas_Internal(imagename)
+    local images1 = "minimap/minimap_data1.xml"
+    local images2 = "minimap/minimap_data2.xml"
+    return TheSim:AtlasContains(images1, imagename) and images1
+            or TheSim:AtlasContains(images2, imagename) and images2
+            or nil
+end
+
+local minimapAtlasLookup = {}
+function GetMinimapAtlas(imagename)
+	local atlas = minimapAtlasLookup[imagename]
+	if atlas then
+		return atlas
+	end
+
+    atlas = GetMinimapAtlas_Internal(imagename)
+
+	if atlas ~= nil then
+		minimapAtlasLookup[imagename] = atlas
+	end
+
+	return atlas
+end
+
+----------------------------------------------------------------------------------------------
+
+local scrapbookIconAtlasLookup = {}
+
+function RegisterScrapbookIconAtlas(atlas, imagename)
+	if atlas ~= nil and imagename ~= nil then
+		if scrapbookIconAtlasLookup[imagename] ~= nil then
+			if scrapbookIconAtlasLookup[imagename] ~= atlas then
+				print("RegisterScrapbookIconAtlas: Image '" .. imagename .. "' is already registered to atlas '" .. atlas .."'")
+			end
+		else
+			scrapbookIconAtlasLookup[imagename] = atlas
+		end
+	end
+end
+
+function GetScrapbookIconAtlas_Internal(imagename)
+    local images1 = "images/scrapbook_icons1.xml"
+    local images2 = "images/scrapbook_icons2.xml"
+    local images3 = "images/scrapbook_icons3.xml"
+    return TheSim:AtlasContains(images1, imagename) and images1
+            or TheSim:AtlasContains(images2, imagename) and images2
+            or TheSim:AtlasContains(images3, imagename) and images3
+            or nil
+end
+
+function GetScrapbookIconAtlas(imagename)
+	local atlas = scrapbookIconAtlasLookup[imagename]
+	if atlas then
+		return atlas
+	end
+
+    atlas = GetScrapbookIconAtlas_Internal(imagename)
+
+	if atlas ~= nil then
+		scrapbookIconAtlasLookup[imagename] = atlas
+	end
+
+	return atlas
+end
+
+----------------------------------------------------------------------------------------------
+
+local skillTreeBGAtlasLookup = {}
+
+function RegisterSkilltreeBGAtlas(atlas, imagename)
+	if atlas ~= nil and imagename ~= nil then
+		if skillTreeBGAtlasLookup[imagename] ~= nil then
+			if skillTreeBGAtlasLookup[imagename] ~= atlas then
+				print("RegisterSkilltreeBGAtlas: Image '" .. imagename .. "' is already registered to atlas '" .. atlas .."'")
+			end
+		else
+			skillTreeBGAtlasLookup[imagename] = atlas
+		end
+	end
+end
+
+function GetSkilltreeBG_Internal(imagename)
+    local images1 = "images/skilltree2.xml"
+    local images2 = "images/skilltree3.xml"
+    local images3 = "images/skilltree4.xml"
+    local images4 = "images/skilltree5.xml"
+    return TheSim:AtlasContains(images1, imagename) and images1
+            or TheSim:AtlasContains(images2, imagename) and images2
+            or TheSim:AtlasContains(images3, imagename) and images3
+            or TheSim:AtlasContains(images4, imagename) and images4
+            or nil
+end
+
+function GetSkilltreeBG(imagename)
+	local atlas = skillTreeBGAtlasLookup[imagename]
+	if atlas then
+		return atlas
+	end
+
+    atlas = GetSkilltreeBG_Internal(imagename)
+
+	if atlas ~= nil then
+		skillTreeBGAtlasLookup[imagename] = atlas
+	end
+
+	return atlas
+end
+
+local skillTreeIconsAtlasLookup = {}
+
+function RegisterSkilltreeIconsAtlas(atlas, imagename)
+	if atlas ~= nil and imagename ~= nil then
+		if skillTreeIconsAtlasLookup[imagename] ~= nil then
+			if skillTreeIconsAtlasLookup[imagename] ~= atlas then
+				print("RegisterSkilltreeIconsAtlas: Image '" .. imagename .. "' is already registered to atlas '" .. atlas .."'")
+			end
+		else
+			skillTreeIconsAtlasLookup[imagename] = atlas
+		end
+	end
+end
+
+function GetSkilltreeIconAtlas_Internal(imagename)
+    return "images/skilltree_icons.xml"
+
+    -- NOTES(DiogoW): For future!
+
+    -- local images1 = "images/skilltree_icons1.xml"
+    -- local images2 = "images/skilltree_icons2.xml"
+    -- return TheSim:AtlasContains(images1, imagename) and images1
+    --         or TheSim:AtlasContains(images2, imagename) and images2
+    --         or nil
+end
+
+function GetSkilltreeIconAtlas(imagename)
+	local atlas = skillTreeIconsAtlasLookup[imagename]
+	if atlas then
+		return atlas
+	end
+
+    atlas = GetSkilltreeIconAtlas_Internal(imagename)
+
+	if atlas ~= nil then
+		skillTreeIconsAtlasLookup[imagename] = atlas
+	end
+
+	return atlas
+end
+
+----------------------------------------------------------------------------------------------

@@ -337,7 +337,6 @@ local function OnLoadPostPass(inst)
     end
 end
 
-
 local function create_hutch()
     local inst = CreateEntity()
 
@@ -362,6 +361,8 @@ local function create_hutch()
     inst:AddTag("hutch")
     inst:AddTag("notraptrigger")
     inst:AddTag("noauradamage")
+    inst:AddTag("devourable")
+    
 
     inst.MiniMapEntity:SetIcon("hutch.png")
     inst.MiniMapEntity:SetCanUseCache(false)
@@ -369,6 +370,9 @@ local function create_hutch()
     inst.AnimState:SetBank("hutch")
     inst.AnimState:SetBuild("hutch_build")
     inst.AnimState:Hide("fx_lure_light")
+    inst.scrapbook_scale = 2
+    inst.scrapbook_animoffsetx = 120
+    inst.scrapbook_animoffsety = -100
 
     inst.DynamicShadow:SetSize(2, 1.5)
 
@@ -427,6 +431,10 @@ local function create_hutch()
     inst.components.sleeper.testperiod = GetRandomWithVariance(6, 2)
     inst.components.sleeper:SetSleepTest(ShouldSleep)
     inst.components.sleeper:SetWakeTest(ShouldWakeUp)
+
+    inst:AddComponent("acidinfusible")
+    inst.components.acidinfusible:SetMultipliers(TUNING.ACID_INFUSION_MULT.STRONGER)
+    inst.components.acidinfusible:SetFXLevel(1)
 
     MakeHauntableDropFirstItem(inst)
     AddHauntableCustomReaction(inst, OnHaunt, false, false, true)

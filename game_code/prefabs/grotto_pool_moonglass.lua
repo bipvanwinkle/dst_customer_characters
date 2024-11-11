@@ -88,13 +88,15 @@ local function mineable_glass(name, anim)
 
         inst.no_wet_prefix = true
 
-        inst:SetDeployExtraSpacing(2)
+		inst:SetDeploySmartRadius(2)
 
         inst:SetPhysicsRadiusOverride(2)
 
         inst:AddTag("moonglass")
 
         inst:SetPrefabNameOverride("moonglass_rock")
+
+        inst.scrapbook_proxy = "grotto_pool_big"
 
         inst.entity:SetPristine()
         if not TheWorld.ismastersim then
@@ -117,7 +119,7 @@ local function mineable_glass(name, anim)
         inst.components.lootdropper.y_speed = 14
         inst.components.lootdropper.y_speed_variance = 4
 
-        inst.AnimState:SetTime(math.random() * inst.AnimState:GetCurrentAnimationLength())
+		inst.AnimState:SetFrame(math.random(inst.AnimState:GetCurrentAnimationNumFrames()) - 1)
 
         return inst
     end

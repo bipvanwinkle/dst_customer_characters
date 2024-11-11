@@ -122,12 +122,15 @@ local function common_fn(bank, build, isinventoryitem)
     inst.entity:AddNetwork()
 
     MakeInventoryPhysics(inst)
+	inst:SetDeploySmartRadius(DEPLOYSPACING_RADIUS[DEPLOYSPACING.LESS] / 2)
 
     inst.MiniMapEntity:SetIcon("trap_teeth.png")
 
     inst.AnimState:SetBank(bank)
     inst.AnimState:SetBuild(build)
     inst.AnimState:PlayAnimation("idle")
+
+    inst.scrapbook_damage = TUNING.TRAP_TEETH_DAMAGE
 
     inst:AddTag("trap")
 
@@ -173,6 +176,8 @@ end
 
 local function MakeTeethTrapNormal()
     local inst = common_fn("trap_teeth", "trap_teeth", true)
+
+    inst.scrapbook_specialinfo = "TRAPTEETH"
 
     if not TheWorld.ismastersim then
         return inst

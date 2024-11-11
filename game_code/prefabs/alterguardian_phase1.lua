@@ -107,8 +107,8 @@ end
 
 local function teleport_override_fn(inst)
     local ipos = inst:GetPosition()
-    local offset = FindWalkableOffset(ipos, 2*PI*math.random(), 10, 8, true, false)
-        or FindWalkableOffset(ipos, 2*PI*math.random(), 14, 8, true, false)
+    local offset = FindWalkableOffset(ipos, TWOPI*math.random(), 10, 8, true, false)
+        or FindWalkableOffset(ipos, TWOPI*math.random(), 14, 8, true, false)
 
     return (offset ~= nil and ipos + offset) or ipos
 end
@@ -143,10 +143,12 @@ local function onothercollide(inst, other)
         SpawnPrefab("collapse_small").Transform:SetPosition(other.Transform:GetWorldPosition())
         other.components.workable:Destroy(inst)
 
-    elseif other.components.health ~= nil and not other.components.health:IsDead() then
+	elseif other.components.combat ~= nil
+		and other.components.health ~= nil and not other.components.health:IsDead()
+		and (other:HasTag("wall") or other:HasTag("structure"))
+		then
         inst.SoundEmitter:PlaySound("moonstorm/creatures/boss/alterguardian1/onothercollide")
         inst.components.combat:DoAttack(other)
-
     end
 end
 
@@ -157,10 +159,6 @@ local function oncollide(inst, other)
         ShakeAllCameras(CAMERASHAKE.SIDE, .5, .05, .1, inst, 40)
         inst:DoTaskInTime(2 * FRAMES, onothercollide, other)
         inst._collisions[other] = true
-
-        if other:HasTag("player") and not other:HasTag("playerghost") then
-            inst:PushEvent("rollcollidedwithplayer")
-        end
     end
 end
 
@@ -212,7 +210,7 @@ local function DoGestaltSummon(inst)
     local num_gestalts = GetRandomMinMax(MIN_GESTALTS, MAX_GESTALTS) + math.ceil((1 - inst.components.health:GetPercent()) * EXTRA_GESTALTS_BYHEALTH)
 
     local angle_increment = 3.75*PI / num_gestalts -- almost 2pi twice; loop 2 times, but slightly offset
-    local initial_angle = 2*PI*math.random()
+    local initial_angle = TWOPI*math.random()
 
     for i = 1, num_gestalts do
         -- Spawn a collection of gestalts in a haphazard ring around the boss.
@@ -332,6 +330,13 @@ local function hauntchancefn(inst)
     end
 end
 
+local scrapbook_adddeps = {
+    "moonglass",
+    "moonglass_charged",
+    "alterguardianhat",
+    "alterguardianhatshard",
+}
+
 local BURN_OFFSET = Vector3(0, 1.5, 0)
 local function fn()
     local inst = CreateEntity()
@@ -360,6 +365,7 @@ local function fn()
     inst:AddTag("noepicmusic")
     inst:AddTag("scarytoprey")
     inst:AddTag("soulless")
+    inst:AddTag("lunar_aligned")
 
     inst._musicdirty = net_event(inst.GUID, "alterguardian_phase1._musicdirty", "musicdirty")
     inst._playingmusic = false
@@ -372,6 +378,11 @@ local function fn()
 
         return inst
     end
+
+    inst.scrapbook_adddeps = scrapbook_adddeps
+
+    inst.scrapbook_damage = { TUNING.ALTERGUARDIAN_PHASE1_ROLLDAMAGE, TUNING.ALTERGUARDIAN_PHASE3_DAMAGE }
+    inst.scrapbook_maxhealth = TUNING.ALTERGUARDIAN_PHASE1_HEALTH + TUNING.ALTERGUARDIAN_PHASE2_STARTHEALTH + TUNING.ALTERGUARDIAN_PHASE3_STARTHEALTH
 
     --inst._loot_dropped = nil      -- For handling save/loads during death; see SGalterguardian_phase1
 
@@ -432,7 +443,8 @@ local function fn()
     MakeLargeFreezableCharacter(inst)
     inst.components.freezable:SetResistance(8)
 
-    MakeHauntableGoToStateWithChanceFunction(inst, "tantrum_pre", hauntchancefn, TUNING.ALTERGUARDIAN_PHASE1_ATTACK_PERIOD, TUNING.HAUNT_SMALL)
+	inst:AddComponent("hauntable")
+	inst.components.hauntable:SetHauntValue(TUNING.HAUNT_TINY)
 
     inst:ListenForEvent("attacked", OnAttacked)
     inst:ListenForEvent("phasetransition", OnPhaseTransition)

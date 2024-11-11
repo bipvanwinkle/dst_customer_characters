@@ -2,34 +2,110 @@
 return{
 	ACTIONFAIL =
 	{
+        GENERIC =
+        {
+            ITEMMIMIC = "Infernal trickster.",
+        },
+
+		ACTIVATE =
+		{
+			LOCKED_GATE = "Thou shalt not keep me out!",
+            HOSTBUSY = "His attention lies elsewhere.",
+            CARNIVAL_HOST_HERE = "Where art thou, raven? Do show yourself!",
+            NOCARNIVAL = "It seems the ravens hath returned to Odin.",
+			EMPTY_CATCOONDEN = "Fie! There's naught to pillage!",
+			KITCOON_HIDEANDSEEK_NOT_ENOUGH_HIDERS = "This hunt will require more players.",
+			KITCOON_HIDEANDSEEK_NOT_ENOUGH_HIDING_SPOTS = "This is not a worthy stage for our players!",
+			KITCOON_HIDEANDSEEK_ONE_GAME_PER_DAY = "Let us reprise another time.",
+            MANNEQUIN_EQUIPSWAPFAILED = "It is not trained to carry such things.",
+            PILLOWFIGHT_NO_HANDPILLOW = "Thou wouldst send me into the fray unarmed?",
+            NOTMYBERNIE = "This beautiful beast only obeys its master.",
+            NOTMERM = "The little beastie must gather her own legions.",
+            NOKELP = "only_used_by_wurt",
+--fallback to speech_wilson.lua             HASMERMLEADER = "only_used_by_wurt",
+		},
+        APPLYMODULE =
+        {
+            COOLDOWN = "only_used_by_wx78",
+            NOTENOUGHSLOTS = "only_used_by_wx78",
+        },
         APPRAISE =
         {
             NOTNOW = "Finish thine business with haste! I have glory to attain!",
         },
-        REPAIR =
+        ATTUNE =
         {
-            WRONGPIECE = "It will not stay in place!",
+            NOHEALTH = "Alas, I am too stricken.",
+        },
+        BATHBOMB =
+        {
+            GLASSED = "'Tis shielded!",
+            ALREADY_BOMBED = "Someone has enchanted it already.",
+        },
+        BEDAZZLE =
+        {
+--fallback to speech_wilson.lua             BURNING = "only_used_by_webber",
+--fallback to speech_wilson.lua             BURNT = "only_used_by_webber",
+--fallback to speech_wilson.lua             FROZEN = "only_used_by_webber",
+--fallback to speech_wilson.lua             ALREADY_BEDAZZLED = "only_used_by_webber",
+        },
+        BEGIN_QUEST =
+        {
+            ONEGHOST = "only_used_by_wendy",
         },
         BUILD =
         {
             MOUNTED = "I must first dismount from my mighty steed.",
             HASPET = "I can only command one beastie!",
 			TICOON = "I hath already found a guide.",
+            BUSY_STATION = "It is not my time yet.",
         },
-		SHAVE =
+        CARNIVALGAME_FEED =
+        {
+            TOO_LATE = "I must move with greater haste!",
+        },
+		CAST_POCKETWATCH =
 		{
-			AWAKEBEEFALO = "Let him sleep. Then I'll prune him.",
-			GENERIC = "Unshaveworthy.",
-			NOBITS = "But there's nothing to trim!",
---fallback to speech_wilson.lua             REFUSE = "only_used_by_woodie",
-            SOMEONEELSESBEEFALO = "This beast doth not belong to me.",
+--fallback to speech_wilson.lua 			GENERIC = "only_used_by_wanda",
+--fallback to speech_wilson.lua 			REVIVE_FAILED = "only_used_by_wanda",
+--fallback to speech_wilson.lua 			WARP_NO_POINTS_LEFT = "only_used_by_wanda",
+--fallback to speech_wilson.lua 			SHARD_UNAVAILABLE = "only_used_by_wanda",
 		},
-		STORE =
+		CAST_SPELLBOOK =
 		{
-			GENERIC = "It is already brimming with goods.",
-			NOTALLOWED = "I fear that does not go there.",
-			INUSE = "My stalwart companion currently has use of that.",
-            NOTMASTERCHEF = "T'would not do to meddle with my ally's effects.",
+--fallback to speech_wilson.lua 			NO_TOPHAT = "only_used_by_waxwell",
+		},
+		CASTAOE =
+		{
+--fallback to speech_wilson.lua 			NO_MAX_SANITY = "only_used_by_waxwell",
+            NOT_ENOUGH_EMBERS = "only_used_by_willow",
+            NO_TARGETS = "only_used_by_willow",
+            CANT_SPELL_MOUNTED = "only_used_by_willow",
+            SPELL_ON_COOLDOWN = "only_used_by_willow",
+			NO_BATTERY = "only_used_by_winona",
+			NO_CATAPULTS = "only_used_by_winona",
+		},
+        CASTSPELL =
+        {
+            TERRAFORM_TOO_SOON = "only_used_by_wurt",
+        },
+        CHANGEIN =
+        {
+            GENERIC = "That's where I keep all my favorite furs and pelts.",
+            BURNING = "Gasp! My furs!",
+            INUSE = "I shall let them select their garments first.",
+            NOTENOUGHHAIR = "First the beast must grow back its mane.",
+            NOOCCUPANT = "I cannot groom without a beast.",
+        },
+        CHARGE_FROM =
+        {
+            NOT_ENOUGH_CHARGE = "only_used_by_wx78",
+            CHARGE_FULL = "only_used_by_wx78",
+        },
+		COMPARE_WEIGHABLE =
+		{
+            FISH_TOO_SMALL = "This wee beastie will not bring me glory.",
+            OVERSIZEDVEGGIES_TOO_SMALL = "This non-meat isn't even worthy of competing!",
 		},
         CONSTRUCT =
         {
@@ -37,83 +113,45 @@ return{
             NOTALLOWED = "Alas! It doth not go there!",
             EMPTY = "It requireth materials.",
             MISMATCH = "Alas! 'Tis the wrong plans.",
+            NOTREADY = "'Tis no time for pleasantries!",
         },
-		RUMMAGE =
-		{
-			GENERIC = "That is not a job for a warrior!",
-			INUSE = "True warriors wait their turn.",
-            NOTMASTERCHEF = "T'would not do to meddle with my ally's effects.",
-		},
-		UNLOCK =
-        {
---fallback to speech_wilson.lua         	WRONGKEY = "I can't do that.",
-        },
-		USEKLAUSSACKKEY =
-        {
-        	WRONGKEY = "The true key must be out there somewhere.",
-        	KLAUS = "Not when there is battle to be won!",
-			QUAGMIRE_WRONGKEY = "By Odin's beard, I shall find the right key!",
-        },
-		ACTIVATE =
-		{
-			LOCKED_GATE = "Thou shalt not keep me out!",
-            HOSTBUSY = "His attention lies elsewhere.",
-            CARNIVAL_HOST_HERE = "Where art though, raven? Do show yourself!",
-            NOCARNIVAL = "It seems the ravens hath returned to Odin.",
-			EMPTY_CATCOONDEN = "Fie! There's naught to pillage!",
-			KITCOON_HIDEANDSEEK_NOT_ENOUGH_HIDERS = "This hunt will require more players.",
-			KITCOON_HIDEANDSEEK_NOT_ENOUGH_HIDING_SPOTS = "This is not a worthy stage for our players!",
-			KITCOON_HIDEANDSEEK_ONE_GAME_PER_DAY = "Let us reprise another time.",
-            MANNEQUIN_EQUIPSWAPFAILED = "It is not trained to carry such things.",
-		},
-		OPEN_CRAFTING =
-		{
-            PROFESSIONALCHEF = "T'would not do to meddle with my ally's effects.",
-			SHADOWMAGIC = "A tragic tale of woe and misery!",
-		},
         COOK =
         {
             GENERIC = "Alas! Bested by cookware!",
             INUSE = "I shall wait whilst my allies plan their feast.",
             TOOFAR = "I must close the gap between us!",
         },
-        START_CARRAT_RACE =
-        {
-            NO_RACERS = "The veggie beasts must take their places for the race to commence!",
-        },
-
 		DISMANTLE =
 		{
 			COOKING = "I will let it finish its work.",
 			INUSE = "I shall valiantly wait my turn.",
 			NOTEMPTY = "First, it must be emptied!",
         },
+        DISMANTLE_POCKETWATCH =
+        {
+--fallback to speech_wilson.lua             ONCOOLDOWN = "only_used_by_wanda",
+        },
+        DRAW =
+        {
+            NOIMAGE = "The muses will not visit me if I do not place an item first.",
+        },
+        ENTER_GYM =
+        {
+--fallback to speech_wilson.lua             NOWEIGHT = "only_used_by_wolfang",
+--fallback to speech_wilson.lua             UNBALANCED = "only_used_by_wolfang",
+--fallback to speech_wilson.lua             ONFIRE = "only_used_by_wolfang",
+--fallback to speech_wilson.lua             SMOULDER = "only_used_by_wolfang",
+--fallback to speech_wilson.lua             HUNGRY = "only_used_by_wolfang",
+--fallback to speech_wilson.lua             FULL = "only_used_by_wolfang",
+        },
+        FILL_OCEAN =
+        {
+            UNSUITABLE_FOR_PLANTS = "The plants will like this about as much as I like them.",
+        },
         FISH_OCEAN =
 		{
 			TOODEEP = "Come closer, ye wee fishy cowards!",
 		},
-        OCEAN_FISHING_POND =
-		{
-			WRONGGEAR = "Tis not the rod I require.",
-		},
-        --wickerbottom specific action
---fallback to speech_wilson.lua         READ =
---fallback to speech_wilson.lua         {
---fallback to speech_wilson.lua             GENERIC = "only_used_by_waxwell_and_wicker",
---fallback to speech_wilson.lua             NOBIRDS = "only_used_by_waxwell_and_wicker",
---fallback to speech_wilson.lua             NOWATERNEARBY = "only_used_by_waxwell_and_wicker",
---fallback to speech_wilson.lua             TOOMANYBIRDS = "only_used_by_waxwell_and_wicker",
---fallback to speech_wilson.lua             WAYTOOMANYBIRDS = "only_used_by_waxwell_and_wicker",
---fallback to speech_wilson.lua             NOFIRES =       "only_used_by_waxwell_and_wicker",
---fallback to speech_wilson.lua             NOSILVICULTURE = "only_used_by_waxwell_and_wicker",
---fallback to speech_wilson.lua             NOHORTICULTURE = "only_used_by_waxwell_and_wicker",
---fallback to speech_wilson.lua             NOTENTACLEGROUND = "only_used_by_waxwell_and_wicker",
---fallback to speech_wilson.lua             NOSLEEPTARGETS = "only_used_by_waxwell_and_wicker",
---fallback to speech_wilson.lua             TOOMANYBEES = "only_used_by_waxwell_and_wicker",
---fallback to speech_wilson.lua             NOMOONINCAVES = "only_used_by_waxwell_and_wicker",
---fallback to speech_wilson.lua             ALREADYFULLMOON = "only_used_by_waxwell_and_wicker",
---fallback to speech_wilson.lua         },
-
         GIVE =
         {
             GENERIC = "T'will not work.",
@@ -124,6 +162,7 @@ return{
             GHOSTHEART = "The spirit cannot be returned.",
             NOTGEM = "This object is not blessed with the power of the gods.",
             WRONGGEM = "This gem was not chosen for this purpose.",
+			NOGENERATORSKILL = "Nay, that would be foolhardy.",
             NOTSTAFF = "The gods may frown were I to do that.",
             MUSHROOMFARM_NEEDSSHROOM = "Forest sprites have no need of that.",
             MUSHROOMFARM_NEEDSLOG = "The sprite home requires sprucing up. With magical spruce!",
@@ -148,6 +187,10 @@ return{
             NOTAMONKEY = "Speak plainly! I understand not thine chittering.",
             QUEENBUSY = "Something else hath caught her attention.",
         },
+        GIVE_TACKLESKETCH =
+		{
+			DUPLICATE = "We have already conquered this knowledge.",
+        },
         GIVETOPLAYER =
         {
             FULL = "They're not strong enough to carry more!",
@@ -162,26 +205,44 @@ return{
             SLEEPING = "Such sweet slumber graces thy face... Maybe later.",
             BUSY = "I'll try once more when they're free.",
         },
-        WRITE =
+        HARVEST =
         {
-            GENERIC = "I fear I cannot!",
-            INUSE = "I shall valiantly wait my turn.",
+            DOER_ISNT_MODULE_OWNER = "I respect thine loyalty to our metal warrior, scout.",
         },
-        DRAW =
+        HEAL =
         {
-            NOIMAGE = "The muses will not visit me if I do not place an item first.",
+            NOT_MERM = "'Tis for the fish beasts.",
         },
-        CHANGEIN =
+        HERD_FOLLOWERS =
         {
-            GENERIC = "That's where I keep all my favorite furs and pelts.",
-            BURNING = "Gasp! My furs!",
-            INUSE = "I shall let them select their garments first.",
-            NOTENOUGHHAIR = "First the beast must grow back its mane.",
-            NOOCCUPANT = "I cannot groom without a beast.",
+            WEBBERONLY = "The spiderchild is the only one who can tame those little beasts!",
         },
-        ATTUNE =
+        HITCHUP =
         {
-            NOHEALTH = "Alas, I am too stricken.",
+            NEEDBEEF = "I have a hitching post, but no beast.",
+            NEEDBEEF_CLOSER = "I shall have to coax the beast closer.",
+            BEEF_HITCHED = "The beast hath already been secured to its post.",
+            INMOOD = "The beast is in a foul temper.",
+        },
+		LOOKAT = --fail strings for close inspection
+		{
+			-- Winona specific
+--fallback to speech_wilson.lua 			ROSEGLASSES_INVALID = "only_used_by_winona",
+--fallback to speech_wilson.lua 			ROSEGLASSES_COOLDOWN = "only_used_by_winona",
+--fallback to speech_wilson.lua             ROSEGLASSES_DISMISS = "only_used_by_winona",
+--fallback to speech_wilson.lua             ROSEGLASSES_STUMPED = "only_used_by_winona",
+			--
+		},
+        LOWER_SAIL_FAIL =
+        {
+            "By Aegir, you will bend to my will!",
+            "Oh-ho! Feisty, are we?",
+            "I will not be defeated by my own vessel!",
+        },
+        MARK =
+        {
+            ALREADY_MARKED = "I must stand by my choice, even in the heat of competition!",
+            NOT_PARTICIPANT = "I cannot join in the competition without a beastie of my own.",
         },
         MOUNT =
         {
@@ -189,27 +250,18 @@ return{
             INUSE = "I'll need to be faster than that in battle!",
 			SLEEPING = "Rise, beastie! We ride!",
         },
-        SADDLE =
+        OCEAN_FISHING_POND =
+		{
+			WRONGGEAR = "Tis not the rod I require.",
+		},
+		OPEN_CRAFTING =
+		{
+            PROFESSIONALCHEF = "T'would not do to meddle with my ally's effects.",
+			SHADOWMAGIC = "A tragic tale of woe and misery!",
+		},
+        PICK =
         {
-            TARGETINCOMBAT = "I'll only ride it if it's the victor.",
-        },
-        TEACH =
-        {
-            --Recipes/Teacher
-            KNOWN = "I already wield such knowledge.",
-            CANTLEARN = "That knowledge is forbidden by the gods.",
-
-            --MapRecorder/MapExplorer
-            WRONGWORLD = "This map is for some distant land...",
-
-			--MapSpotRevealer/messagebottle
-			MESSAGEBOTTLEMANAGER_NOT_FOUND = "This is nary the time nor place.",--Likely trying to read messagebottle treasure map in caves
-
-            STASH_MAP_NOT_FOUND = "'Tis a map with no directions.",-- Likely trying to read stash map  in world without stash
-        },
-        WRAPBUNDLE =
-        {
-            EMPTY = "I cannot wrap that which does not exist!",
+            NOTHING_INSIDE = "Blast! Empty.",
         },
         PICKUP =
         {
@@ -224,67 +276,10 @@ return{
 --fallback to speech_wilson.lua 			NO_HEAVY_LIFTING = "only_used_by_wanda",
             FULL_OF_CURSES = "'Tis not a treasure worth taking.",
         },
-        SLAUGHTER =
-        {
-            TOOFAR = "Alas, it hath escaped my fury.",
-        },
-        REPLATE =
-        {
-            MISMATCH = "This food doth need a different dish.",
-            SAMEDISH = "I hath used a dish already.",
-        },
-        SAIL =
-        {
-        	REPAIR = "No need, the ship's spirit is strong.",
-        },
-        ROW_FAIL =
-        {
-            BAD_TIMING0 = "I must take heed of the ocean's rhythm.",
-            BAD_TIMING1 = "A Viking never gives up!",
-            BAD_TIMING2 = "Patience is a warrior's friend!",
-        },
-        LOWER_SAIL_FAIL =
-        {
-            "By Aegir, you will bend to my will!",
-            "Oh-ho! Feisty, are we?",
-            "I will not be defeated by my own vessel!",
-        },
-        BATHBOMB =
-        {
-            GLASSED = "'Tis shielded!",
-            ALREADY_BOMBED = "Someone has enchanted it already.",
-        },
-		GIVE_TACKLESKETCH =
-		{
-			DUPLICATE = "We have already conquered this knowledge.",
-		},
-		COMPARE_WEIGHABLE =
-		{
-            FISH_TOO_SMALL = "This wee beastie will not bring me glory.",
-            OVERSIZEDVEGGIES_TOO_SMALL = "This non-meat isn't even worthy of competing!",
-		},
-        BEGIN_QUEST =
-        {
-            ONEGHOST = "only_used_by_wendy",
-        },
-		TELLSTORY =
-		{
-			GENERIC = "only_used_by_walter",
---fallback to speech_wilson.lua 			NOT_NIGHT = "only_used_by_walter",
---fallback to speech_wilson.lua 			NO_FIRE = "only_used_by_walter",
-		},
-        SING_FAIL =
-        {
-            SAMESONG = "Again, from the top? Nay! The show must go on!",
-        },
         PLANTREGISTRY_RESEARCH_FAIL =
         {
             GENERIC = "Its ways are already known to me.",
             FERTILIZER = "I need not know more.",
-        },
-        FILL_OCEAN =
-        {
-            UNSUITABLE_FOR_PLANTS = "The plants will like this about as much as I like them.",
         },
         POUR_WATER =
         {
@@ -293,6 +288,113 @@ return{
         POUR_WATER_GROUNDTILE =
         {
             OUT_OF_WATER = "Nary a drop left.",
+        },
+        --wickerbottom specific action
+--fallback to speech_wilson.lua         READ =
+--fallback to speech_wilson.lua         {
+--fallback to speech_wilson.lua             GENERIC = "only_used_by_waxwell_and_wicker",
+--fallback to speech_wilson.lua             NOBIRDS = "only_used_by_waxwell_and_wicker",
+--fallback to speech_wilson.lua             NOWATERNEARBY = "only_used_by_waxwell_and_wicker",
+--fallback to speech_wilson.lua             TOOMANYBIRDS = "only_used_by_waxwell_and_wicker",
+--fallback to speech_wilson.lua             WAYTOOMANYBIRDS = "only_used_by_waxwell_and_wicker",
+--fallback to speech_wilson.lua             NOFIRES =       "only_used_by_waxwell_and_wicker",
+--fallback to speech_wilson.lua             NOSILVICULTURE = "only_used_by_waxwell_and_wicker",
+--fallback to speech_wilson.lua             NOHORTICULTURE = "only_used_by_waxwell_and_wicker",
+--fallback to speech_wilson.lua             NOTENTACLEGROUND = "only_used_by_waxwell_and_wicker",
+--fallback to speech_wilson.lua             NOSLEEPTARGETS = "only_used_by_waxwell_and_wicker",
+--fallback to speech_wilson.lua             TOOMANYBEES = "only_used_by_waxwell_and_wicker",
+--fallback to speech_wilson.lua             NOMOONINCAVES = "only_used_by_waxwell_and_wicker",
+--fallback to speech_wilson.lua             ALREADYFULLMOON = "only_used_by_waxwell_and_wicker",
+--fallback to speech_wilson.lua         },
+		REMOTE_TELEPORT =
+		{
+			NOSKILL = "only_used_by_winona",
+			NODEST = "only_used_by_winona",
+		},
+        REMOVEMODULES =
+        {
+            NO_MODULES = "only_used_by_wx78",
+        },
+        REPAIR =
+        {
+            WRONGPIECE = "It will not stay in place!",
+        },
+        REPLATE =
+        {
+            MISMATCH = "This food doth need a different dish.",
+            SAMEDISH = "I hath used a dish already.",
+        },
+        ROW_FAIL =
+        {
+            BAD_TIMING0 = "I must take heed of the ocean's rhythm.",
+            BAD_TIMING1 = "A Viking never gives up!",
+            BAD_TIMING2 = "Patience is a warrior's friend!",
+        },
+		RUMMAGE =
+		{
+			GENERIC = "That is not a job for a warrior!",
+			INUSE = "True warriors wait their turn.",
+            NOTMASTERCHEF = "T'would not do to meddle with my ally's effects.",
+            NOTAMERM = "T'would not be wise to anger the fish beasts.",
+		},
+        SADDLE =
+        {
+            TARGETINCOMBAT = "I'll only ride it if it's the victor.",
+        },
+		SHAVE =
+		{
+			AWAKEBEEFALO = "Let him sleep. Then I'll prune him.",
+			GENERIC = "Unshaveworthy.",
+			NOBITS = "But there's nothing to trim!",
+--fallback to speech_wilson.lua             REFUSE = "only_used_by_woodie",
+            SOMEONEELSESBEEFALO = "This beast doth not belong to me.",
+		},
+        SING_FAIL =
+        {
+            SAMESONG = "Again, from the top? Nay! The show must go on!",
+        },
+        SLAUGHTER =
+        {
+            TOOFAR = "Alas, it hath escaped my fury.",
+        },
+        START_CARRAT_RACE =
+        {
+            NO_RACERS = "The veggie beasts must take their places for the race to commence!",
+        },
+		STORE =
+		{
+			GENERIC = "It is already brimming with goods.",
+			NOTALLOWED = "I fear that does not go there.",
+			INUSE = "My stalwart companion currently has use of that.",
+            NOTMASTERCHEF = "T'would not do to meddle with my ally's effects.",
+		},
+        TEACH =
+        {
+            --Recipes/Teacher
+            KNOWN = "I already wield such knowledge.",
+            CANTLEARN = "That knowledge is forbidden by the gods.",
+
+            --MapRecorder/MapExplorer
+            WRONGWORLD = "This map is for some distant land...",
+
+			--MapSpotRevealer/messagebottle
+			MESSAGEBOTTLEMANAGER_NOT_FOUND = "This is nary the time nor place.",--Likely trying to read messagebottle treasure map in caves
+
+            STASH_MAP_NOT_FOUND = "'Tis a map with no directions.",-- Likely trying to read stash map  in world without stash                  
+        },
+		TELLSTORY =
+		{
+			GENERIC = "only_used_by_walter",
+--fallback to speech_wilson.lua 			NOT_NIGHT = "only_used_by_walter",
+--fallback to speech_wilson.lua 			NO_FIRE = "only_used_by_walter",
+		},
+		UNLOCK =
+        {
+--fallback to speech_wilson.lua             WRONGKEY = "I can't do that.",
+        },
+        UPGRADE =
+        {
+--fallback to speech_wilson.lua             BEDAZZLED = "only_used_by_webber",
         },
         USEITEMON =
         {
@@ -303,17 +405,20 @@ return{
             BEEF_BELL_ALREADY_USED = "That beast belongs to another.",
             BEEF_BELL_HAS_BEEF_ALREADY = "I've already chosen my beast.",
         },
-        HITCHUP =
+		USEKLAUSSACKKEY =
         {
-            NEEDBEEF = "I have a hitching post, but no beast.",
-            NEEDBEEF_CLOSER = "I shall have to coax the beast closer.",
-            BEEF_HITCHED = "The beast hath already been secured to its post.",
-            INMOOD = "The beast is in a foul temper.",
+            WRONGKEY = "The true key must be out there somewhere.",
+            KLAUS = "Not when there is battle to be won!",
+			QUAGMIRE_WRONGKEY = "By Odin's beard, I shall find the right key!",
         },
-        MARK =
+        WRAPBUNDLE =
         {
-            ALREADY_MARKED = "I must stand by my choice, even in the heat of competition!",
-            NOT_PARTICIPANT = "I cannot join in the competition without a beastie of my own.",
+            EMPTY = "I cannot wrap that which does not exist!",
+        },
+        WRITE =
+        {
+            GENERIC = "I fear I cannot!",
+            INUSE = "I shall valiantly wait my turn.",
         },
         YOTB_STARTCONTEST =
         {
@@ -323,66 +428,6 @@ return{
         YOTB_UNLOCKSKIN =
         {
             ALREADYKNOWN = "This is known to me.",
-        },
-        CARNIVALGAME_FEED =
-        {
-            TOO_LATE = "I must move with greater haste!",
-        },
-        HERD_FOLLOWERS =
-        {
-            WEBBERONLY = "The spiderchild is the only one who can tame those little beasts!",
-        },
-        BEDAZZLE =
-        {
---fallback to speech_wilson.lua             BURNING = "only_used_by_webber",
---fallback to speech_wilson.lua             BURNT = "only_used_by_webber",
---fallback to speech_wilson.lua             FROZEN = "only_used_by_webber",
---fallback to speech_wilson.lua             ALREADY_BEDAZZLED = "only_used_by_webber",
-        },
-        UPGRADE =
-        {
---fallback to speech_wilson.lua             BEDAZZLED = "only_used_by_webber",
-        },
-		CAST_POCKETWATCH =
-		{
---fallback to speech_wilson.lua 			GENERIC = "only_used_by_wanda",
---fallback to speech_wilson.lua 			REVIVE_FAILED = "only_used_by_wanda",
---fallback to speech_wilson.lua 			WARP_NO_POINTS_LEFT = "only_used_by_wanda",
---fallback to speech_wilson.lua 			SHARD_UNAVAILABLE = "only_used_by_wanda",
-		},
-        DISMANTLE_POCKETWATCH =
-        {
---fallback to speech_wilson.lua             ONCOOLDOWN = "only_used_by_wanda",
-        },
-
-        ENTER_GYM =
-        {
---fallback to speech_wilson.lua             NOWEIGHT = "only_used_by_wolfang",
---fallback to speech_wilson.lua             UNBALANCED = "only_used_by_wolfang",
---fallback to speech_wilson.lua             ONFIRE = "only_used_by_wolfang",
---fallback to speech_wilson.lua             SMOULDER = "only_used_by_wolfang",
---fallback to speech_wilson.lua             HUNGRY = "only_used_by_wolfang",
---fallback to speech_wilson.lua             FULL = "only_used_by_wolfang",
-        },
-
-        APPLYMODULE =
-        {
-            COOLDOWN = "only_used_by_wx78",
-            NOTENOUGHSLOTS = "only_used_by_wx78",
-        },
-        REMOVEMODULES =
-        {
-            NO_MODULES = "only_used_by_wx78",
-        },
-        CHARGE_FROM =
-        {
-            NOT_ENOUGH_CHARGE = "only_used_by_wx78",
-            CHARGE_FULL = "only_used_by_wx78",
-        },
-
-        HARVEST =
-        {
-            DOER_ISNT_MODULE_OWNER = "I respect thine loyalty to our metal warrior, scout.",
         },
     },
 
@@ -396,6 +441,7 @@ return{
 	ACTIONFAIL_GENERIC = "If I can't do it, it can't be done!",
 	ANNOUNCE_BOAT_LEAK = "Our vessel hath sprung a leak!",
 	ANNOUNCE_BOAT_SINK = "A Viking shalln't abandon her ship!",
+    ANNOUNCE_PREFALLINVOID = "'Tis not my time to fall!",
 	ANNOUNCE_DIG_DISEASE_WARNING = "Be banished, beastly blight!", --removed
 	ANNOUNCE_PICK_DISEASE_WARNING = "Foul!", --removed
 	ANNOUNCE_ADVENTUREFAIL = "Back to the Otherworld, victory shall be mine!",
@@ -405,6 +451,13 @@ return{
 --fallback to speech_wilson.lua     ANNOUNCE_TOOMANYBIRDS = "only_used_by_waxwell_and_wicker",
 --fallback to speech_wilson.lua     ANNOUNCE_WAYTOOMANYBIRDS = "only_used_by_waxwell_and_wicker",
 --fallback to speech_wilson.lua     ANNOUNCE_NOWATERNEARBY = "only_used_by_waxwell_and_wicker",
+
+	--waxwell specific
+--fallback to speech_wilson.lua 	ANNOUNCE_SHADOWLEVEL_ITEM = "only_used_by_waxwell",
+--fallback to speech_wilson.lua 	ANNOUNCE_EQUIP_SHADOWLEVEL_T1 = "only_used_by_waxwell",
+--fallback to speech_wilson.lua 	ANNOUNCE_EQUIP_SHADOWLEVEL_T2 = "only_used_by_waxwell",
+--fallback to speech_wilson.lua 	ANNOUNCE_EQUIP_SHADOWLEVEL_T3 = "only_used_by_waxwell",
+--fallback to speech_wilson.lua 	ANNOUNCE_EQUIP_SHADOWLEVEL_T4 = "only_used_by_waxwell",
 
     --wolfgang specific
 --fallback to speech_wilson.lua     ANNOUNCE_NORMALTOMIGHTY = "only_used_by_wolfang",
@@ -447,6 +500,21 @@ return{
 --fallback to speech_wilson.lua     ANNOUNCE_CHARGE = "only_used_by_wx78",
 --fallback to speech_wilson.lua 	ANNOUNCE_DISCHARGE = "only_used_by_wx78",
 
+    -- Winona specific
+--fallback to speech_wilson.lua     ANNOUNCE_ROSEGLASSES = 
+--fallback to speech_wilson.lua     {
+--fallback to speech_wilson.lua         "only_used_by_winona",
+--fallback to speech_wilson.lua         "only_used_by_winona",
+--fallback to speech_wilson.lua         "only_used_by_winona",
+--fallback to speech_wilson.lua     },
+    ANNOUNCE_CHARLIESAVE = 
+    {
+        "only_used_by_winona",
+    },
+	ANNOUNCE_ENGINEERING_CAN_UPGRADE = "only_used_by_winona",
+	ANNOUNCE_ENGINEERING_CAN_DOWNGRADE = "only_used_by_winona",
+	ANNOUNCE_ENGINEERING_CAN_SIDEGRADE = "only_used_by_winona",
+
 	ANNOUNCE_EAT =
 	{
 		GENERIC = "Meat makes my heart sing!",
@@ -468,6 +536,8 @@ return{
 --fallback to speech_wilson.lua         SAME_OLD_5 = "only_used_by_warly",
 --fallback to speech_wilson.lua 		TASTY = "only_used_by_warly",
     },
+
+	ANNOUNCE_FOODMEMORY = "only_used_by_warly",
 
     ANNOUNCE_ENCUMBERED =
     {
@@ -497,10 +567,16 @@ return{
 	ANNOUNCE_HIGHRESEARCH = "I am an excellent craftswoman.",
 	ANNOUNCE_HOUNDS = "The beasts are approaching...",
 	ANNOUNCE_WORMS = "The earth quakes with the approach of a foe!",
+    ANNOUNCE_WORMS_BOSS = "A behemoth approaches.",
+    ANNOUNCE_ACIDBATS = "Show yourselves, winged foes!",
 	ANNOUNCE_HUNGRY = "How I long for a feast!",
 	ANNOUNCE_HUNT_BEAST_NEARBY = "Hush... The creature is near.",
 	ANNOUNCE_HUNT_LOST_TRAIL = "I've lost the tracks.",
 	ANNOUNCE_HUNT_LOST_TRAIL_SPRING = "It's too muddy for trailing.",
+    ANNOUNCE_HUNT_START_FORK = "A battle lies at the end of this trail. Onward!",
+    ANNOUNCE_HUNT_SUCCESSFUL_FORK = "My quarry will not suspect my presence...",
+    ANNOUNCE_HUNT_WRONG_FORK = "My warrior instincts are telling me something is not right...",
+    ANNOUNCE_HUNT_AVOID_FORK = "Perhaps I shall start with an easier prey.",
 	ANNOUNCE_INV_FULL = "I'm carrying all I can!",
 	ANNOUNCE_KNOCKEDOUT = "Ugh, my head.",
 	ANNOUNCE_LOWRESEARCH = "That wasn't very exciting.",
@@ -532,6 +608,7 @@ return{
 	ANNOUNCE_TRAP_WENT_OFF = "That wasn't part of the plan.",
 	ANNOUNCE_UNIMPLEMENTED = "It is not of this world.",
 	ANNOUNCE_WORMHOLE = "That was a sloppy adventure.",
+--fallback to speech_wilson.lua     ANNOUNCE_WORMHOLE_SAMESPOT = "only_used_by_winona",
 	ANNOUNCE_TOWNPORTALTELEPORT = "Fear not! I have arrived!",
 	ANNOUNCE_CANFIX = "\nI can repair this.",
 	ANNOUNCE_ACCOMPLISHMENT = "May I return to battle now?",
@@ -574,7 +651,7 @@ return{
     --hallowed nights
     ANNOUNCE_SPOOKED = "Doth mine eyes deceive me?",
 	ANNOUNCE_BRAVERY_POTION = "Fear! I hath bested you!",
-	ANNOUNCE_MOONPOTION_FAILED = "Twas all in vain!",
+	ANNOUNCE_MOONPOTION_FAILED = "'Twas all in vain!",
 
 	--winter's feast
 	ANNOUNCE_EATING_NOT_FEASTING = "Tis more than enough to share!",
@@ -725,11 +802,14 @@ return{
 --fallback to speech_wilson.lua         BOOK_TEMPERATURE = "only_used_by_wurt",
 --fallback to speech_wilson.lua         BOOK_LIGHT = "only_used_by_wurt",
 --fallback to speech_wilson.lua         BOOK_RAIN = "only_used_by_wurt",
+--fallback to speech_wilson.lua         BOOK_MOON = "only_used_by_wurt",
+--fallback to speech_wilson.lua         BOOK_BEES = "only_used_by_wurt",
 
 --fallback to speech_wilson.lua         BOOK_HORTICULTURE_UPGRADED = "only_used_by_wurt",
 --fallback to speech_wilson.lua         BOOK_RESEARCH_STATION = "only_used_by_wurt",
 --fallback to speech_wilson.lua         BOOK_LIGHT_UPGRADED = "only_used_by_wurt",
     },
+
     ANNOUNCE_WEAK_RAT = "The wee beast is on death's door.",
 
     ANNOUNCE_CARRAT_START_RACE = "Onward, to victory!",
@@ -765,15 +845,17 @@ return{
 	},
 
     ANNOUNCE_NOINSPIRATION = "I must warm up my voice... in the heat of battle!",
+    ANNOUNCE_NOTSKILLEDENOUGH = "I... I fear I lack the skill to perform this piece...",
     ANNOUNCE_BATTLESONG_INSTANT_TAUNT_BUFF = "\"You scullion! You rampallian! You fustilarian! I'll tickle your catastrophe!\"",
     ANNOUNCE_BATTLESONG_INSTANT_PANIC_BUFF = "\"By the pricking of my thumbs, something wicked this way comes!\"",
+    ANNOUNCE_BATTLESONG_INSTANT_REVIVE_BUFF = "\"Death, a necessary end, will come when it will come,\" but not today, my allies!",
 
 --fallback to speech_wilson.lua     ANNOUNCE_WANDA_YOUNGTONORMAL = "only_used_by_wanda",
 --fallback to speech_wilson.lua     ANNOUNCE_WANDA_NORMALTOOLD = "only_used_by_wanda",
 --fallback to speech_wilson.lua     ANNOUNCE_WANDA_OLDTONORMAL = "only_used_by_wanda",
 --fallback to speech_wilson.lua     ANNOUNCE_WANDA_NORMALTOYOUNG = "only_used_by_wanda",
 
-	ANNOUNCE_POCKETWATCH_PORTAL = "T'was not one of my more graceful exits...",
+	ANNOUNCE_POCKETWATCH_PORTAL = "'Twas not one of my more graceful exits...",
 
 --fallback to speech_wilson.lua 	ANNOUNCE_POCKETWATCH_MARK = "only_used_by_wanda",
 --fallback to speech_wilson.lua 	ANNOUNCE_POCKETWATCH_RECALL = "only_used_by_wanda",
@@ -858,6 +940,64 @@ return{
 
     ANNOUNCE_OFF_SCRIPT = "How unprofessional!",
 
+    ANNOUNCE_COZY_SLEEP = "A well-rested warrior am I!",
+
+	--
+	ANNOUNCE_TOOL_TOOWEAK = "This meager tool hath not the strength to break it.",
+
+    ANNOUNCE_LUNAR_RIFT_MAX = "Something doth shine like a beacon in the distance.",
+    ANNOUNCE_SHADOW_RIFT_MAX = "Hark! 'Tis a most unnatural light!",
+
+    ANNOUNCE_SCRAPBOOK_FULL = "I hath already completed my tome.",
+
+    ANNOUNCE_CHAIR_ON_FIRE = "This is fine.",
+
+    ANNOUNCE_HEALINGSALVE_ACIDBUFF_DONE = "My defense against the burning rain hath dwindled away!",
+
+    ANNOUNCE_COACH = 
+    {
+        "only_used_by_wolfgang",
+        "only_used_by_wolfgang",
+        "only_used_by_wolfgang",
+        "only_used_by_wolfgang",
+        "only_used_by_wolfgang",
+        "only_used_by_wolfgang",
+        "only_used_by_wolfgang",
+        "only_used_by_wolfgang",
+        "only_used_by_wolfgang",
+    },
+    ANNOUNCE_WOLFGANG_WIMPY_COACHING = "only_used_by_wolfgang",
+    ANNOUNCE_WOLFGANG_MIGHTY_COACHING = "only_used_by_wolfgang",
+    ANNOUNCE_WOLFGANG_BEGIN_COACHING = "only_used_by_wolfgang",
+    ANNOUNCE_WOLFGANG_END_COACHING = "only_used_by_wolfgang",
+    ANNOUNCE_WOLFGANG_NOTEAM = 
+    {
+        "only_used_by_wolfgang",
+        "only_used_by_wolfgang",
+        "only_used_by_wolfgang",
+    },
+
+    ANNOUNCE_YOTD_NOBOATS = "I have strayed too far from the starting place!",
+    ANNOUNCE_YOTD_NOCHECKPOINTS = "Alas, there is nary a waypoint to guide me in this race!",
+    ANNOUNCE_YOTD_NOTENOUGHBOATS = "Space for a challenger must be made, lest I be forced to race alone.",
+
+    ANNOUNCE_OTTERBOAT_OUTOFSHALLOWS = "This meager vessel will not withstand such rugged waters!",
+    ANNOUNCE_OTTERBOAT_DENBROKEN = "I suppose 'tis retribution for destroying the home of the slippery beast.",
+
+    ANNOUNCE_GATHER_MERM = "only_used_by_wurt",
+
+    -- rifts 4
+    ANNOUNCE_EXIT_GELBLOB = "Thank Odin, I am free!",
+	ANNOUNCE_SHADOWTHRALL_STEALTH = "Revealeth thyself, fiend!",
+    ANNOUNCE_RABBITKING_AGGRESSIVE = "Which denizen of the underworld draws near?",
+    ANNOUNCE_RABBITKING_PASSIVE = "A creature approaches from beneath.",
+    ANNOUNCE_RABBITKING_LUCKY = "Odd rabbit! A sign from the gods?",
+    ANNOUNCE_RABBITKING_LUCKYCAUGHT = "I have you, fateful rabbit!",
+    ANNOUNCE_RABBITKINGHORN_BADSPAWNPOINT = "Are you not satisfied with the place?!",
+
+	-- Hallowed Nights 2024
+	ANNOUNCE_NOPUMPKINCARVINGONFIRE = "Curses! I was not done with that!",
+
 	BATTLECRY =
 	{
 		GENERIC = "Valhalla awaits!",
@@ -892,7 +1032,7 @@ return{
         ANTLIONTRINKET = "A fitting tribute!",
         SANDSPIKE = "The earth itself dares to fight me!",
         SANDBLOCK = "Tis a castle of sand!",
-        GLASSSPIKE = "Twas forged in flame.",
+        GLASSSPIKE = "'Twas forged in flame.",
         GLASSBLOCK = "Such beauty!",
         ABIGAIL_FLOWER =
         {
@@ -1341,7 +1481,7 @@ return{
         {
             ON = "Behold! It blazes bright!",
             OFF = "I demand strong, passionate colors. Red!",
-            BURNT = "Twas consumed by Hel's fire.",
+            BURNT = "'Twas consumed by Hel's fire.",
         },
         MUSHROOM_LIGHT =
         {
@@ -1372,18 +1512,25 @@ return{
         {
             GENERIC = "What magic is this?",
             BLOOM = "An enthusiastic performance!",
+            ACIDCOVERED = "The smell fills me with loathing.",
         },
         MUSHTREE_MEDIUM =
         {
             GENERIC = "I do like its glow.",
             BLOOM = "What a great effect!",
+            ACIDCOVERED = "The smell fills me with loathing.",
         },
         MUSHTREE_SMALL =
         {
             GENERIC = "I don't care for mushrooms.",
             BLOOM = "I'll fight alongside you any day!",
+            ACIDCOVERED = "The smell fills me with loathing.",
         },
-        MUSHTREE_TALL_WEBBED = "This mushroom needs to be retired.",
+        MUSHTREE_TALL_WEBBED =
+        {
+            GENERIC = "This mushroom needs to be retired.",
+            ACIDCOVERED = "The smell fills me with loathing.",
+        },
         SPORE_TALL =
         {
             GENERIC = "At peace, benevolent river spirit.",
@@ -1462,6 +1609,8 @@ return{
         TURF_MOSAIC_RED = "A piece of the battlefield.",
         TURF_MOSAIC_BLUE = "A piece of the battlefield.",
 
+        TURF_BEARD_RUG = "I shan't ask any questions.",
+
 		POWCAKE = "What in the name of the unicorn is this?",
         CAVE_ENTRANCE = "What treasures lie beneath?",
         CAVE_ENTRANCE_RUINS = "What treasures lie beneath?",
@@ -1499,7 +1648,8 @@ return{
                 "What do you desire, apparition?",
                 "What do you desire, apparition?",
             },
-		},
+        },
+
 		ADVENTURE_PORTAL = "Adventure is calling.",
 		AMULET = "It's red, and a fighter. Just like me!",
 		ANIMAL_TRACK = "Oh! I love a good hunt.",
@@ -1568,7 +1718,7 @@ return{
 			SOME = "The forest sprite has taken root.",
 			EMPTY = "An empty home for forest sprites.",
 			ROTTEN = "A blight has beset this log. Another!",
-			BURNT = "Twas consumed by a mighty inferno!",
+			BURNT = "'Twas consumed by a mighty inferno!",
 			SNOWCOVERED = "Not all can withstand the frost giant's touch.",
 		},
 		BEEFALO =
@@ -1583,6 +1733,8 @@ return{
             RIDER = "With the stalwart beast at my side, we ride tonight!",
             PUDGY = "My mouth's watering just looking at it...",
             MYPARTNER = "A proud an noble beast, bonded to a proud and noble warrior.",
+            DEAD = "A fallen steed.",
+            DEAD_MYPARTNER = "It seems Valhalla will not take my steed just yet.",
 		},
 
 		BEEFALOHAT = "That would suit me.",
@@ -1644,7 +1796,7 @@ return{
             RARE = "Tis a blessed scroll.",
         },
         SKETCH = "The muses' knowledge, inscribed upon an ancient scroll!",
-		COOKINGRECIPECARD = 
+		COOKINGRECIPECARD =
 		{
 			GENERIC = "'Tis but a jumbled mess of words.",
 		},
@@ -1744,10 +1896,10 @@ return{
         CHESSPIECE_HORNUCOPIA = "Feasts, feasts, everywhere, and not a ham to eat.",
         CHESSPIECE_PIPE = "Tis but a jest.",
         CHESSPIECE_DEERCLOPS = "Our fight shall be made ballad.",
-        CHESSPIECE_BEARGER = "Twas a battle to sing of.",
+        CHESSPIECE_BEARGER = "'Twas a battle to sing of.",
         CHESSPIECE_MOOSEGOOSE =
         {
-            "Twas an honor to fight thee.",
+            "'Twas an honor to fight thee.",
         },
         CHESSPIECE_DRAGONFLY = "Tis the trophy of glorious battle!",
 		CHESSPIECE_MINOTAUR = "The beast guarded its treasure well, but not well enough.",
@@ -1765,9 +1917,15 @@ return{
         CHESSPIECE_BEEFALO = "A stone tribute to my faithful steed.",
 		CHESSPIECE_KITCOON = "A mighty pillar for a mighty family!",
 		CHESSPIECE_CATCOON = "You have my respect, fellow hunter.",
+        CHESSPIECE_MANRABBIT = "Their weapons were strange, but they possessed a warrior's spirit.",
         CHESSPIECE_GUARDIANPHASE3 = "You fought well, Champion of Mani.",
         CHESSPIECE_EYEOFTERROR = "I shall feast my eyes upon this trophy!",
         CHESSPIECE_TWINSOFTERROR = "A battle I shan't soon forget.",
+        CHESSPIECE_DAYWALKER = "The beast proved himself to be a worthy adversary!",
+        CHESSPIECE_DEERCLOPS_MUTATED = "'Twas an unnatural thing. Slaying it was a kindness.",
+        CHESSPIECE_WARG_MUTATED = "'Twas no match for my spear.",
+        CHESSPIECE_BEARGER_MUTATED = "May the beast now be at peace.",
+        CHESSPIECE_SHARKBOI = "Until we meet again, bait-breathed warrior.",
 
         CHESSJUNK1 = "It's only a pile of fallen warriors.",
         CHESSJUNK2 = "More fallen mechanical warriors.",
@@ -1856,7 +2014,11 @@ return{
 		DRAGONFLY = "Ah, dragon! At last we meet!",
 		ARMORDRAGONFLY = "Excellent armor for the heat of battle.",
 		DRAGON_SCALES = "Mystical scales.",
-		DRAGONFLYCHEST = "This chest is worthy of my weapons.",
+		DRAGONFLYCHEST =
+		{
+			GENERIC = "This chest is worthy of my weapons.",
+            UPGRADED_STACKSIZE = "This chest is worthy of my weapons, and then some.",
+		},
 		DRAGONFLYFURNACE =
 		{
 			HAMMERED = "It has seen much battle.",
@@ -2144,6 +2306,7 @@ return{
 		KNIGHT = "I taste a battle on the breeze!",
 		KOALEFANT_SUMMER = "Dearest creature... I am going to eat you.",
 		KOALEFANT_WINTER = "Poor unsuspecting meat beast.",
+		KOALEFANT_CARCASS = "This creature is no more.",
 		KRAMPUS = "You don't scare me, goat!",
 		KRAMPUS_SACK = "The sack itself is the present.",
 		LEIF = "That is an ancient woodland being.",
@@ -2505,6 +2668,7 @@ return{
 		SILK = "Useful for binding, and for remembering victories past.",
 		SKELETON = "Rest easy in Valhalla.",
 		SCORCHED_SKELETON = "Rest easy, spirit. Your fight is over.",
+        SKELETON_NOTPLAYER = "Didst thou fall in battle, beast?",
 		SKULLCHEST = "Ah, that was a good battle.", --removed
 		SMALLBIRD =
 		{
@@ -2621,8 +2785,11 @@ return{
 		{
 			GENERIC = "A place to store my helm and spear whilst I rest.",
 			BURNT = "Its walls were torn down by fire.",
+            UPGRADED_STACKSIZE = "Enough room to store an entire armory!",
 		},
 		TREASURECHEST_TRAP = "I am always ready.",
+        CHESTUPGRADE_STACKSIZE = "Be this science or witchcraft?", -- Describes the kit upgrade item.
+		COLLAPSEDCHEST = "Who hath rendered a shambles of our booty?",
 		SACRED_CHEST =
 		{
 			GENERIC = "What foul manner of chest is this?",
@@ -2664,7 +2831,7 @@ return{
         TRINKET_32 = "Reveal mine destiny, oh great fates!", --Cubic Zirconia Ball
         TRINKET_33 = "The creature has been forever imprisoned upon the ring.", --Spider Ring
         TRINKET_34 = "Begone, foul magic!", --Monkey Paw
-        TRINKET_35 = "Twas a poison, most assuredly.", --Empty Elixir
+        TRINKET_35 = "'Twas a poison, most assuredly.", --Empty Elixir
         TRINKET_36 = "Evidence of the undead. Stay wary, my allies!", --Faux fangs
         TRINKET_37 = "For warding off Loki's minions.", --Broken Stake
         TRINKET_38 = "There is a tiny world trapped within!", -- Binoculars Griftlands trinket
@@ -2744,13 +2911,13 @@ return{
         },
         CLAYWARG =
         {
-        	GENERIC = "Lo! What terrible beast!",
-        	STATUE = "T'would be a glorious battle, were it alive.",
+            GENERIC = "Lo! What terrible beast!",
+            STATUE = "T'would be a glorious battle, were it alive.",
         },
         CLAYHOUND =
         {
-        	GENERIC = "I shall fell you swiftly!",
-        	STATUE = "Tis a terrible wolf, turned to stone.",
+            GENERIC = "I shall fell you swiftly!",
+            STATUE = "Tis a terrible wolf, turned to stone.",
         },
         HOUNDWHISTLE = "It casts a spell upon the dogged beasts.",
         CHESSPIECE_CLAYHOUND = "A hound of the hunt!",
@@ -2860,6 +3027,34 @@ return{
         },
         BEEFALO_GROOMER_ITEM = "I must prepare!",
 
+        YOTR_RABBITSHRINE =
+        {
+            GENERIC = "The rabbit seems pleased with my offering.",
+            EMPTY = "What should be sacrificed to the beast's maw?",
+            BURNT = "It must have displeased the gods.",
+        },
+
+        NIGHTCAPHAT = "Prepare for slumber!",
+
+        YOTR_FOOD1 = "Bah! 'Tis naught but a meat-shaped veggie cake!",
+        YOTR_FOOD2 = "I do not trust whatever lies within.",
+        YOTR_FOOD3 = "A delicious sight indeed!",
+        YOTR_FOOD4 = "A trio of tasty morsels.",
+
+        YOTR_TOKEN = "Who dares to face me in the ring?",
+
+        COZY_BUNNYMAN = "I am not fooled by their cozy exterior.",
+
+        HANDPILLOW_BEEFALOWOOL = "It is filled with the hair of the woolen beasties.",
+        HANDPILLOW_KELP = "'Tis a pillow from Njoror's domain.",
+        HANDPILLOW_PETALS = "As good a use as any for flimsy petals.",
+        HANDPILLOW_STEELWOOL = "Only the strong-willed could sleep on such a thing.",
+
+        BODYPILLOW_BEEFALOWOOL = "It is filled with the hair of the woolen beasties.",
+        BODYPILLOW_KELP = "'Tis a pillow from Njoror's domain.",
+        BODYPILLOW_PETALS = "As good a use as any for flimsy petals.",
+        BODYPILLOW_STEELWOOL = "Only the strong-willed could sleep on such a thing.",
+
 		BISHOP_CHARGE_HIT = "Rrraugh!",
 		TRUNKVEST_SUMMER = "It will not suffice in the frozen wastes.",
 		TRUNKVEST_WINTER = "The warm pelt of a bested creature. A fine garment.",
@@ -2891,6 +3086,10 @@ return{
 		WALL_WOOD_ITEM = "A mediocre fortification.",
 		WALL_MOONROCK = "Wholly impregnable, a worthy fortification!",
 		WALL_MOONROCK_ITEM = "Our fortress shall be impenetrable!",
+		WALL_DREADSTONE = "These fortifications will strike fear into my enemies' hearts!",
+		WALL_DREADSTONE_ITEM = "Fashioned from cursed stone.",
+        WALL_SCRAP = "It'll do.",
+        WALL_SCRAP_ITEM = "It'll do.",
 		FENCE = "Tis not my kind of fencing.",
         FENCE_ITEM = "Not for fortification. Merely the farm.",
         FENCE_GATE = "A tiny replica of Valhalla's gates.",
@@ -2917,7 +3116,11 @@ return{
 		WATERMELON = "It makes a good sound when you hit it.",
 		WATERMELON_COOKED = "Warm and red, but it doesn't flow.",
 		WATERMELONHAT = "It's almost like wearing a pelt.",
-		WAXWELLJOURNAL = "A tragic tale of woe and misery!",
+		WAXWELLJOURNAL =
+		{
+			GENERIC = "A tragic tale of woe and misery!",
+--fallback to speech_wilson.lua 			NEEDSFUEL = "only_used_by_waxwell",
+		},
 		WETGOOP = "Slop.",
         WHIP = "Loud and powerful!",
 		WINTERHAT = "Warm, but not suited for combat.",
@@ -2950,7 +3153,7 @@ return{
         WINTER_FOOD3 = "T'would look as divine on the tree as in mine mouth!", --candy cane
         WINTER_FOOD4 = "Stay back, foul creation!", --fruitcake
         WINTER_FOOD5 = "We feast tonight!", --yule log cake
-        WINTER_FOOD6 = "Twas plucked straight from my nightmares!", --plum pudding
+        WINTER_FOOD6 = "'Twas plucked straight from my nightmares!", --plum pudding
         WINTER_FOOD7 = "Something so foul shall never pass my lips!", --apple cider
         WINTER_FOOD8 = "Warms the soul.", --hot cocoa
         WINTER_FOOD9 = "Imbibable eggs!", --eggnog
@@ -3087,7 +3290,7 @@ return{
         BOOK_FOSSIL = "The curse of Alviss dwells within.",
 		LAVAARENA_BERNIE = "The call of battle has arisen in thee!",
 		SPEAR_LANCE = "Tis a divine spear!",
-		BOOK_ELEMENTAL = "Twas not meant for mortal eyes.",
+		BOOK_ELEMENTAL = "'Twas not meant for mortal eyes.",
 		LAVAARENA_ELEMENTAL = "Thy fire giant shall fight by our side.",
 
    		LAVAARENA_ARMORLIGHT = "That is not fit for a warrior!",
@@ -3102,7 +3305,7 @@ return{
         LAVAARENA_HEALINGFLOWERHAT = "A blessing from Freya is contained within.",
         LAVAARENA_LIGHTDAMAGERHAT = "Horns, sharp as the spear of the Valkyrie.",
         LAVAARENA_STRONGDAMAGERHAT = "Empower me with thy Nox strength!",
-        LAVAARENA_TIARAFLOWERPETALSHAT = "Twas not made for a warrior.",
+        LAVAARENA_TIARAFLOWERPETALSHAT = "'Twas not made for a warrior.",
         LAVAARENA_EYECIRCLETHAT = "I'd not dabble in thy horrid magic.",
         LAVAARENA_RECHARGERHAT = "Magic stone, empower my spirit!",
         LAVAARENA_HEALINGGARLANDHAT = "Tis heavily laden with Freya's blessings.",
@@ -3185,7 +3388,7 @@ return{
 
 		QUAGMIRE_SAFE =
 		{
-			GENERIC = "Twas left by cities past.",
+			GENERIC = "'Twas left by cities past.",
 			LOCKED = "Tis sealed away from prying eyes and prying hands.",
 		},
 
@@ -3204,9 +3407,9 @@ return{
 		QUAGMIRE_PEBBLECRAB = "Thou cannot hide from me!",
 
 
-		QUAGMIRE_RUBBLE_CARRIAGE = "Twas pillaged long ago.",
+		QUAGMIRE_RUBBLE_CARRIAGE = "'Twas pillaged long ago.",
         QUAGMIRE_RUBBLE_CLOCK = "The time is nigh!",
-        QUAGMIRE_RUBBLE_CATHEDRAL = "Twas the site of a vicious raid.",
+        QUAGMIRE_RUBBLE_CATHEDRAL = "'Twas the site of a vicious raid.",
         QUAGMIRE_RUBBLE_PUBDOOR = "It once led to adventure. Alas, no more.",
         QUAGMIRE_RUBBLE_ROOF = "It offers no sanctuary.",
         QUAGMIRE_RUBBLE_CLOCKTOWER = "The time is nigh!",
@@ -3315,14 +3518,16 @@ return{
         	GENERIC = "Reinforcements hath arrived! To battle!",
         	OFF = "It has no fighting spirit.",
         	BURNING = "Tis engulfed in flame!",
-        	BURNT = "Twas devoured by Hel's fire!",
+        	BURNT = "'Twas devoured by Hel's fire!",
+			SLEEP = "Reinforcements hath arrived! To battle!",
         },
         WINONA_SPOTLIGHT =
         {
         	GENERIC = "It can't get enough of me!",
         	OFF = "It has no fighting spirit.",
         	BURNING = "Tis engulfed in flame!",
-        	BURNT = "Twas devoured by Hel's fire!",
+        	BURNT = "'Twas devoured by Hel's fire!",
+			SLEEP = "It can't get enough of me!",
         },
         WINONA_BATTERY_LOW =
         {
@@ -3330,16 +3535,68 @@ return{
         	LOWPOWER = "T'will not hold out much longer!",
         	OFF = "It hath lost its incredible power!",
         	BURNING = "Tis engulfed in flame!",
-        	BURNT = "Twas devoured by Hel's fire!",
+        	BURNT = "'Twas devoured by Hel's fire!",
         },
         WINONA_BATTERY_HIGH =
         {
-        	GENERIC = "Tis fueled by glorious magic.",
-        	LOWPOWER = "T'will not hold out much longer!",
-        	OFF = "It hath lost its incredible power!",
-        	BURNING = "Tis engulfed in flame!",
-        	BURNT = "Twas devoured by Hel's fire!",
+			GENERIC = "Tis fueled by glorious magic.",
+			LOWPOWER = "T'will not hold out much longer!",
+			OFF = "It hath lost its incredible power!",
+			BURNING = "Tis engulfed in flame!",
+			BURNT = "'Twas devoured by Hel's fire!",
+			OVERLOADED = "It must catch its breath.",
         },
+		--v3 Winona
+		WINONA_REMOTE =
+		{
+			GENERIC = "The tinkerer commands her armaments with the touch of a button.",
+			OFF = "It has no fighting spirit.",
+			CHARGING = "The tinkerer commands her armaments with the touch of a button.",
+			CHARGED = "The tinkerer commands her armaments with the touch of a button.",
+		},
+		WINONA_TELEBRELLA =
+		{
+			GENERIC = "My ally is most resourceful.",
+--fallback to speech_wilson.lua             MISSINGSKILL = "only_used_by_winona",
+			OFF = "It has no fighting spirit.",
+			CHARGING = "My ally is most resourceful.",
+			CHARGED = "My ally is most resourceful.",
+		},
+		WINONA_TELEPORT_PAD_ITEM =
+		{
+			GENERIC = "Bring home the spoils of war!",
+--fallback to speech_wilson.lua             MISSINGSKILL = "only_used_by_winona",
+			OFF = "It has no fighting spirit.",
+			BURNING = "Tis engulfed in flame!",
+			BURNT = "'Twas devoured by Hel's fire!",
+		},
+		WINONA_STORAGE_ROBOT =
+		{
+			GENERIC = "The tinkerer's mechanical page.",
+			OFF = "Rest and regain your strength, little one.",
+			SLEEP = "The tinkerer's mechanical page.",
+			CHARGING = "Rest and regain your strength, little one.",
+			CHARGED = "Rest and regain your strength, little one.",
+		},
+		INSPECTACLESBOX = "only_used_by_winona",
+		INSPECTACLESBOX2 = "only_used_by_winona",
+		INSPECTACLESHAT = 
+        {
+            GENERIC = "A warrior hath no need for such things.",
+            MISSINGSKILL = "only_used_by_winona",
+        },
+		ROSEGLASSESHAT =
+        {
+            GENERIC = "They reveal visions to my ally. I just hope she remains wary.",
+            MISSINGSKILL = "only_used_by_winona",
+        },
+		CHARLIERESIDUE = "only_used_by_winona",
+		CHARLIEROSE = "only_used_by_winona",
+        WINONA_MACHINEPARTS_1 = "only_used_by_winona",
+        WINONA_MACHINEPARTS_2 = "only_used_by_winona",
+		WINONA_RECIPESCANNER = "only_used_by_winona",
+		WINONA_HOLOTELEPAD = "only_used_by_winona",
+		WINONA_HOLOTELEBRELLA = "only_used_by_winona",
 
         --Wormwood
         COMPOSTWRAP = "I question my ally's tastes.",
@@ -3370,7 +3627,7 @@ return{
         MOON_TREE =
         {
             BURNING = "Tis consumed by flame!",
-            BURNT = "This tree, twas burnt to the ground.",
+            BURNT = "This tree, 'twas burnt to the ground.",
             CHOPPED = "Chopped by the warrior of the woods!",
             GENERIC = "Tis lovely as Yggdrasil's picture in my mind.",
         },
@@ -3441,9 +3698,9 @@ return{
         ICEBERG =
         {
             GENERIC = "A trap left by the dastardly ice giants, no doubt.", --unimplemented
-            MELTED = "Twas no match for this great heat.", --unimplemented
+            MELTED = "'Twas no match for this great heat.", --unimplemented
         },
-        ICEBERG_MELTED = "Twas no match for this great heat.", --unimplemented
+        ICEBERG_MELTED = "'Twas no match for this great heat.", --unimplemented
 
         MINIFLARE = "Never split thy party!",
         MEGAFLARE = "I fear no enemy. Let them come!",
@@ -3520,7 +3777,7 @@ return{
         GESTALT_GUARD = "Aha, there are warriors among you!",
 
 		COOKIECUTTER = "It seeks to make a meal of my vessel!",
-		COOKIECUTTERSHELL = "Twas a spiky foe.",
+		COOKIECUTTERSHELL = "'Twas a spiky foe.",
 		COOKIECUTTERHAT = "Tis a helm fit for a warrior of the deep.",
 		SALTSTACK =
 		{
@@ -3620,7 +3877,7 @@ return{
 			BURNING = "By the gods, that fishbowl's ablaze!",
 			BURNT = "Tis naught but cinders.",
 			OWNER = "Weight: {weight}\nCaught by: {owner}\nTake heed of my fishing prowess!",
-			OWNER_HEAVY = "Weight: {weight}\nCaught by: {owner}\nT'was nothing for a skilled hunter!",
+			OWNER_HEAVY = "Weight: {weight}\nCaught by: {owner}\n'Twas nothing for a skilled hunter!",
 		},
 
 		OCEANFISHABLEFLOTSAM = "Tis naught but a clump of mud and grass!",
@@ -3821,12 +4078,17 @@ return{
         WEREITEM_GOOSE = "It's... er... very fearsome!",
         WEREITEM_MOOSE = "It represents a warrior's spirit!",
 
-        MERMHAT = "'Tis a deceitful mask.",
+        MERMHAT = "'Tis a deceitful mask.",        
         MERMTHRONE =
         {
             GENERIC = "Have you chosen a chieftain?",
             BURNT = "The throne hath been set ablaze!",
         },
+        MOSQUITOMUSK = "'Tis rather useful for a foul little doll.",
+        MOSQUITOBOMB = "There is little honor in using such a weapon, yet I am intrigued.",
+        MOSQUITOFERTILIZER = "Leave it for the farmers.",
+        MOSQUITOMERMSALVE = "'Tis the mark of a noble leader to care for her warriors so.",
+
         MERMTHRONE_CONSTRUCTION =
         {
             GENERIC = "The little beast toils away.",
@@ -3997,6 +4259,7 @@ return{
         DUSTMERINGUE = "This food is not fit for a warrior, it's fit for the floor!",
 
         SHROOMCAKE = "A Viking would never stoop to eat such an unworthy thing.",
+        SHROOMBAIT = "What coward wouldst sedate a beast?",
 
         NIGHTMAREGROWTH = "The very ground hath split and released nightmares upon us!",
 
@@ -4058,7 +4321,7 @@ return{
 			HAS_ITEM_HEAVY = "Weight: {weight}\nHarvested on day: {day}\n'Tis vile, but robust.",
             HAS_ITEM_LIGHT = "Ha! The machine does not even deem it worthy enough to reveal its weight!",
 			BURNING = "It hath been set ablaze!",
-			BURNT = "T'was of little use anyway.",
+			BURNT = "'Twas of little use anyway.",
         },
 
         CARROT_OVERSIZED = "If only you were meat...",
@@ -4353,6 +4616,10 @@ return{
         BIRD_MUTANT_SPITTER = "You think you can challenge me, winged fiend?",
 
         WAGSTAFF_NPC = "Hail stranger! Are ye friend or foe?",
+
+        WAGSTAFF_NPC_MUTATIONS = "'Twas my pleasure dispatching that beast.",
+        WAGSTAFF_NPC_WAGPUNK = "The man doth make haste.",
+
         ALTERGUARDIAN_CONTAINED = "It's ferrying this warrior's soul to the next realm.",
 
         WAGSTAFF_TOOL_1 = "Mayhaps this is what I seek.",
@@ -4431,7 +4698,7 @@ return{
         SPIDER_WATER = "Have at thee, water walkers!",
         MUTATOR_WATER = "They look like the little beasts, but lack the ferocity.",
         OCEANVINE_COCOON = "The nest of the water walking beasts!",
-        OCEANVINE_COCOON_BURNT = "T'was consumed by flames.",
+        OCEANVINE_COCOON_BURNT = "'Twas consumed by flames.",
 
         GRASSGATOR = "What fine flaxen hair.",
 
@@ -4456,7 +4723,7 @@ return{
         MIGHTY_GYM =
         {
             GENERIC = "My friend doth possess strength that could rival mighty Thor's!",
-            BURNT = "T'was a fiery display indeed!",
+            BURNT = "'Twas a fiery display indeed!",
         },
 
         DUMBBELL = "'Tis not just strength, but cunning that makes a warrior!",
@@ -4465,6 +4732,9 @@ return{
         DUMBBELL_GEM = "My friend, if you want to be fighting fit you must join me in combat!",
         POTATOSACK = "I have no use for a sack of non-meats.",
 
+        DUMBBELL_HEAT = "Training in comfort.",
+        DUMBBELL_REDGEM = "My ally wields a strange weapon, indeed.",
+        DUMBBELL_BLUEGEM = "My ally wields a strange weapon, indeed.",
 
         TERRARIUMCHEST =
 		{
@@ -4488,6 +4758,26 @@ return{
         SHIELDOFTERROR ="Why cower behind a shield when you can strike with it!",
         TWINOFTERROR1 = "Do thine worst, foul metal fiend!",
         TWINOFTERROR2 = "Do thine worst, foul metal fiend!",
+
+		-- Cult of the Lamb
+		COTL_TRINKET = "A crown of ill omen.",
+		TURF_COTL_GOLD = "The land is covered in riches!",
+		TURF_COTL_BRICK = "Sturdy bricks.",
+		COTL_TABERNACLE_LEVEL1 =
+		{
+			LIT = "An altar to a wee fluffy beastie.",
+			GENERIC = "The flame must be lit!",
+		},
+		COTL_TABERNACLE_LEVEL2 =
+		{
+			LIT = "The beastie's power grows.",
+			GENERIC = "The flame must be lit!",
+		},
+		COTL_TABERNACLE_LEVEL3 =
+		{
+			LIT = "Hail to the golden beast!",
+			GENERIC = "The flame must be lit!",
+		},
 
         -- Year of the Catcoon
         CATTOY_MOUSE = "T'would make for excellent target practice!",
@@ -4550,8 +4840,11 @@ return{
         BOAT_ROTATOR_KIT = "It shall be done, with haste!",
         BOAT_BUMPER_KELP = "My vessel is well defended.",
         BOAT_BUMPER_KELP_KIT = "It shall shield my vessel from harm.",
-        BOAT_BUMPER_SHELL = "My vessel is well defended.",
+		BOAT_BUMPER_SHELL = "My vessel is well defended.",
         BOAT_BUMPER_SHELL_KIT = "It shall shield my vessel from harm.",
+        BOAT_BUMPER_CRABKING = "It doth look battleworthy.",
+        BOAT_BUMPER_CRABKING_KIT = "It shall shield my vessel from harm.",
+
         BOAT_CANNON = {
             GENERIC = "Load the cannons!",
             AMMOLOADED = "Ready for battle!",
@@ -4629,6 +4922,7 @@ return{
         CHARLIE_HECKLER = "Begone, critics!",
 
         PLAYBILL_THE_DOLL = "I am not familiar with the playwright.",
+        PLAYBILL_THE_VEIL = "Hmm. 'Tis avant-garde.",
         STATUEHARP_HEDGESPAWNER = "'Tis surrounded by a thorny thicket.",
         HEDGEHOUND = "Deceiver! Thou art a prickly pox upon my stage!",
         HEDGEHOUND_BUSH = "A thorny bramble.",
@@ -4661,6 +4955,465 @@ return{
             GENERIC = "It shall make for some fine target practice.",
             BURNT = "The stuffed man hath met a fiery end.",
         },
+
+		-- Waxwell
+		MAGICIAN_CHEST = "'Tis a wicked looking thing.",
+		TOPHAT_MAGICIAN = "It hath been touched by dark magic.",
+
+        -- Year of the Rabbit
+        YOTR_FIGHTRING_KIT = "A test of might and bravery!",
+        YOTR_FIGHTRING_BELL =
+        {
+            GENERIC = "Who will face me in the field of battle?",
+            PLAYING = "There art a battle underway!",
+        },
+
+        YOTR_DECOR_1 = {
+            GENERAL = "Let us feast by the rabbit's torchlight!",
+            OUT = "Its light burns no more.",
+        },
+        YOTR_DECOR_2 = {
+            GENERAL = "Let us feast by the rabbit's torchlight!",
+            OUT = "Its light burns no more.",
+        },
+
+        HAREBALL = "Ha! I am no coward, pass it this way!",
+        YOTR_DECOR_1_ITEM = "Let us set the rabbit torch alight!",
+        YOTR_DECOR_2_ITEM = "Let us set the rabbit torch alight!",
+
+		--
+		DREADSTONE = "A stone of ill omen.",
+		HORRORFUEL = "The sight of it chills even my courageous Viking heart.",
+		DAYWALKER =
+		{
+			GENERIC = "You leave me no choice, beast! To arms!",
+			IMPRISONED = "The beast hath been consumed by foul magic.",
+		},
+		DAYWALKER_PILLAR =
+		{
+			GENERIC = "The pillar is weakened... mayhaps it could be broken.",
+			EXPOSED = "Only something of great might could crack that foul stone.",
+		},
+		DAYWALKER2 =
+		{
+			GENERIC = "The calm before the storm.",
+			BURIED = "It pains me to see a worthy adversary in such a state.",
+			HOSTILE = "Finally. Let us fight.",
+		},
+		ARMORDREADSTONE = "It will serve me well, despite its origins.",
+		DREADSTONEHAT = "Ready to bear the brunt of battle!",
+
+        -- Rifts 1
+        LUNARRIFT_PORTAL = "An opening, yet I cannot pass through.",
+        LUNARRIFT_CRYSTAL = "How strange... and beautiful.",
+
+        LUNARTHRALL_PLANT = "Vicious plant, I shall honor thee with a swift death!",
+        LUNARTHRALL_PLANT_VINE_END = "Ha! You shall have to do better than that!",
+
+		LUNAR_GRAZER = "I will not fall prey to your tricks, spirit!",
+
+        PUREBRILLIANCE = "Like staring up into the spotlights...",
+        LUNARPLANT_HUSK = "It hath a formidible hide, for a non-meat.",
+
+		LUNAR_FORGE = "I shall forge weapons to rival the gods themselves!",
+		LUNAR_FORGE_KIT = "The forge must be built, forthwith!",
+
+		LUNARPLANT_KIT = "Even the sturdiest armor will sometimes need repairs.",
+		ARMOR_LUNARPLANT = "Armor crafted from a fallen foe.",
+		LUNARPLANTHAT = "A formidable helm, burning with an unearthly flame!",
+		BOMB_LUNARPLANT = "I have made the plant's power my own.",
+		STAFF_LUNARPLANT = "To attack from afar is not my preferred way of combat.",
+		SWORD_LUNARPLANT = "Am I worthy of wielding a weapon of such brilliance?",
+		PICKAXE_LUNARPLANT = "Neither stone nor structure shall stand in my way!",
+		SHOVEL_LUNARPLANT = "The ground stands no chance against me.",
+
+		BROKEN_FORGEDITEM = "'Tis battered, but not lost!",
+
+        PUNCHINGBAG = "Alas, 'tis not a very lively sparring partner.",
+
+        -- Rifts 2
+        SHADOWRIFT_PORTAL = "A chasm to Hel itself.",
+
+		SHADOW_FORGE = "It doth conjure powerful, accursed things...",
+		SHADOW_FORGE_KIT = "Dare I toy with such a thing?",
+
+        FUSED_SHADELING = "'Tis naught but a pest to be crushed beneath my boot!",
+        FUSED_SHADELING_BOMB = "'Tis small, but lively!",
+
+		VOIDCLOTH = "Remnants of a fallen foe.",
+		VOIDCLOTH_KIT = "Even the sturdiest armor will sometimes need repairs.",
+		VOIDCLOTHHAT = "I despise the thought of hiding one's face in combat.",
+		ARMOR_VOIDCLOTH = "This garb invites madness...",
+
+        VOIDCLOTH_UMBRELLA = "A shield against the elements.",
+        VOIDCLOTH_SCYTHE = "A formidable weapon against non-meats.",
+
+		SHADOWTHRALL_HANDS = "To arms, fiend!",
+		SHADOWTHRALL_HORNS = "All thou shall taste is the bite of my spear!",
+		SHADOWTHRALL_WINGS = "Thou art swift, but not swift enough!",
+		SHADOWTHRALL_MOUTH = "I shall wipe that grin off thine face.",
+
+        CHARLIE_NPC = "At last, you reveal yourself!",
+        CHARLIE_HAND = "It seeks an offering.",
+
+        NITRE_FORMATION = "A boon from the burning rain.",
+        DREADSTONE_STACK = "It hails from a place deeper and darker than even here.",
+        
+        SCRAPBOOK_PAGE = "From whence hath you come, mysterious page?",
+
+        LEIF_IDOL = "Tribute to an ancient woodland being.",
+        WOODCARVEDHAT = "A helm of the forest.",
+        WALKING_STICK = "Carved with a fine blade, by a skilled hand.",
+
+        IPECACSYRUP = "'Tis a most sickly-smelling syrup.",
+        BOMB_LUNARPLANT_WORMWOOD = "Ha! Look how my plant ally's power grows!", -- Unused
+        WORMWOOD_MUTANTPROXY_CARRAT =
+        {
+        	DEAD = "It has breathed its last.",
+        	GENERIC = "Vegetables are not to be trusted!",
+        	HELD = "I have you now, wicked vegetable.",
+        	SLEEPING = "A deceptive vegetable with no honor.",
+        },
+        WORMWOOD_MUTANTPROXY_LIGHTFLIER = "Light the way, noble insect.",
+		WORMWOOD_MUTANTPROXY_FRUITDRAGON =
+		{
+			GENERIC = "Meat impostor!",
+			RIPE = "I have no need for your fake meat.",
+			SLEEPING = "Grabbest thy shut eye!",
+		},
+
+        SUPPORT_PILLAR_SCAFFOLD = "The building hath commenced!",
+        SUPPORT_PILLAR = "This noble pillar hath withstood much for our sakes.",
+        SUPPORT_PILLAR_COMPLETE = "A glorious monument to our resilience!",
+        SUPPORT_PILLAR_BROKEN = "We shall rebuild!",
+
+		SUPPORT_PILLAR_DREADSTONE_SCAFFOLD = "The building hath commenced!",
+		SUPPORT_PILLAR_DREADSTONE = "This noble pillar hath withstood much for our sakes.",
+		SUPPORT_PILLAR_DREADSTONE_COMPLETE = "'Twould withstand Ragnarok.",
+		SUPPORT_PILLAR_DREADSTONE_BROKEN = "How the mighty have fallen.",
+
+        WOLFGANG_WHISTLE = "My ally will get our forces fighting fit!",
+
+        -- Rifts 3
+
+        MUTATEDDEERCLOPS = "The beast hath been changed by strange magicks!",
+        MUTATEDWARG = "It is possessed by angry spirits!",
+        MUTATEDBEARGER = "The beast seeks vengeance!",
+
+        LUNARFROG = "This frog hath seen too much.",
+
+        DEERCLOPSCORPSE =
+        {
+            GENERIC  = "It fought bravely.",
+            BURNING  = "May thine spirit be released to Valhalla.",
+            REVIVING = "What's this? The fight is not over!",
+        },
+
+        WARGCORPSE =
+        {
+            GENERIC  = "The creature is slain.",
+            BURNING  = "Thou art worthy of a Viking funeral.",
+            REVIVING = "The beast's spirit will not be put to rest!",
+        },
+
+        BEARGERCORPSE =
+        {
+            GENERIC  = "Thou were a worthy foe.",
+            BURNING  = "May we meet again in Valhalla.",
+            REVIVING = "There's still fight left in the creature!",
+        },
+
+        BEARGERFUR_SACK = "It will preserve the freshness of my kills.",
+        HOUNDSTOOTH_BLOWPIPE = "A beautiful ranged weapon. Fit for a coward.",
+        DEERCLOPSEYEBALL_SENTRYWARD =
+        {
+            GENERIC = "The cold doth sooth me.",    -- Enabled.
+            NOEYEBALL = "Where art thou, cursed eye?",  -- Disabled.
+        },
+        DEERCLOPSEYEBALL_SENTRYWARD_KIT = "Fear not the heat, I shall build this posthaste.",
+
+        SECURITY_PULSE_CAGE = "'Tis a trap!",
+        SECURITY_PULSE_CAGE_FULL = "It burns bright like the sword of Surtr.",
+
+		CARPENTRY_STATION =
+        {
+            GENERIC = "A carpenter's saw is merely another blade for me to master!",
+            BURNT = "It seems my training hath come to an abrupt end.",
+        },
+
+        WOOD_TABLE = -- Shared between the round and square tables.
+        {
+            GENERIC = "No sorrier sight than a bare table. Let us plunder!",
+            HAS_ITEM = "Not the most impressive piece of loot.",
+            BURNT = "The gods need not more tables.",
+        },
+
+        WOOD_CHAIR =
+        {
+            GENERIC = "A warrior doth not sit.",
+            OCCUPIED = "On your feet, soldier!",
+            BURNT = "The gods hath no need for chairs.",
+        },
+
+        DECOR_CENTERPIECE = "Pretty... useless.",
+        DECOR_LAMP = "A warrior hath no need for light!",
+        DECOR_FLOWERVASE =
+        {
+            GENERIC = "Saveth them for my funeral.",
+            EMPTY = "Empty. Shall we use it for target practice?",
+            WILTED = "Beauty fades. Glory is forever.",
+            FRESHLIGHT = "It burns bright.",
+            OLDLIGHT = "The light wanes.",
+        },
+        DECOR_PICTUREFRAME =
+        {
+            GENERIC = "The work of a child, no doubt.",
+            UNDRAWN = "I shall paint it with the blood of mine enemies.",
+        },
+        DECOR_PORTRAITFRAME = "A fallen comrade?",
+
+        PHONOGRAPH = "A mechanical songstress.",
+        RECORD = "T'would be a kindness to keep it from reaching the ears of my ally.",
+        RECORD_CREEPYFOREST = "Music is nourishment for thy soul!",
+        RECORD_DANGER = "Let us play a rousing war song!", -- Unused.
+        RECORD_DAWN = "Thy melody is most soothing.", -- Unused.
+        RECORD_DRSTYLE = "The musicians play with such passion!",
+        RECORD_DUSK = "Thy melody is most soothing.", -- Unused.
+        RECORD_EFS = "Doth the tempo not make one's heart race with excitement?",
+        RECORD_END = "The showstopper!", -- Unused.
+        RECORD_MAIN = "Music is nourishment for thy soul!", -- Unused.
+        RECORD_WORKTOBEDONE = "Music is nourishment for thy soul!", -- Unused.
+        RECORD_HALLOWEDNIGHTS = "A serenade for the ghosts and ghouls.",
+
+        ARCHIVE_ORCHESTRINA_MAIN = "What if I just stab it?",
+
+        WAGPUNKHAT = "This helm doth be possessed by the spirit of a cunning warrior.",
+        ARMORWAGPUNK = "It grants the wearer a fleetness of foot to rival Hermod himself.",
+        WAGSTAFF_MACHINERY = "Be these the remains of a sacked outpost?",
+        WAGPUNK_BITS = "What use would a warrior have for such leavings?",
+        WAGPUNKBITS_KIT = "How may one kill with this?",
+
+        WAGSTAFF_MUTATIONS_NOTE = "Save it for the scholars!",
+
+        -- Meta 3
+
+        BATTLESONG_INSTANT_REVIVE = "A melody lively enough to rouse the dead!",
+
+        WATHGRITHR_IMPROVEDHAT = "The unicorn hath bestowed its power onto me.",
+        SPEAR_WATHGRITHR_LIGHTNING = "The power of Thor courses through it.",
+
+        BATTLESONG_CONTAINER = "It holds my music like arrows in a quiver.",
+
+        SADDLE_WATHGRITHR = "We ride to victory!",
+
+        WATHGRITHR_SHIELD = "I shall defend my allies with spear and shield!",
+
+        BATTLESONG_SHADOWALIGNED = "I shall sing of sweet darkness.",
+        BATTLESONG_LUNARALIGNED = "Do not fear, my song shall show us the light.",
+
+		SHARKBOI = "Whether land or sea, a shallow grave waits for thee.",
+        BOOTLEG = "Retreat is the way of cowards!",
+        OCEANWHIRLPORTAL = "Oh, beautiful maelström. Into thy hungry mouth we doth sail.",
+
+        EMBERLIGHT = "My ally's flame burns bright as her fighting spirit.",
+        WILLOW_EMBER = "only_used_by_willow",
+
+        -- Year of the Dragon
+        YOTD_DRAGONSHRINE =
+        {
+            GENERIC = "A shrine to a fearsome firey beast.",
+            EMPTY = "It demands an offering of charcoal.",
+            BURNT = "It is done.",
+        },
+
+        DRAGONBOAT_KIT = "Let us construct the most formidable vessel these cursed waters have ever touched.",
+        DRAGONBOAT_PACK = "It posesses all that a mighty vessel might require.",
+
+        BOATRACE_CHECKPOINT = "Onward!",
+        BOATRACE_CHECKPOINT_THROWABLE_DEPLOYKIT = "Chart a course for victory!",
+        BOATRACE_START = "I shall triumph, in the name of the Valkyrie!",
+        BOATRACE_START_THROWABLE_DEPLOYKIT = "The location is unimportant. Only know that I will arrive first.",
+
+        BOATRACE_PRIMEMATE = "You just don't know it yet, but I have won already.",
+        BOATRACE_SPECTATOR_DRAGONLING = "A witness to my impending triumph!",
+
+        YOTD_STEERINGWHEEL = "Great dragon, steer me to victory!",
+        YOTD_STEERINGWHEEL_ITEM = "A vital piece of a glorious vessel.",
+        YOTD_OAR = "I will swipe at the waves with the ferocity of a dragon!",
+        YOTD_ANCHOR = "May it grip the sea floor with all its strength.",
+        YOTD_ANCHOR_ITEM = "I will craft the finest ship in the land!",
+        MAST_YOTD = "May it catch the wind as well as a dragon's wing.",
+        MAST_YOTD_ITEM = "To harness the winds upon mine vessel!",
+        BOAT_BUMPER_YOTD = "A fearsome defense indeed!",
+        BOAT_BUMPER_YOTD_KIT = "It shall shield my vessel from harm.",
+        BOATRACE_SEASTACK = "Ha! A Viking can maneuver her ship as easily as breathing!",
+        BOATRACE_SEASTACK_THROWABLE_DEPLOYKIT = "I must cast it into the sea!",
+        BOATRACE_SEASTACK_MONKEY = "Ha! A Viking can maneuver her ship as easily as breathing!",
+        BOATRACE_SEASTACK_MONKEY_THROWABLE_DEPLOYKIT = "I must cast it into the sea!",
+        MASTUPGRADE_LAMP_YOTD = "It watches over me.",
+        MASTUPGRADE_LAMP_ITEM_YOTD = "We shall keep the flame burning bright!",
+        WALKINGPLANK_YOTD = "Nay, a Viking doesn't quit so easily!",
+        CHESSPIECE_YOTD = "A monument to my triumph.",
+
+        -- Rifts / Meta QoL
+
+        HEALINGSALVE_ACID = "This slime doth soothe me.",
+
+        BEESWAX_SPRAY = "It holds a fearsome enchantment.",
+        WAXED_PLANT = "Unnaturally preserved... it doth make one's skin crawl.", -- Used for all waxed plants, from farm plants to trees.
+
+        STORAGE_ROBOT = {
+            GENERIC = "Go forth to gather the spoils of war.",
+            BROKEN = "We must never forget our fallen comrades.",
+        },
+
+        SCRAP_MONOCLEHAT = "An enchanted eye, to view the whole battlefield at once.",
+        SCRAPHAT = "'Twas won in an invigorating battle!",
+
+        FENCE_JUNK = "A sturdy barrier.",
+        JUNK_PILE = "Mayhaps a treasure lies inside?",
+        JUNK_PILE_BIG = "T'would be a disgrace to be slain by a falling pile of refuse...",
+
+        ARMOR_LUNARPLANT_HUSK = "This will make my plant ally more deadly in battle.",
+
+        -- Meta 4 / Ocean QoL
+
+        OTTER = "A crafty pillager. I cannot help but respect it.",
+        OTTERDEN = {
+            GENERIC = "Empty, alas.",
+            HAS_LOOT = "There is loot for the taking.",
+        },
+        OTTERDEN_DEAD = "Then sink, wretched raft! A Viking hath no fear of the sea!",
+
+        BOAT_ANCIENT_ITEM = "I shall build a vessel like the tales of old.",
+        BOAT_ANCIENT_CONTAINER = "My stores are well defended 'neath the deck of my ship.",
+        WALKINGPLANK_ANCIENT = "I shall never abandon my vessel!",
+
+        ANCIENTTREE_SEED = "It must be returned to the earth.",
+
+        ANCIENTTREE_GEM = {
+            GENERIC = "A fire burns within, yet the tree lives?",
+            STUMP = "It hath been felled.",
+        },
+
+        ANCIENTTREE_SAPLING_ITEM = "Fear not, I shall find you a place to lay down your roots.",
+
+        ANCIENTTREE_SAPLING = {
+            GENERIC = "These lands seem to suit it well.",
+            WRONG_TILE = "Why do you despair? Does this land not suit you?",
+            WRONG_SEASON = "It may yet grow with the passing of another season.",
+        },
+ 
+        ANCIENTTREE_NIGHTVISION = {
+            GENERIC = "The sight of it doth send a terrible chill down my spine.",
+            STUMP = "Perhaps 'tis for the best.",
+        },
+
+        ANCIENTFRUIT_GEM = "I care not for any fruit, much less one as hard as stone!",
+        ANCIENTFRUIT_NIGHTVISION = "It writhes upon the ground! Be it berry or beast?!",
+        ANCIENTFRUIT_NIGHTVISION_COOKED = "The loathesome berry hath ceased its wriggling.",
+
+        BOATPATCH_KELP = "It shall hold for now.",
+
+        CRABKING_MOB = "Appetizer.",
+        CRABKING_MOB_KNIGHT = "Finally. A clawed combatant worthy to die by my spear.",
+        CRABKING_CANNONTOWER = "Now THIS is a battle.",
+        CRABKING_ICEWALL = "Oh good. I worried it would be too easy.",
+
+        SALTLICK_IMPROVED = "So the meat can season itself.",
+
+        OFFERING_POT =
+        {
+            GENERIC = "The fish beasts hunger for that vile weed of the sea.",
+            SOME_KELP = "More? They want more?!",
+            LOTS_OF_KELP = "'Tis enough to gorge themselves to the gills!",
+        },
+
+        OFFERING_POT_UPGRADED =
+        {
+            GENERIC = "The fish beasts hunger for that vile weed of the sea.",
+            SOME_KELP = "More? They want more?!",
+            LOTS_OF_KELP = "'Tis enough to gorge themselves to the gills!",
+        },
+
+        MERM_ARMORY = "The armory of the fish beast warriors.",
+        MERM_ARMORY_UPGRADED = "The armory of the fish beast warriors.",
+        MERM_TOOLSHED = "'Tis a place for workers, not warriors.",
+        MERM_TOOLSHED_UPGRADED = "'Tis a place for workers, not warriors.",
+        MERMARMORHAT = "’Tis not for me.",
+        MERMARMORUPGRADEDHAT = "’Tis not for me.",
+        MERM_TOOL = "I suppose 'tis better than using one's hands.",
+        MERM_TOOL_UPGRADED = "I suppose 'tis better than using one's hands.",
+
+        WURT_SWAMPITEM_SHADOW = "The small beastie seems keen to expand her kingdom.",
+        WURT_SWAMPITEM_LUNAR = "The small beastie seems keen to expand her kingdom.",
+
+        MERM_SHADOW = "They are but shades.",
+        MERMGUARD_SHADOW = "Warriors, denied their ascension to Valhalla...",
+
+        MERM_LUNAR = "The fish beast is tinged with the essence of Mani.",
+        MERMGUARD_LUNAR = "The fish beast is tinged with the essence of Mani.",
+
+        -- Rifts 4
+
+        SHADOW_BEEF_BELL = "We shall ride again!",
+        SADDLE_SHADOW = "A fine saddle for slaying.",
+        SHADOW_BATTLEAXE = "I shall bring down many a beast with that cursed axe.",
+        VOIDCLOTH_BOOMERANG = "There will be no escape for my foes.",
+		ROPE_BRIDGE_KIT = "'Tis no Bifrost, but 'twill do.",
+		GELBLOB =
+		{
+			GENERIC = "Cursed nectar of Helheim!",
+			HAS_ITEM = "What is that flotant herfang?",
+			HAS_CHARACTER = "Bestow succor upon that poor soul, lest they perish in that cursed tar.",
+		},
+        RABBITKING_AGGRESSIVE = "How adorable!",
+        RABBITKING_PASSIVE = "The diminutive lord seeks commerce!",
+        RABBITKING_LUCKY = "I must capture it alive!",
+        RABBITKINGMINION_BUNNYMAN = "I shall send you to the endless carrot patch.",
+        ARMOR_CARROTLURE = "'Tis better to wear than eat them, I suppose.",
+        RABBITKINGHORN = "The rabbit had best heed my call.",
+        RABBITKINGHORN_CHEST = "The rabbits pledge to safeguard my loot within their lair.",
+        RABBITKINGSPEAR = "It shall be a delightful insult to mine enemies to perish by rabbit antler.",
+        RABBITHAT = "Ridiculous.",
+        WORM_BOSS = "A snake beast worthy of mine spear!",
+
+        STONE_TABLE = -- Shared between the round and square tables.
+        {
+            GENERIC = "No sorrier sight than a bare table. Let us plunder!",
+            HAS_ITEM = "Not the most impressive piece of loot.",
+        },
+
+        STONE_CHAIR =
+        {
+            GENERIC = "A warrior doth not sit.",
+            OCCUPIED = "On your feet, soldier!",
+        },
+
+        CARPENTRY_BLADE_MOONGLASS = "A shame it is not a weapon.",
+
+        CHEST_MIMIC_REVEALED = "It contained not a mystery, but a curse!",
+
+        GELBLOB_STORAGE = { 
+            GENERIC  = "Once a mighty deathtrap, now a pantry.",
+            FULL = "Thy morsels, it doth preserveth.",
+        },
+        GELBLOB_STORAGE_KIT = "Peasant's work.",
+        GELBLOB_BOTTLE = "The goo hath been contained.",
+
+        PLAYER_HOSTED =
+        {        
+            GENERIC = "I shall take no pleasure in destroying you, friend.",
+            ME = "'Tis an abomination!",
+        },
+
+        MASK_SAGEHAT = "Only a craven hides their face.",
+        MASK_HALFWITHAT = "Only a craven hides their face.",
+        MASK_TOADYHAT = "Only a craven hides their face.",
+
+        SHADOWTHRALL_PARASITE = "Keep away thy cursed embrace.",
+
+        PUMPKINCARVER = "A child's toy.",
     },
 
     DESCRIBE_GENERIC = "It is an artifact of this realm.",

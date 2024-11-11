@@ -21,6 +21,7 @@ local Follower = Class(function(self, inst)
     self.canaccepttarget = true
     --self.keepdeadleader = nil
     --self.keepleaderonattacked = nil
+	--self.noleashing = nil
 
     self.inst:ListenForEvent("attacked", onattacked)
     self.OnLeaderRemoved = function()
@@ -68,6 +69,13 @@ local function TryPorting(inst, self)
 
     if self.leader == nil or self.leader:IsAsleep() or not inst:IsAsleep() then
         return
+    end
+
+    if self.leader.components.inventoryitem ~= nil then
+        local owner = self.leader.components.inventoryitem:GetGrandOwner()
+        if owner ~= nil and owner:HasTag("pocketdimension_container") then
+            return
+        end
     end
 
     local init_pos = inst:GetPosition()
@@ -130,7 +138,9 @@ local function OnEntitySleep(inst)
 end
 
 function Follower:StartLeashing()
-    if self._onleaderwake == nil and self.leader ~= nil then
+	if self.noleashing then
+		return
+	elseif self._onleaderwake == nil and self.leader ~= nil then
         self._onleaderwake = function() OnEntitySleep(self.inst) end
         self.inst:ListenForEvent("entitywake", self._onleaderwake, self.leader)
         self.inst:ListenForEvent("entitysleep", OnEntitySleep)
@@ -150,7 +160,9 @@ function Follower:StopLeashing()
         end
     end
 
-    self.inst:PushEvent("stopleashing")
+	if not self.noleashing then
+		self.inst:PushEvent("stopleashing")
+	end
 end
 
 OnPlayerJoined = function(self, player)
@@ -159,12 +171,8 @@ OnPlayerJoined = function(self, player)
         local cached_player_leader_timeleft = self.cached_player_leader_timeleft
         if self.inst:GetDistanceSqToInst(player) <= TUNING.FOLLOWER_REFOLLOW_DIST_SQ and
         (not cached_player_leader_timeleft or cached_player_leader_timeleft > current_time) then
-            
-            if player.components.leader then
-                player.components.leader:AddFollower(self.inst)
-            else
-                self:SetLeader(player)
-            end
+
+            self:SetLeader(player)
 
             self.targettime = nil
             if cached_player_leader_timeleft then
@@ -228,9 +236,9 @@ function Follower:SetLeader(new_leader)
 	local changed_leader = prev_leader ~= new_leader
 
     if prev_leader and changed_leader then
-        local leader_cmp = self.leader.components.leader
-        if leader_cmp then
-            leader_cmp:RemoveFollower(self.inst)
+        local leader = self.leader.components.leader
+        if leader then
+            leader:RemoveFollower(self.inst)
         end
 
         self:StopLeashing()
@@ -247,9 +255,9 @@ function Follower:SetLeader(new_leader)
 
         self.leader = new_leader
 
-        local leader_cmp = new_leader.components.leader
-        if leader_cmp then
-            leader_cmp:AddFollower(self.inst)
+        local leader = new_leader.components.leader
+        if leader then
+            leader:AddFollower(self.inst)
         end
 
         self.inst:ListenForEvent("onremove", self.OnLeaderRemoved, new_leader)
@@ -278,9 +286,13 @@ local function stopfollow(inst, self)
 end
 
 function Follower:AddLoyaltyTime(time)
-    local leader_cmp = self.leader and self.leader.components.leader
-    if leader_cmp and leader_cmp.loyaltyeffectiveness then
-		time = time * leader_cmp.loyaltyeffectiveness
+    if self.neverexpire then
+        return
+    end
+
+    local leader = self.leader and self.leader.components.leader
+    if leader and leader.loyaltyeffectiveness then
+		time = time * leader.loyaltyeffectiveness
 	end
 
     local current_time = GetTime()
@@ -308,6 +320,11 @@ function Follower:CancelLoyaltyTask()
 end
 
 function Follower:StopFollowing()
+    
+    if self.neverexpire then
+        return
+    end
+
     if self.inst:IsValid() then
         self.targettime = nil
         self.inst:PushEvent("loseloyalty", { leader = self.leader })
@@ -365,8 +382,17 @@ function Follower:IsLeaderSame(otherfollower)
 end
 
 function Follower:KeepLeaderOnAttacked()
-    self.keepleaderonattacked = true
-    self.inst:RemoveEventCallback("attacked", onattacked)
+	if not self.keepleaderonattacked then
+		self.keepleaderonattacked = true
+		self.inst:RemoveEventCallback("attacked", onattacked)
+	end
+end
+
+function Follower:LoseLeaderOnAttacked()
+	if self.keepleaderonattacked then
+		self.keepleaderonattacked = nil
+		self.inst:ListenForEvent("attacked", onattacked)
+	end
 end
 
 function Follower:LongUpdate(dt)

@@ -13,14 +13,16 @@ local assets =
     Asset("ATLAS", "images/fx4.xml"),
     Asset("IMAGE", "images/fx4.tex"),
 
-    Asset("ATLAS", "images/fx5.xml"),
-    Asset("IMAGE", "images/fx5.tex"),
+	Asset("ATLAS", "images/rain_dome_over.xml"),
+	Asset("IMAGE", "images/rain_dome_over.tex"),
 
     Asset("ANIM", "anim/sand_over.zip"),
+	Asset("ANIM", "anim/miasma_over.zip"),
     Asset("ANIM", "anim/moonstorm_over.zip"),
     Asset("ANIM", "anim/moonstorm_over_static.zip"),
     Asset("ANIM", "anim/mind_control_overlay.zip"),
     Asset("ANIM", "anim/screenlightning.zip"),
+    Asset("ANIM", "anim/thrall_parasite_overlay.zip"),   
 
     Asset("ANIM", "anim/clock_transitions.zip"),
     Asset("ANIM", "anim/moon_phases_clock.zip"),
@@ -53,6 +55,8 @@ local assets =
     Asset("ANIM", "anim/hunger_health_pulse.zip"),
     Asset("ANIM", "anim/spoiled_meter.zip"),
     Asset("ANIM", "anim/recharge_meter.zip"),
+    Asset("ANIM", "anim/inventory_fx_shadow.zip"),
+    Asset("ANIM", "anim/inventory_fx_acidsizzle.zip"),
     Asset("ANIM", "anim/compass_bg.zip"),
     Asset("ANIM", "anim/compass_needle.zip"),
     Asset("ANIM", "anim/compass_hud.zip"),
@@ -81,6 +85,9 @@ local assets =
 
     Asset("ANIM", "anim/tab_gift.zip"),
     Asset("ANIM", "anim/tab_yotb.zip"),
+    Asset("ANIM", "anim/tab_skills.zip"),
+
+    Asset("ANIM", "anim/scrapbook_updated.zip"),    
 
     Asset("INV_IMAGE", "unknown_head"),
     Asset("INV_IMAGE", "unknown_hand"),
@@ -116,6 +123,21 @@ local assets =
 
     Asset("ANIM", "anim/status_wx.zip"),
     Asset("ANIM", "anim/status_wet_wx.zip"),
+
+    Asset("ANIM", "anim/skills_activate.zip"),
+    Asset("ANIM", "anim/skills_shadow.zip"),
+    Asset("ANIM", "anim/skills_lunar.zip"),
+    Asset("ANIM", "anim/skill_unlock.zip"),
+
+    Asset("ANIM", "anim/wagstaff_armor_target.zip"),
+    Asset("ANIM", "anim/wagpunk_over.zip"),
+
+    Asset("ANIM", "anim/scrap_monocle_over.zip"),
+    Asset("ANIM", "anim/nightvision_fruit_over.zip"),
+    Asset("ANIM", "anim/inspectacles_over.zip"),
+    Asset("ANIM", "anim/winona_inspectacles_fx.zip"),
+    Asset("ANIM", "anim/inspectacles.zip"),
+    Asset("ANIM", "anim/roseglasseshat_over.zip"),
 }
 
 local prefabs =

@@ -47,6 +47,12 @@ local prefabs =
 
 ---------RED STAFF---------
 
+local function projectilelaunched_red(inst, attacker, target, proj)
+    if attacker:HasTag("controlled_burner") then
+        proj:AddTag("controlled_burner")
+    end
+end
+
 local function onattack_red(inst, attacker, target, skipsanity)
     if not skipsanity and attacker ~= nil then
         if attacker.components.staffsanity then
@@ -69,7 +75,7 @@ local function onattack_red(inst, attacker, target, skipsanity)
                 target.components.fueled.secondaryfueltype ~= FUELTYPE.BURNABLE) then
             --does not take burnable fuel, so just burn it
             if target.components.burnable.canlight or target.components.combat ~= nil then
-                target.components.burnable:Ignite(true)
+                target.components.burnable:Ignite(true, attacker)
             end
         elseif target.components.fueled.accepting then
             --takes burnable fuel, so fuel it
@@ -168,7 +174,8 @@ local function onattack_blue(inst, attacker, target, skipsanity)
         target:PushEvent("attacked", { attacker = attacker, damage = 0, weapon = inst })
     end
 
-    if target.components.freezable ~= nil then
+	--V2C: valid check in case any of the previous callbacks or events removed the target
+	if target.components.freezable ~= nil and target:IsValid() then
         target.components.freezable:AddColdness(1)
         target.components.freezable:SpawnShatterFX()
     end
@@ -207,10 +214,10 @@ local function getrandomposition(caster, teleportee, target_in_ocean)
 			return pt
 		end
 		local from_pt = teleportee:GetPosition()
-		local offset = FindSwimmableOffset(from_pt, math.random() * 2 * PI, 90, 16)
-						or FindSwimmableOffset(from_pt, math.random() * 2 * PI, 60, 16)
-						or FindSwimmableOffset(from_pt, math.random() * 2 * PI, 30, 16)
-						or FindSwimmableOffset(from_pt, math.random() * 2 * PI, 15, 16)
+		local offset = FindSwimmableOffset(from_pt, math.random() * TWOPI, 90, 16)
+						or FindSwimmableOffset(from_pt, math.random() * TWOPI, 60, 16)
+						or FindSwimmableOffset(from_pt, math.random() * TWOPI, 30, 16)
+						or FindSwimmableOffset(from_pt, math.random() * TWOPI, 15, 16)
 		if offset ~= nil then
 			return from_pt + offset
 		end
@@ -286,18 +293,21 @@ local function teleport_continue(teleportee, locpos, loctarget, staff)
     end
 end
 
-local function teleport_start(teleportee, staff, caster, loctarget, target_in_ocean)
+local function teleport_start(teleportee, staff, caster, loctarget, target_in_ocean, no_teleport)
     local ground = TheWorld
 
     --V2C: Gotta do this RIGHT AWAY in case anything happens to loctarget or caster
-    local locpos = teleportee.components.teleportedoverride ~= nil and teleportee.components.teleportedoverride:GetDestPosition()
-				or loctarget == nil and getrandomposition(caster, teleportee, target_in_ocean)
-				or loctarget.teletopos ~= nil and loctarget:teletopos()
-				or loctarget:GetPosition()
+	local locpos
+	if not no_teleport then
+		locpos = (teleportee.components.teleportedoverride ~= nil and teleportee.components.teleportedoverride:GetDestPosition())
+			or (loctarget == nil and getrandomposition(caster, teleportee, target_in_ocean))
+			or (loctarget.teletopos ~= nil and loctarget:teletopos())
+			or loctarget:GetPosition()
 
-    if teleportee.components.locomotor ~= nil then
-        teleportee.components.locomotor:StopMoving()
-    end
+		if teleportee.components.locomotor ~= nil then
+			teleportee.components.locomotor:StopMoving()
+		end
+	end
 
     staff.components.finiteuses:Use(1)
 
@@ -307,18 +317,21 @@ local function teleport_start(teleportee, staff, caster, loctarget, target_in_oc
         return
     end
 
-    local isplayer = teleportee:HasTag("player")
-    if isplayer then
-        teleportee.sg:GoToState("forcetele")
-    else
-        if teleportee.components.health ~= nil then
-            teleportee.components.health:SetInvincible(true)
-        end
-        if teleportee.DynamicShadow ~= nil then
-            teleportee.DynamicShadow:Enable(false)
-        end
-        teleportee:Hide()
-    end
+	local is_teleporting_player
+	if not no_teleport then
+		if teleportee:HasTag("player") then
+			is_teleporting_player = true
+			teleportee.sg:GoToState("forcetele")
+		else
+			if teleportee.components.health ~= nil then
+				teleportee.components.health:SetInvincible(true)
+			end
+			if teleportee.DynamicShadow ~= nil then
+				teleportee.DynamicShadow:Enable(false)
+			end
+			teleportee:Hide()
+		end
+	end
 
     --#v2c hacky way to prevent lightning from igniting us
     local preventburning = teleportee.components.burnable ~= nil and not teleportee.components.burnable.burning
@@ -340,11 +353,13 @@ local function teleport_start(teleportee, staff, caster, loctarget, target_in_oc
 
     ground:PushEvent("ms_deltamoisture", TUNING.TELESTAFF_MOISTURE)
 
-    if isplayer then
-        teleportee.sg.statemem.teleport_task = teleportee:DoTaskInTime(3, teleport_continue, locpos, loctarget, staff)
-    else
-        teleport_continue(teleportee, locpos, loctarget, staff)
-    end
+	if not no_teleport then
+		if is_teleporting_player then
+			teleportee.sg.statemem.teleport_task = teleportee:DoTaskInTime(3, teleport_continue, locpos, loctarget, staff)
+		else
+			teleport_continue(teleportee, locpos, loctarget, staff)
+		end
+	end
 end
 
 local function teleport_targets_sort_fn(a, b)
@@ -352,25 +367,25 @@ local function teleport_targets_sort_fn(a, b)
 end
 
 local TELEPORT_MUST_TAGS = { "locomotor" }
-local TELEPORT_CANT_TAGS = { "playerghost", "INLIMBO" }
-local function teleport_func(inst, target)
-    local caster = inst.components.inventoryitem.owner or target
-    if target == nil then
-        target = caster
-    end
+local TELEPORT_CANT_TAGS = { "playerghost", "INLIMBO", "noteleport" }
+local function teleport_func(inst, target, pos, caster)
+	target = target or caster
 
     local x, y, z = target.Transform:GetWorldPosition()
 	local target_in_ocean = target.components.locomotor ~= nil and target.components.locomotor:IsAquatic()
+	local no_teleport = target:HasTag("noteleport") --targetable by spell, but don't actually teleport
+	local loctarget
+	if not no_teleport then
+		loctarget = (target.components.minigame_participator ~= nil and target.components.minigame_participator:GetMinigame())
+				or (target.components.teleportedoverride ~= nil and target.components.teleportedoverride:GetDestTarget())
+				or (target.components.hitchable ~= nil and target:HasTag("hitched") and target.components.hitchable.hitched)
+				or nil
 
-	local loctarget = target.components.minigame_participator ~= nil and target.components.minigame_participator:GetMinigame()
-						or target.components.teleportedoverride ~= nil and target.components.teleportedoverride:GetDestTarget()
-                        or target.components.hitchable ~= nil and target:HasTag("hitched") and target.components.hitchable.hitched
-						or nil
-
-	if loctarget == nil and not target_in_ocean then
-		loctarget = FindNearestActiveTelebase(x, y, z, nil, 1)
+		if loctarget == nil and not target_in_ocean then
+			loctarget = FindNearestActiveTelebase(x, y, z, nil, 1)
+		end
 	end
-    teleport_start(target, inst, caster, loctarget, target_in_ocean)
+	teleport_start(target, inst, caster, loctarget, target_in_ocean, no_teleport)
 end
 
 local function onhauntpurple(inst)
@@ -403,34 +418,8 @@ local function NoHoles(pt)
     return not TheWorld.Map:IsGroundTargetBlocked(pt)
 end
 
-local BLINKFOCUS_MUST_TAGS = { "blinkfocus" }
-
 local function blinkstaff_reticuletargetfn()
-    local player = ThePlayer
-    local rotation = player.Transform:GetRotation()
-    local pos = player:GetPosition()
-    local ents = TheSim:FindEntities(pos.x, pos.y, pos.z, TUNING.CONTROLLER_BLINKFOCUS_DISTANCE, BLINKFOCUS_MUST_TAGS)
-    for _, v in ipairs(ents) do
-        local epos = v:GetPosition()
-        if distsq(pos, epos) > TUNING.CONTROLLER_BLINKFOCUS_DISTANCESQ_MIN then
-            local angletoepos = player:GetAngleToPoint(epos)
-            local angleto = math.abs(anglediff(rotation, angletoepos))
-            if angleto < TUNING.CONTROLLER_BLINKFOCUS_ANGLE then
-                return epos
-            end
-        end
-    end
-    rotation = rotation * DEGREES
-    for r = 13, 1, -1 do
-        local numtries = 2 * PI * r
-        local offset = FindWalkableOffset(pos, rotation, r, numtries, false, true, NoHoles)
-        if offset ~= nil then
-            pos.x = pos.x + offset.x
-            pos.y = 0
-            pos.z = pos.z + offset.z
-            return pos
-        end
-    end
+    return ControllerReticle_Blink_GetPosition(ThePlayer, NoHoles)
 end
 
 local ORANGEHAUNT_MUST_TAGS = { "locomotor" }
@@ -441,7 +430,7 @@ local function onhauntorange(inst)
         local target = FindEntity(inst, 20, nil, ORANGEHAUNT_MUST_TAGS, ORANGEHAUNT_CANT_TAGS)
         if target ~= nil then
             local pos = target:GetPosition()
-            local start_angle = math.random() * 2 * PI
+            local start_angle = math.random() * TWOPI
             local offset = FindWalkableOffset(pos, start_angle, math.random(8, 12), 16, false, true, NoHoles)
             if offset ~= nil then
                 pos.x = pos.x + offset.x
@@ -521,7 +510,7 @@ local function SpawnLootPrefab(inst, lootprefab)
     local x, y, z = inst.Transform:GetWorldPosition()
 
     if loot.Physics ~= nil then
-        local angle = math.random() * 2 * PI
+        local angle = math.random() * TWOPI
         loot.Physics:SetVel(2 * math.cos(angle), 10, 2 * math.sin(angle))
 
         if inst.Physics ~= nil then
@@ -558,15 +547,78 @@ local function destroystructure(staff, target)
     --     but the user and the host will hear them!
     local caster = staff.components.inventoryitem.owner
 
-    for i, v in ipairs(recipe.ingredients) do
-        if caster ~= nil and DESTSOUNDSMAP[v.type] ~= nil then
-            caster.SoundEmitter:PlaySound(DESTSOUNDSMAP[v.type])
+    -- If the target is a mimic, drop nightmarefuel instead of any of the recipe loot.
+    if target.components.itemmimic then
+        if caster then
+		    caster.SoundEmitter:PlaySound("dontstarve/creatures/monkey/poopsplat")
         end
-        if string.sub(v.type, -3) ~= "gem" or string.sub(v.type, -11, -4) == "precious" then
-            --V2C: always at least one in case ingredient_percent is 0%
-            local amt = v.amount == 0 and 0 or math.max(1, math.ceil(v.amount * ingredient_percent))
-            for n = 1, amt do
-                SpawnLootPrefab(target, v.type)
+        target.components.itemmimic:TurnEvil(caster)
+    else
+        for i, v in ipairs(recipe.ingredients) do
+            if caster ~= nil and DESTSOUNDSMAP[v.type] ~= nil then
+                caster.SoundEmitter:PlaySound(DESTSOUNDSMAP[v.type])
+            end
+            if string.sub(v.type, -3) ~= "gem" or string.sub(v.type, -11, -4) == "precious" then
+                --V2C: always at least one in case ingredient_percent is 0%
+                local amt = v.amount == 0 and 0 or math.max(1, math.ceil(v.amount * ingredient_percent))
+                for _ = 1, amt do
+                    SpawnLootPrefab(target, v.type)
+                end
+            end
+        end
+
+        if target.components.inventory ~= nil then
+            target.components.inventory:DropEverything()
+        end
+
+        if target.components.container ~= nil then
+            target.components.container:DropEverything(nil, true)
+        end
+
+        if target.components.spawner ~= nil and target.components.spawner:IsOccupied() then
+            target.components.spawner:ReleaseChild()
+        end
+
+        if target.components.occupiable ~= nil and target.components.occupiable:IsOccupied() then
+            local item = target.components.occupiable:Harvest()
+            if item ~= nil then
+                item.Transform:SetPosition(target.Transform:GetWorldPosition())
+                item.components.inventoryitem:OnDropped()
+            end
+        end
+
+        if target.components.trap ~= nil then
+            target.components.trap:Harvest()
+        end
+
+        if target.components.dryer ~= nil then
+            target.components.dryer:DropItem()
+        end
+
+        if target.components.harvestable ~= nil then
+            target.components.harvestable:Harvest()
+        end
+
+        if target.components.stewer ~= nil then
+            target.components.stewer:Harvest()
+        end
+
+        if target.components.constructionsite ~= nil then
+            target.components.constructionsite:DropAllMaterials()
+        end
+
+        if target.components.inventoryitemholder ~= nil then
+            target.components.inventoryitemholder:TakeItem()
+        end
+
+        target:PushEvent("ondeconstructstructure", caster)
+
+        if not target.no_delete_on_deconstruct then
+            if target.components.stackable ~= nil then
+                --if it's stackable we only want to destroy one of them.
+                target.components.stackable:Get():Remove()
+            else
+                target:Remove()
             end
         end
     end
@@ -582,51 +634,6 @@ local function destroystructure(staff, target)
     end
 
     staff.components.finiteuses:Use(1)
-
-    if target.components.inventory ~= nil then
-        target.components.inventory:DropEverything()
-    end
-
-    if target.components.container ~= nil then
-        target.components.container:DropEverything()
-    end
-
-    if target.components.spawner ~= nil and target.components.spawner:IsOccupied() then
-        target.components.spawner:ReleaseChild()
-    end
-
-    if target.components.occupiable ~= nil and target.components.occupiable:IsOccupied() then
-        local item = target.components.occupiable:Harvest()
-        if item ~= nil then
-            item.Transform:SetPosition(target.Transform:GetWorldPosition())
-            item.components.inventoryitem:OnDropped()
-        end
-    end
-
-    if target.components.trap ~= nil then
-        target.components.trap:Harvest()
-    end
-
-    if target.components.dryer ~= nil then
-        target.components.dryer:DropItem()
-    end
-
-    if target.components.harvestable ~= nil then
-        target.components.harvestable:Harvest()
-    end
-
-    if target.components.stewer ~= nil then
-        target.components.stewer:Harvest()
-    end
-
-   	target:PushEvent("ondeconstructstructure", caster)
-
-    if target.components.stackable ~= nil then
-        --if it's stackable we only want to destroy one of them.
-        target.components.stackable:Get():Remove()
-    else
-        target:Remove()
-    end
 end
 
 local function HasRecipe(guy)
@@ -671,7 +678,7 @@ end
 local function onhauntlight(inst)
     if math.random() <= TUNING.HAUNT_CHANCE_RARE then
         local pos = inst:GetPosition()
-        local start_angle = math.random() * 2 * PI
+        local start_angle = math.random() * TWOPI
         local offset = FindWalkableOffset(pos, start_angle, math.random(3, 12), 60, false, true, NoHoles)
         if offset ~= nil then
             createlight(inst, nil, pos + offset)
@@ -702,7 +709,7 @@ local function onunequip_skinned(inst, owner)
     onunequip(inst, owner)
 end
 
-local function commonfn(colour, tags, hasskin)
+local function commonfn(colour, tags, hasskin, hasshadowlevel)
     local inst = CreateEntity()
 
     inst.entity:AddTransform()
@@ -715,12 +722,18 @@ local function commonfn(colour, tags, hasskin)
     inst.AnimState:SetBank("staffs")
     inst.AnimState:SetBuild("staffs")
     inst.AnimState:PlayAnimation(colour.."staff")
+    inst.scrapbook_anim = colour.."staff"
 
     if tags ~= nil then
         for i, v in ipairs(tags) do
             inst:AddTag(v)
         end
     end
+
+	if hasshadowlevel then
+		--shadowlevel (from shadowlevel component) added to pristine state for optimization
+		inst:AddTag("shadowlevel")
+	end
 
     local floater_swap_data =
     {
@@ -771,6 +784,11 @@ local function commonfn(colour, tags, hasskin)
         inst.components.equippable:SetOnUnequip(onunequip)
     end
 
+	if hasshadowlevel then
+		inst:AddComponent("shadowlevel")
+		inst.components.shadowlevel:SetDefaultLevel(TUNING.STAFF_SHADOW_LEVEL)
+	end
+
     return inst
 end
 
@@ -778,9 +796,11 @@ end
 
 local function red()
     --weapon (from weapon component) added to pristine state for optimization
-    local inst = commonfn("red", { "firestaff", "weapon", "rangedweapon", "rangedlighter" }, true)
+	local inst = commonfn("red", { "firestaff", "weapon", "rangedweapon", "rangedlighter" }, true, true)
 
     inst.projectiledelay = FRAMES
+
+    inst.scrapbook_specialinfo = "REDSTAFF"
 
     if not TheWorld.ismastersim then
         return inst
@@ -789,8 +809,9 @@ local function red()
     inst:AddComponent("weapon")
     inst.components.weapon:SetDamage(0)
     inst.components.weapon:SetRange(8, 10)
-    inst.components.weapon:SetOnAttack(onattack_red)
+    inst.components.weapon:SetOnAttack(onattack_red)    
     inst.components.weapon:SetProjectile("fire_projectile")
+    inst.components.weapon:SetOnProjectileLaunched(projectilelaunched_red)
 
     inst.components.finiteuses:SetMaxUses(TUNING.FIRESTAFF_USES)
     inst.components.finiteuses:SetUses(TUNING.FIRESTAFF_USES)
@@ -813,9 +834,11 @@ end
 
 local function blue()
     --weapon (from weapon component) added to pristine state for optimization
-    local inst = commonfn("blue", { "icestaff", "weapon", "rangedweapon", "extinguisher" }, true)
+	local inst = commonfn("blue", { "icestaff", "weapon", "rangedweapon", "extinguisher" }, true, true)
 
     inst.projectiledelay = FRAMES
+
+    inst.scrapbook_specialinfo = "BLUESTAFF"
 
     if not TheWorld.ismastersim then
         return inst
@@ -839,7 +862,9 @@ local function blue()
 end
 
 local function purple()
-    local inst = commonfn("purple", { "nopunch" }, true)
+	local inst = commonfn("purple", { "nopunch" }, true, true)
+
+    inst.scrapbook_specialinfo = "PURPLESTAFF"
 
     if not TheWorld.ismastersim then
         return inst
@@ -863,7 +888,7 @@ local function purple()
 end
 
 local function yellow()
-    local inst = commonfn("yellow", { "nopunch", "allow_action_on_impassable" }, true)
+	local inst = commonfn("yellow", { "nopunch", "allow_action_on_impassable" }, true, true)
 
     inst:AddComponent("reticule")
     inst.components.reticule.targetfn = light_reticuletargetfn
@@ -901,7 +926,7 @@ local function yellow()
 end
 
 local function green()
-    local inst = commonfn("green", { "nopunch" }, true)
+	local inst = commonfn("green", { "nopunch" }, true, true)
 
     if not TheWorld.ismastersim then
         return inst
@@ -924,7 +949,7 @@ end
 
 local function orange()
     --weapon (from weapon component) added to pristine state for optimization
-    local inst = commonfn("orange", { "weapon" }, true)
+	local inst = commonfn("orange", { "weapon" }, true, true)
 
     inst:AddComponent("reticule")
     inst.components.reticule.targetfn = blinkstaff_reticuletargetfn
@@ -957,7 +982,7 @@ local function orange()
 end
 
 local function opal()
-    local inst = commonfn("opal", { "nopunch", "allow_action_on_impassable" }, true)
+	local inst = commonfn("opal", { "nopunch", "allow_action_on_impassable" }, true, false)
 
     inst:AddComponent("reticule")
     inst.components.reticule.targetfn = light_reticuletargetfn
@@ -967,6 +992,8 @@ local function opal()
     if not TheWorld.ismastersim then
         return inst
     end
+
+    inst.scrapbook_adddeps = {"moonbase"}
 
     inst.fxcolour = {64/255, 64/255, 208/255}
     inst.castsound = "dontstarve/common/staffteleport"

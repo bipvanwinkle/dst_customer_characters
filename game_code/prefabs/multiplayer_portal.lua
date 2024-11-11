@@ -75,7 +75,10 @@ local function MakePortal(name, bank, build, assets, prefabs, common_postinit, m
         inst:AddTag("multiplayer_portal")
         inst:AddTag("antlion_sinkhole_blocker")
 
-        inst:SetDeployExtraSpacing(2)
+		inst:SetDeploySmartRadius(2.5)
+
+        inst.scrapbook_specialinfo = "MULTIPLAYERPORTAL"
+        inst.scrapbook_proxy = "multiplayer_portal"
 
         if common_postinit ~= nil then
             common_postinit(inst)
@@ -86,6 +89,8 @@ local function MakePortal(name, bank, build, assets, prefabs, common_postinit, m
         if not TheWorld.ismastersim then
             return inst
         end
+
+        inst.scrapbook_adddeps = { "moonrockidol", "multiplayer_portal_moonrock_constr_plans" }
 
         inst:SetStateGraph("SGmultiplayerportal")
 
@@ -115,6 +120,10 @@ local function MakePortal(name, bank, build, assets, prefabs, common_postinit, m
         end, TheWorld)
 
         inst:ListenForEvent("rez_player", OnRezPlayer)
+
+        if build == "portal_stone" then
+            MakeRoseTarget_CreateFuel(inst)
+        end
 
         if master_postinit ~= nil then
             master_postinit(inst)
@@ -147,6 +156,13 @@ local STONE_SOUNDS =
 
 local function stone_common_postinit(inst)
     inst.sounds = TheWorld.ismastersim and STONE_SOUNDS or nil
+
+    if not TheNet:IsDedicated() then
+        inst:AddComponent("pointofinterest")
+        inst.components.pointofinterest:SetHeight(-130)
+    end
+
+    inst.scrapbook_inspectonseen = true
 end
 
 local function construction_common_postinit(inst)
@@ -155,11 +171,15 @@ local function construction_common_postinit(inst)
     inst.AnimState:AddOverrideBuild("portal_stone_construction")
     inst.AnimState:OverrideSymbol("portal_moonrock", "portal_moonrock", "portal_moonrock")
     inst.AnimState:OverrideSymbol("curtains", "portal_moonrock", "curtains")
+	inst.AnimState:OverrideSymbol("lunar_mote", "portal_moonrock", "lunar_mote")
+	inst.AnimState:OverrideSymbol("light", "portal_stone", "light")
+	inst.AnimState:OverrideSymbol("portalbg", "portal_stone", "portalbg")
+	inst.AnimState:OverrideSymbol("spiralfx1", "portal_stone", "spiralfx1")
 
     if TheWorld:HasTag("cave") then
         inst.AnimState:Hide("eyefx")
     else
-        inst.AnimState:OverrideSymbol("glow", "portal_moonrock", "glow")
+		inst.AnimState:OverrideSymbol("glow01", "portal_moonrock", "glow01")
     end
 
     --constructionsite (from constructionsite component) added to pristine state for optimization
@@ -281,12 +301,12 @@ local MOONROCK_SOUNDS =
 }
 
 local function moonrock_common_postinit(inst)
-    inst.AnimState:OverrideSymbol("portaldoormagic_cycle", "portal_stone", "portaldoormagic_cycle")
+	inst.AnimState:OverrideSymbol("light", "portal_stone", "light")
     inst.AnimState:OverrideSymbol("portalbg", "portal_stone", "portalbg")
-    inst.AnimState:OverrideSymbol("spiralfx", "portal_stone", "spiralfx")
+	inst.AnimState:OverrideSymbol("spiralfx1", "portal_stone", "spiralfx1")
 
     if TheWorld:HasTag("cave") then
-        inst.AnimState:OverrideSymbol("FX_ray", "portal_stone", "FX_ray")
+		inst.AnimState:OverrideSymbol("FX_ray1", "portal_stone", "FX_ray1")
         inst.AnimState:Hide("eyefx")
     else
         inst.AnimState:SetLightOverride(.04)
@@ -407,7 +427,7 @@ local function moonrockfxfn()
     inst.AnimState:SetBuild("portal_moonrock")
     inst.AnimState:PlayAnimation("idle_loop", true)
     inst.AnimState:Hide("portal")
-    inst.AnimState:OverrideSymbol("FX_ray", "portal_stone", "FX_ray")
+	inst.AnimState:OverrideSymbol("FX_ray1", "portal_stone", "FX_ray1")
     inst.AnimState:SetLightOverride(.2)
 
     inst:AddTag("FX")

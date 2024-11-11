@@ -144,10 +144,10 @@ local function SpawnHand(player, params)
 	        return
 	    end
 	    local count = math.min(math.random(2), MAX_HANDS_PER_FIRE - firehandcount)
-	    local radius = fire.components.burnable:GetLargestLightRadius()
+	    local radius = fire.components.burnable:GetLargestLightRadius() or 8
 	    local x, y, z = fire.Transform:GetWorldPosition()
 	    for i = 1, count * 2 do
-	        local angle = math.random() * 2 * PI
+	        local angle = math.random() * TWOPI
 	        local result_offset = FindValidPositionByFan(angle, radius, 12, function(offset)
 	            local x1 = x + offset.x
 	            local z1 = z + offset.z

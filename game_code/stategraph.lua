@@ -120,7 +120,7 @@ function StateGraphWrangler:Update(current_tick)
 
     TheSim:ProfilerPush("updaters")
     for k,v in pairs(updaters) do
-        if k.inst:IsValid() then
+        if not k.stopped and k.inst:IsValid() then -- NOTES(JBK): The k.stopped check is for the condition of iterating the loop causes the stategraph of another stategraph to go invalid.
             local prefab = k.inst.prefab
             if prefab ~= nil then
 			     TheSim:ProfilerPush(k.inst.prefab)
@@ -162,7 +162,7 @@ ActionHandler = Class(
         self.action = action
 
         if type(state) == "string" then
-            self.deststate = function(inst) return state end
+            self.deststate = function(_) return state end
         else
             self.deststate = state
         end
@@ -190,6 +190,26 @@ TimeEvent = Class(
         self.fn = fn
     end)
 
+function FrameEvent(frame, fn)
+	return TimeEvent(frame * FRAMES, fn)
+end
+
+function SoundTimeEvent(time, sound_event)
+    return TimeEvent(time, function(inst)
+        inst.SoundEmitter:PlaySound(sound_event)
+    end)
+end
+
+function SoundFrameEvent(frame, sound_event)
+    return TimeEvent(frame * FRAMES, function(inst)
+        inst.SoundEmitter:PlaySound(sound_event)
+    end)
+end
+
+local function Chronological(a, b)
+	return a.time < b.time
+end
+
 State = Class(
     function(self, args)
         local info = debug.getinfo(3, "Sl")
@@ -209,6 +229,19 @@ State = Class(
             end
         end
 
+		--#V2C #client_prediction
+		if args.server_states ~= nil then
+			--client player only
+			self.server_states = {}
+			for _, v in ipairs(args.server_states) do
+				self.server_states[hash(v)] = true
+			end
+			self.forward_server_states = args.forward_server_states
+		else
+			--server player only
+			self.no_predict_fastforward = args.no_predict_fastforward
+		end
+
         self.events = {}
         if args.events ~= nil then
             for k,v in pairs(args.events) do
@@ -225,13 +258,8 @@ State = Class(
             end
         end
 
-        local function pred(a,b)
-            return a.time < b.time
-        end
-        table.sort(self.timeline, pred)
-
-    end
-)
+		table.sort(self.timeline, Chronological)
+	end)
 
 function State:HandleEvent(sg, eventname, data)
     if not data or not data.state or data.state == self.name then
@@ -242,9 +270,6 @@ function State:HandleEvent(sg, eventname, data)
     end
     return false
 end
-
-
-
 
 StateGraph = Class( function(self, name, states, events, defaultstate, actionhandlers)
     assert(name and type(name) == "string", "You must specify a name for this stategraph")
@@ -313,6 +338,7 @@ StateGraphInstance = Class( function (self, stategraph, inst)
     self.laststate = nil
     self.bufferedevents={}
     self.inst = inst
+	self.tags = {}
     self.statemem = {}
     self.mem = {}
     self.statestarttime = 0
@@ -409,7 +435,18 @@ function StateGraphInstance:StartAction(bufferedaction)
                 if handler.deststate then
                     local state = handler.deststate(self.inst, bufferedaction)
                     if state then
+						self.statemem.is_going_to_action_state = true
                         self:GoToState(state)
+
+						--V2C: (#HACK?) skip frames for predicted actions
+						if not (self.statemem.no_predict_fastforward or bufferedaction.options.no_predict_fastforward) then
+							local playercontroller = self.inst.components.playercontroller
+							if playercontroller ~= nil and playercontroller.remote_predicting and playercontroller.remote_authority then
+								local dt = GetTickTime()
+								self.inst.AnimState:SetTime(self.inst.AnimState:GetCurrentAnimationTime() + dt)
+								self:FastForward(dt)
+							end
+						end
                     else
                         return
                     end
@@ -423,18 +460,23 @@ function StateGraphInstance:StartAction(bufferedaction)
     end
 end
 
+function StateGraphInstance:HandleEvent(eventname, data)
+	data = data or {}
+	if not self.currentstate:HandleEvent(self, eventname, data) then
+		local handler = self.sg.events[eventname]
+		if handler ~= nil then
+			handler.fn(self.inst, data)
+		end
+	end
+end
+
 function StateGraphInstance:HandleEvents()
     assert(self.currentstate ~= nil, "we are not in a state!")
 
     if self.inst:IsValid() then
         local buff_events = self.bufferedevents
         for k, event in ipairs(buff_events) do
-            if not self.currentstate:HandleEvent(self, event.name, event.data) then
-                local handler = self.sg.events[event.name]
-                if handler ~= nil then
-                    handler.fn(self.inst, event.data)
-                end
-            end
+			self:HandleEvent(event.name, event.data)
             if buff_events ~= self.bufferedevents then
                 --V2C: This happens if ClearBufferedEvents() is called in a state handler
                 return
@@ -465,8 +507,6 @@ local SGTagsToEntTags =
     ["doing"] = true,
     ["fishing"] = true,
     ["flight"] = true,
-    ["giving"] = true,
-    ["igniting"] = true,
     ["hiding"] = true,
     ["idle"] = true,
     ["invisible"] = true,
@@ -484,6 +524,7 @@ local SGTagsToEntTags =
 function StateGraphInstance:HasState(statename)
     return self.sg.states[statename] ~= nil
 end
+
 function StateGraphInstance:GoToState(statename, params)
     local state = self.sg.states[statename]
 
@@ -506,6 +547,7 @@ function StateGraphInstance:GoToState(statename, params)
 --    end
 
     self.statemem = {}
+	self.lasttags = self.tags
     self.tags = {}
     if state.tags ~= nil then
         for k, v in pairs(state.tags) do
@@ -521,6 +563,18 @@ function StateGraphInstance:GoToState(statename, params)
             end
         end
     end
+
+	--#V2C #client_prediction
+	if TheWorld.ismastersim then
+		self.no_predict_fastforward = state.no_predict_fastforward
+	else
+		self.server_states =
+			self.currentstate ~= nil and
+			self.currentstate.forward_server_states and
+			self.currentstate.server_states or
+			state.server_states
+	end
+
     self.timeout = nil
     self.laststate = self.currentstate
     self.currentstate = state
@@ -538,11 +592,10 @@ function StateGraphInstance:GoToState(statename, params)
 
     self.inst:PushEvent("newstate", {statename = statename})
 
-
+	self.lasttags = nil
     self.lastupdatetime = GetTime()
     self.statestarttime = self.lastupdatetime
     SGManager:OnEnterNewState(self)
-
 end
 
 function StateGraphInstance:AddStateTag(tag)
@@ -560,7 +613,16 @@ function StateGraphInstance:RemoveStateTag(tag)
 end
 
 function StateGraphInstance:HasStateTag(tag)
-    return self.tags and (self.tags[tag] == true)
+	return self.tags[tag] == true
+end
+
+function StateGraphInstance:HasAnyStateTag(...)
+	for i = 1, select("#", ...) do
+		if self.tags[select(i, ...)] then
+            return true
+        end
+    end
+    return false
 end
 
 function StateGraphInstance:SetTimeout(time)
@@ -638,9 +700,7 @@ function StateGraphInstance:Update()
     end
     self.lastupdatetime = GetTime()
 
-
     self:UpdateState(dt)
-
 
     local time_to_sleep = nil
     if self.timelineindex and self.currentstate.timeline and self.currentstate.timeline[self.timelineindex] then
@@ -661,4 +721,17 @@ function StateGraphInstance:Update()
     end
 end
 
+--------------------------------------------------------------------------
+--#V2C #client_prediction
 
+function StateGraphInstance:ServerStateMatches()
+	--V2C: don't nil check self.server_states; should catch all errors during dev
+	return self.inst.player_classified ~= nil and self.server_states[self.inst.player_classified.currentstate:value()]
+end
+
+--#V2C #hack: use sparingly... ^^""
+function StateGraphInstance:FastForward(time)
+	self.lastupdatetime = self.lastupdatetime - time
+end
+
+--------------------------------------------------------------------------

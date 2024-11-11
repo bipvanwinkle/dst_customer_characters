@@ -4,6 +4,14 @@ local Image = require "widgets/image"
 local Widget = require "widgets/widget"
 local UIAnim = require "widgets/uianim"
 
+local function DoInspected(invitem, tried)
+    if ThePlayer then
+        TheScrapbookPartitions:SetInspectedByCharacter(invitem, ThePlayer.prefab)
+    elseif not tried then
+        invitem:DoTaskInTime(0, DoInspected, true) -- Delay a frame in case of load order desync only try once and then giveup.
+    end
+end
+
 local ItemTile = Class(Widget, function(self, invitem)
     Widget._ctor(self, "ItemTile")
     self.item = invitem
@@ -18,6 +26,7 @@ local ItemTile = Class(Widget, function(self, invitem)
     self.movinganim = nil
     self.ignore_stacksize_anim = nil
     self.onquantitychangedfn = nil
+	self.updatingflags = {}
 
     -- NOT SURE WAHT YOU WANT HERE
     if invitem.replica.inventoryitem == nil then
@@ -25,14 +34,18 @@ local ItemTile = Class(Widget, function(self, invitem)
         return
     end
 
-    if self.item:HasTag("show_spoiled") or self:HasSpoilage() then
-            self.bg = self:AddChild(Image(HUD_ATLAS, "inv_slot_spoiled.tex"))
+    DoInspected(invitem)
+
+	local show_spoiled_meter = self:HasSpoilage() or self.item:HasTag("show_broken_ui")
+
+	if show_spoiled_meter or self.item:HasTag("show_spoiled") then
+		self.bg = self:AddChild(Image(HUD_ATLAS, "inv_slot_spoiled.tex"))
         self.bg:SetClickable(false)
     end
 
     self.basescale = 1
 
-    if self:HasSpoilage() then
+	if show_spoiled_meter then
         self.spoilage = self:AddChild(UIAnim())
         self.spoilage:GetAnimState():SetBank("spoiled_meter")
         self.spoilage:GetAnimState():SetBuild("spoiled_meter")
@@ -71,6 +84,14 @@ local ItemTile = Class(Widget, function(self, invitem)
     end
 
     --self.image:SetClickable(false)
+
+    -- NOTES(JBK): Apply invitem.itemtile_tagname before other things they are treated to be part of the item instead of an overlay.
+    if invitem.itemtile_lightning then
+        self.image.itemtile_lightning = self.image:AddChild(Image(GetInventoryItemAtlas("itemtile_lightning.tex"), "itemtile_lightning.tex", "default.tex"))
+    end
+
+	self:ToggleShadowFX()
+	self:HandleAcidSizzlingFX()
 
     if self.rechargeframe ~= nil then
         self.recharge = self:AddChild(UIAnim())
@@ -111,6 +132,20 @@ local ItemTile = Class(Widget, function(self, invitem)
 				self:UpdateTooltip()
 			end
 		end, invitem)
+    self.inst:ListenForEvent("serverpauseddirty",
+        function(invitem)
+            if self.focus and not TheInput:ControllerAttached() then
+                self.inst:DoTaskInTime(0, function() self:UpdateTooltip() end)
+            end
+        end,
+    TheWorld)
+    self.inst:ListenForEvent("refreshcrafting",
+        function(invitem)
+            if self.focus and not TheInput:ControllerAttached() then
+                self:UpdateTooltip()
+            end
+        end,
+    ThePlayer)
         self.inst:ListenForEvent("inventoryitem_updatespecifictooltip",
             function(player, data)
                 if self.focus and not TheInput:ControllerAttached() and invitem.prefab == data.prefab then
@@ -197,6 +232,14 @@ local ItemTile = Class(Widget, function(self, invitem)
                 end
             end
         end, invitem)
+        
+    self.inst:ListenForEvent("acidsizzlingchange",
+        function(invitem, isacidsizzling)
+            if not self.isactivetile then
+                self:HandleAcidSizzlingFX(isacidsizzling)
+            end
+        end,
+    invitem)
 
     if not self.ismastersim then
         self.inst:ListenForEvent("stacksizepreview",
@@ -263,12 +306,13 @@ function ItemTile:Refresh()
         self.item.replica.inventoryitem:DeserializeUsage()
     end
 
-    if not self.isactivetile then
+	if not self.isactivetile and self.wetness then
         if self.item:GetIsWet() then
             self.wetness:Show()
         else
             self.wetness:Hide()
         end
+        self:HandleAcidSizzlingFX()
     end
 end
 
@@ -324,7 +368,7 @@ function ItemTile:GetDescriptionString()
             end
         elseif active_item:IsValid() then
             if not (self.item.replica.equippable ~= nil and self.item.replica.equippable:IsEquipped()) then
-                if active_item.replica.stackable ~= nil and active_item.prefab == self.item.prefab and active_item.AnimState:GetSkinBuild() == self.item.AnimState:GetSkinBuild() then --active_item.skinname == self.item.skinname (this does not work on clients, so we're going to use the AnimState hack instead)
+                if active_item.replica.stackable ~= nil and active_item.prefab == self.item.prefab and self.item:StackableSkinHack(active_item) then
                     str = str.."\n"..TheInput:GetLocalizedControl(TheInput:GetControllerID(), CONTROL_PRIMARY)..": "..STRINGS.UI.HUD.PUT
                 else
                     str = str.."\n"..TheInput:GetLocalizedControl(TheInput:GetControllerID(), CONTROL_PRIMARY)..": "..STRINGS.UI.HUD.SWAP
@@ -361,9 +405,16 @@ function ItemTile:SetQuantity(quantity)
         return
     elseif not self.quantity then
         self.quantity = self:AddChild(Text(NUMBERFONT, 42))
-        self.quantity:SetPosition(2, 16, 0)
     end
-    self.quantity:SetString(tostring(quantity))
+	if quantity > 999 then
+		self.quantity:SetSize(36)
+		self.quantity:SetPosition(3.5, 16, 0)
+		self.quantity:SetString("999+")
+	else
+		self.quantity:SetSize(42)
+		self.quantity:SetPosition(2, 16, 0)
+		self.quantity:SetString(tostring(quantity))
+	end
 end
 
 function ItemTile:SetPerishPercent(percent)
@@ -396,6 +447,15 @@ function ItemTile:SetPercent(percent)
 			val_to_show = 1
 		end
 		self.percent:SetString(string.format("%2.0f%%", val_to_show))
+		if not self.dragging and self.item:HasTag("show_broken_ui") then
+			if percent > 0 then
+				self.bg:Hide()
+				self.spoilage:Hide()
+			else
+				self.bg:Show()
+				self:SetPerishPercent(0)
+			end
+		end
     end
 end
 
@@ -409,9 +469,9 @@ function ItemTile:SetChargePercent(percent)
 				self.rechargeframe:Show()
 			end
 			if percent >= 0.9999 then
-				self:StopUpdating()
+				self:StopUpdatingCharge()
 			elseif self.rechargetime < math.huge then
-				self:StartUpdating()
+				self:StartUpdatingCharge()
 			end
 		else
 			if prev_precent < 1 and not self.recharge:GetAnimState():IsCurrentAnimation("frame_pst") then
@@ -420,7 +480,7 @@ function ItemTile:SetChargePercent(percent)
 			if self.rechargeframe.shown then
 				self.rechargeframe:Hide()
 			end
-			self:StopUpdating()
+			self:StopUpdatingCharge()
 		end
 	end
 end
@@ -428,9 +488,9 @@ end
 function ItemTile:SetChargeTime(t)
     self.rechargetime = t
     if self.rechargetime >= math.huge then
-        self:StopUpdating()
+		self:StopUpdatingCharge()
     elseif self.rechargepct < .9999 then
-        self:StartUpdating()
+		self:StartUpdatingCharge()
     end
 end
 
@@ -451,12 +511,14 @@ end
 --]]
 
 function ItemTile:StartDrag()
+	self.dragging = true
     --self:SetScale(1,1,1)
     if self.item.replica.inventoryitem ~= nil then -- HACK HACK: items without an inventory component won't have any of these
         if self.spoilage ~= nil then
             self.spoilage:Hide()
         end
         self.wetness:Hide()
+        self:HandleAcidSizzlingFX(false)
         if self.bg ~= nil then
             self.bg:Hide()
         end
@@ -488,9 +550,115 @@ function ItemTile:HasSpoilage()
     return self.hasspoilage
 end
 
+local function _StartUpdating(self, flag)
+	if next(self.updatingflags) == nil then
+		self:StartUpdating()
+	end
+	self.updatingflags[flag] = true
+end
+
+local function _StopUpdating(self, flag)
+	self.updatingflags[flag] = nil
+	if next(self.updatingflags) == nil then
+		self:StopUpdating()
+	end
+end
+
+function ItemTile:StartUpdatingCharge()
+	_StartUpdating(self, "charge")
+end
+
+function ItemTile:StopUpdatingCharge()
+	_StopUpdating(self, "charge")
+end
+
+function ItemTile:StartUpdatingShadowFuel()
+	self.updateshadowdelay = 0
+	_StartUpdating(self, "shadow")
+end
+
+function ItemTile:StopUpdatingShadowFuel()
+	_StopUpdating(self, "shadow")
+	self.updateshadowdelay = nil
+end
+
 function ItemTile:OnUpdate(dt)
     if TheNet:IsServerPaused() then return end
-    self:SetChargePercent(self.rechargetime > 0 and self.rechargepct + dt / self.rechargetime or .9999)
+	if self.updatingflags.charge then
+		self:SetChargePercent(self.rechargetime > 0 and self.rechargepct + dt / self.rechargetime or .9999)
+	end
+	if self.updatingflags.shadow then
+		self.updateshadowdelay = self.updateshadowdelay + dt
+		if self.updateshadowdelay > .2 then
+			self.updateshadowdelay = 0
+			self:CheckShadowFXFuel()
+		end
+	end
+end
+
+function ItemTile:CheckShadowFXFuel()
+	if self.item:HasTag("fueldepleted") then
+		self.shadowfx:Hide()
+	else
+		self.shadowfx:Show()
+	end
+end
+
+function ItemTile:ToggleShadowFX()
+	if self.showequipshadowfx or self.item:HasTag("magiciantool") then
+		if self.shadowfx == nil then
+			self.shadowfx = self.image:AddChild(UIAnim())
+			self.shadowfx:GetAnimState():SetBank("inventory_fx_shadow")
+			self.shadowfx:GetAnimState():SetBuild("inventory_fx_shadow")
+			self.shadowfx:GetAnimState():PlayAnimation("idle", true)
+			self.shadowfx:GetAnimState():SetTime(math.random() * self.shadowfx:GetAnimState():GetCurrentAnimationTime())
+			self.shadowfx:SetScale(.25)
+			self.shadowfx:GetAnimState():AnimateWhilePaused(false)
+			self.shadowfx:SetClickable(false)
+		end
+		if self.item:HasTag("NIGHTMARE_fueled") then
+			self:CheckShadowFXFuel()
+			self:StartUpdatingShadowFuel()
+		else
+			self:StopUpdatingShadowFuel()
+		end
+	elseif self.shadowfx ~= nil then
+		self.shadowfx:Kill()
+		self.shadowfx = nil
+		self:StopUpdatingShadowFuel()
+	end
+end
+
+function ItemTile:SetIsEquip(isequip)
+	local shadowfx = isequip and ThePlayer:HasTag("shadowmagic") and self.item:HasTag("shadowlevel")
+	if not self.showequipshadowfx == shadowfx then
+		self.showequipshadowfx = shadowfx or nil
+		self:ToggleShadowFX()
+	end
+end
+
+function ItemTile:HandleAcidSizzlingFX(isacidsizzling)
+    if isacidsizzling == nil then
+        isacidsizzling = self.item:IsAcidSizzling()
+    end
+    if isacidsizzling then
+        if self.acidsizzling == nil then
+            self.acidsizzling = self.image:AddChild(UIAnim())
+            self.acidsizzling:GetAnimState():SetBank("inventory_fx_acidsizzle")
+            self.acidsizzling:GetAnimState():SetBuild("inventory_fx_acidsizzle")
+            self.acidsizzling:GetAnimState():PlayAnimation("idle", true)
+            self.acidsizzling:GetAnimState():SetMultColour(.65, .62, .17, 0.8)
+            self.acidsizzling:GetAnimState():SetTime(math.random())
+            self.acidsizzling:SetScale(.25)
+            self.acidsizzling:GetAnimState():AnimateWhilePaused(false)
+            self.acidsizzling:SetClickable(false)
+        end
+    else
+        if self.acidsizzling ~= nil then
+            self.acidsizzling:Kill()
+            self.acidsizzling = nil
+        end
+    end
 end
 
 return ItemTile

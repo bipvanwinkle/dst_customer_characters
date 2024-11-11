@@ -290,11 +290,12 @@ local function fn()
     inst.MiniMapEntity:SetIcon("oceanvine_cocoon.png")
 
     inst:AddTag("flying")
-    inst:AddTag("ignorewalkableplatform")
+    inst:AddTag("ignorewalkableplatforms")
     inst:AddTag("NOBLOCK")                  -- To not block boat deployment.
     inst:AddTag("plant")
     inst:AddTag("spidercocoon")
     inst:AddTag("webbed")
+    inst:AddTag("soulless")
 
     if not TheNet:IsDedicated() then
         inst:AddComponent("distancefade")
@@ -308,7 +309,7 @@ local function fn()
         return inst
     end
 
-    inst.AnimState:SetTime(math.random() * inst.AnimState:GetCurrentAnimationLength())
+	inst.AnimState:SetFrame(math.random(inst.AnimState:GetCurrentAnimationNumFrames()) - 1)
 
     inst:AddComponent("burnable")
     inst.components.burnable:SetFXLevel(5)
@@ -405,7 +406,7 @@ local function burntfn()
     inst.AnimState:PlayAnimation("burnt", true)
 
     inst:AddTag("flying")
-    inst:AddTag("ignorewalkableplatform")
+    inst:AddTag("ignorewalkableplatforms")
 
     inst.entity:SetPristine()
     if not TheWorld.ismastersim then

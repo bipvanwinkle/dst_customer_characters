@@ -1,11 +1,11 @@
 require "behaviours/standstill"
 require "behaviours/runaway"
 require "behaviours/doaction"
-require "behaviours/panic"
 require "behaviours/useshield"
 require "behaviours/wander"
 require "behaviours/chaseandattack"
 require "behaviours/runaway"
+local BrainCommon = require("brains/braincommon")
 
 local START_FACE_DIST = 6
 local KEEP_FACE_DIST = 8
@@ -41,10 +41,10 @@ local function ShouldGoHome(inst)
 end
 
 local function ShouldRunAway(guy)
-    return guy:HasTag("character") and not guy:HasTag("notarget")
+    return guy:HasTag("character") and not guy:HasTag("notarget") and not guy:HasDebuff("healingsalve_acidbuff")
 end
 
-local EATFOOD_CANT_TAGS = { "outofreach" }
+local EATFOOD_CANT_TAGS = { "INLIMBO", "outofreach" }
 
 local function EatFoodAction(inst)
     if inst.sg:HasStateTag("busy") then
@@ -81,52 +81,54 @@ local function StealFoodAction(inst)
     local ents = TheSim:FindEntities(x, y, z, SEE_FOOD_DIST, nil, STEALFOOD_CANT_TAGS, STEALFOOD_ONEOF_TAGS)
 
     for i, v in ipairs(ents) do
-        --go through player inv and find valid food
-        local inv = v.components.inventory
-        if inv and v:IsOnValidGround() then
-            local pack = inv:GetEquippedItem(EQUIPSLOTS.BODY)
-            local validfood = {}
-            if pack and pack.components.container then
-                for k = 1, pack.components.container.numslots do
-                    local item = pack.components.container.slots[k]
+        if not v:HasDebuff("healingsalve_acidbuff") then
+            --go through player inv and find valid food
+            local inv = v.components.inventory
+            if inv and v:IsOnValidGround() then
+                local pack = inv:GetEquippedItem(EQUIPSLOTS.BODY)
+                local validfood = {}
+                if pack and pack.components.container then
+                    for k = 1, pack.components.container.numslots do
+                        local item = pack.components.container.slots[k]
+                        if item and item.components.edible and inst.components.eater:CanEat(item) then
+                            table.insert(validfood, item)
+                        end
+                    end
+                end
+
+                for k = 1, inv.maxslots do
+                    local item = inv.itemslots[k]
                     if item and item.components.edible and inst.components.eater:CanEat(item) then
                         table.insert(validfood, item)
                     end
                 end
-            end
 
-            for k = 1, inv.maxslots do
-                local item = inv.itemslots[k]
-                if item and item.components.edible and inst.components.eater:CanEat(item) then
-                    table.insert(validfood, item)
+                if #validfood > 0 then
+                    local itemtosteal = validfood[math.random(1, #validfood)]
+                    local act = BufferedAction(inst, itemtosteal, ACTIONS.STEAL)
+                    act.validfn = function() return (itemtosteal.components.inventoryitem and itemtosteal.components.inventoryitem:IsHeld()) end
+                    act.attack = true
+                    return act
                 end
             end
 
-            if #validfood > 0 then
-                local itemtosteal = validfood[math.random(1, #validfood)]
-                local act = BufferedAction(inst, itemtosteal, ACTIONS.STEAL)
-                act.validfn = function() return (itemtosteal.components.inventoryitem and itemtosteal.components.inventoryitem:IsHeld()) end
-                act.attack = true
-                return act
-            end
-        end
-
-        local container = v.components.container
-        if container then
-            local validfood = {}
-            for k = 1, container.numslots do
-                local item = container.slots[k]
-                if item and item.components.edible and inst.components.eater:CanEat(item) then
-                    table.insert(validfood, item)
+            local container = v.components.container
+            if container then
+                local validfood = {}
+                for k = 1, container.numslots do
+                    local item = container.slots[k]
+                    if item and item.components.edible and inst.components.eater:CanEat(item) then
+                        table.insert(validfood, item)
+                    end
                 end
-            end
 
-            if #validfood > 0 then
-                local itemtosteal = validfood[math.random(1, #validfood)]
-                local act = BufferedAction(inst, itemtosteal, ACTIONS.STEAL)
-                act.validfn = function() return (itemtosteal.components.inventoryitem and itemtosteal.components.inventoryitem:IsHeld()) end
-                act.attack = true
-                return act
+                if #validfood > 0 then
+                    local itemtosteal = validfood[math.random(1, #validfood)]
+                    local act = BufferedAction(inst, itemtosteal, ACTIONS.STEAL)
+                    act.validfn = function() return (itemtosteal.components.inventoryitem and itemtosteal.components.inventoryitem:IsHeld()) end
+                    act.attack = true
+                    return act
+                end
             end
         end
     end
@@ -136,7 +138,7 @@ function SlurtleSnailBrain:OnStart()
     local root = PriorityNode(
     {
         UseShield(self.inst, DAMAGE_UNTIL_SHIELD, SHIELD_TIME, AVOID_PROJECTILE_ATTACKS, HIDE_WHEN_SCARED),
-        WhileNode( function() return self.inst.components.hauntable and self.inst.components.hauntable.panic end, "PanicHaunted", Panic(self.inst)),
+		BrainCommon.PanicTrigger(self.inst),
         RunAway(self.inst, ShouldRunAway, RUN_AWAY_DIST, STOP_RUN_AWAY_DIST),
         DoAction(self.inst, EatFoodAction),
         DoAction(self.inst, StealFoodAction),

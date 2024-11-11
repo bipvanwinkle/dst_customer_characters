@@ -1,9 +1,9 @@
 require "behaviours/wander"
 require "behaviours/runaway"
 require "behaviours/doaction"
-require "behaviours/panic"
 require "behaviours/chaseandattack"
 require "behaviours/leash"
+local BrainCommon = require("brains/braincommon")
 
 local MIN_FOLLOW_DIST = 5
 local TARGET_FOLLOW_DIST = 7
@@ -72,9 +72,9 @@ function rowboat(inst)
 
     if boat and not pos then
         local radius = boat.components.walkableplatform.platform_radius - 0.35 
-        pos = Vector3(boat.Transform:GetWorldPosition())
+        pos = boat:GetPosition()
 
-        local offset = FindWalkableOffset(pos, math.random()*2*PI, radius, 12, false,false,nil,false,true)
+        local offset = FindWalkableOffset(pos, math.random()*TWOPI, radius, 12, false,false,nil,false,true)
         if offset then
             pos = pos + offset
         end
@@ -88,7 +88,7 @@ end
 local NO_TAGS = { "FX", "NOCLICK", "DECOR", "INLIMBO" }
 
 function shouldfix(inst)
-    if inst.components.timer:TimerExists("patch_boat_Cooldown") then
+    if inst.components.timer:TimerExists("patch_boat_cooldown") then
         return nil
     end
 
@@ -120,7 +120,7 @@ function shouldfix(inst)
 end
 
 function fixboat(inst) 
-   if inst.components.timer:TimerExists("patch_boat_Cooldown") then
+   if inst.components.timer:TimerExists("patch_boat_cooldown") then
         return nil
     end
 
@@ -153,34 +153,27 @@ end
 local function GetBoat(inst)
     return inst:GetCurrentPlatform()
 end
-local function GetBoatRadius(inst)
-    if not inst:GetCurrentPlatform() then
-        return nil
-    end
-    return GetBoat(inst).components.walkableplatform.platform_radius - 2
-end
 
 local function DoAbandon(inst)
-
     if inst:GetCurrentPlatform() and inst:GetCurrentPlatform().components.health:IsDead() then
         inst.abandon = true
     end
-    
+
     if not inst.abandon then
         return
     end
+
     local pos = Vector3(0,0,0)
     local platform = inst:GetCurrentPlatform()
     if platform then
-        
         local x,y,z = inst.Transform:GetWorldPosition()
         local theta = platform:GetAngleToPoint(x, y, z)* DEGREES
         local radius = platform.components.walkableplatform.platform_radius - 0.5
         local offset = Vector3(radius * math.cos( theta ), 0, -radius * math.sin( theta ))
 
-        local boatpos = Vector3(platform.Transform:GetWorldPosition())
+        local boat_x, boat_y, boat_z = platform.Transform:GetWorldPosition()
 
-        pos = Vector3( boatpos.x+offset.x,0,boatpos.z+offset.z )
+        pos = Vector3( boat_x+offset.x, 0, boat_z+offset.z )
 
         return BufferedAction(inst, nil, ACTIONS.ABANDON, nil, pos)
     end
@@ -207,10 +200,8 @@ end
 function PrimemateBrain:OnStart()
 
     local root = PriorityNode(
-    { 
-
-        WhileNode( function() return self.inst.components.hauntable and self.inst.components.hauntable.panic end, "PanicHaunted", Panic(self.inst)),
-        WhileNode( function() return self.inst.components.health.takingfiredamage end, "OnFire", Panic(self.inst)),
+    {
+		BrainCommon.PanicTrigger(self.inst),
 
         ChattyNode(self.inst, "MONKEY_TALK_ABANDON",
             DoAction(self.inst, DoAbandon, "abandon", true )),

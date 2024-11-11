@@ -13,10 +13,9 @@ local assets =
 
 local prefabs =
 {
-    "meat",
-    "log",
-    "character_fire",
+    "monstermeat",
     "livinglog",
+    "character_fire",
 }
 
 local function SetLeifScale(inst, scale)
@@ -98,6 +97,7 @@ local function common_fn(build)
     inst.Transform:SetFourFaced()
 
     inst:AddTag("epic")
+    inst:AddTag("smallepic")
     inst:AddTag("monster")
     inst:AddTag("hostile")
     inst:AddTag("leif")
@@ -108,6 +108,7 @@ local function common_fn(build)
     inst.AnimState:SetBank("leif")
     inst.AnimState:SetBuild(build)
     inst.AnimState:PlayAnimation("idle_loop", true)
+    inst.scrapbook_anim = "idle_loop"
 
     inst.entity:SetPristine()
 
@@ -176,6 +177,10 @@ local function common_fn(build)
 
     inst:AddComponent("drownable")
     ------------------------------------------
+
+    inst:AddComponent("acidinfusible")
+    inst.components.acidinfusible:SetFXLevel(3)
+    inst.components.acidinfusible:SetMultipliers(TUNING.ACID_INFUSION_MULT.WEAKER)
 
     inst:SetBrain(brain)
 

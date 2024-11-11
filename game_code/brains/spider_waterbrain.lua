@@ -3,7 +3,6 @@ require "behaviours/runaway"
 require "behaviours/wander"
 require "behaviours/doaction"
 require "behaviours/avoidlight"
-require "behaviours/panic"
 require "behaviours/attackwall"
 require "behaviours/useshield"
 
@@ -58,7 +57,7 @@ local function fish_target_valid_on_action(ba)
         and not (target.components.inventoryitem and target.components.inventoryitem:IsHeld())
 end
 
-local EATFOOD_CANT_TAGS = { "outofreach" }
+local EATFOOD_CANT_TAGS = { "INLIMBO", "outofreach" }
 local SEE_FOOD_DIST = 10
 local function EatFoodAction(inst)
     if inst.components.timer:TimerExists("eat_cooldown") then
@@ -116,16 +115,7 @@ function SpiderWaterBrain:OnStart()
         PriorityNode(
         {
             BrainCommon.PanicWhenScared(self.inst, .3),
-            WhileNode(function()
-                        return self.inst.components.hauntable and self.inst.components.hauntable.panic
-                    end, "PanicHaunted",
-                Panic(self.inst)
-            ),
-            WhileNode(function()
-                        return self.inst.components.health.takingfiredamage
-                    end, "OnFire",
-                Panic(self.inst)
-            ),
+			BrainCommon.PanicTrigger(self.inst),
             IfNode(function()
                     return not self.inst.bedazzled and self.inst.components.follower.leader == nil
                 end, "AttackWall",

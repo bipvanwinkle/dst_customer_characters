@@ -80,18 +80,6 @@ local function getstatus(inst, viewer)
 	return inst:HasTag("usesdepleted") and "EMPTY" or nil
 end
 
-local function OnSave(inst, data)
-    -- Normally finiteuses handles its own saving, but it doesn't
-    -- work properly for items that don't start at 100% uses.
-    data.uses = inst.components.finiteuses.current
-end
-
-local function OnLoad(inst, data)
-    if data ~= nil and data.uses ~= nil then
-        inst.components.finiteuses:SetUses(data.uses)
-    end
-end
-
 local function MakeWateringCan(name, uses, water_amount)
     local assets =
     {
@@ -126,6 +114,9 @@ local function MakeWateringCan(name, uses, water_amount)
 
         inst.displaynamefn = displaynamefn
 
+        inst.scrapbook_specialinfo = "WATERINGCAN"
+        inst.scrapbook_subcat = "tool"
+
         inst.entity:SetPristine()
 
         if not TheWorld.ismastersim then
@@ -155,6 +146,7 @@ local function MakeWateringCan(name, uses, water_amount)
         inst:AddComponent("finiteuses")
         inst.components.finiteuses:SetMaxUses(uses)
         inst.components.finiteuses:SetUses(0)
+        inst.components.finiteuses:SetDoesNotStartFull(true)
 
         MakeFuel(inst)
 
@@ -172,9 +164,6 @@ local function MakeWateringCan(name, uses, water_amount)
 
         inst:ListenForEvent("percentusedchange", onpercentusedchanged)
         inst:ListenForEvent("onburnt", onburnt)
-
-        inst.OnSave = OnSave
-        inst.OnLoad = OnLoad
 
         return inst
     end

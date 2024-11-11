@@ -18,7 +18,8 @@ end)
 
 --------------------------------------------------------------------------
 
-function Rider:OnRemoveFromEntity()
+--V2C: OnRemoveFromEntity not supported
+--[[function Rider:OnRemoveFromEntity()
     if TheWorld.ismastersim then
         self.classified = nil
     else
@@ -31,7 +32,7 @@ function Rider:OnRemoveFromEntity()
     end
 end
 
-Rider.OnRemoveEntity = Rider.OnRemoveFromEntity
+Rider.OnRemoveEntity = Rider.OnRemoveFromEntity]]
 
 function Rider:AttachClassified(classified)
     self.classified = classified
@@ -55,11 +56,10 @@ local function GetPickupAction(inst, target)
         return ACTIONS.CHECKTRAP
     end
 
-    local is_inventory = (target.replica.inventoryitem ~= nil and target.replica.inventoryitem:CanBePickedUp())
-            or (target.components.inventoryitem ~= nil and target.components.canbepickedup)
+    local is_inventory = target.replica.inventoryitem ~= nil and target.replica.inventoryitem:CanBePickedUp(inst)
 
     if is_inventory
-            and not (target:HasTag("heavy") or target:HasTag("fire") or target:HasTag("catchable") or target:HasTag("spider")) then
+            and not (target:HasTag("heavy") or (target:HasTag("fire") and not target:HasTag("lighter")) or target:HasTag("catchable") or target:HasTag("spider")) then
         return (inst.components.playercontroller:HasItemSlots() or target.replica.equippable ~= nil or target.components.equippable ~= nil) and ACTIONS.PICKUP or nil
     elseif target:HasTag("pickable") and not target:HasTag("fire") then
         return ACTIONS.PICK
@@ -137,6 +137,7 @@ end
 function Rider:SetActionFilter(riding)
     if self.inst.components.playercontroller ~= nil then
         if riding then
+			--See playercontroller AllowMountedStoreActionFilter; match priority
             self.inst.components.playercontroller.actionbuttonoverride = ActionButtonOverride
             self.inst.components.playeractionpicker:PushActionFilter(MountedActionFilter, 20)
         else

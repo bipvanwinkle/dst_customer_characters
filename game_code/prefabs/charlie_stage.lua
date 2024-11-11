@@ -149,7 +149,7 @@ local REWARDPOOL = {
 local function OnPlayPerformed(inst, data)
     if not data.next and not data.error then
         local REWARDS = inst._rewardpool[math.random(1, #inst._rewardpool)]
-        local theta = math.random() * 2 * PI
+        local theta = math.random() * TWOPI
         for _, reward in ipairs(REWARDS) do -- NOTES(JBK): Keep this ipairs because rewards metadata is being stored in the table.
             inst:DoTaskInTime(1 + (math.random()*2), spawnhound, reward, theta)
             theta = theta + PI/6
@@ -348,6 +348,36 @@ local function on_stage_sleep(inst)
     end
 end
 
+local PLAYBILL_MUST = {"playbill"}
+local function onplayernear(inst, player)
+    local hat = player.components.inventory:GetEquippedItem(EQUIPSLOTS.HEAD)
+    if hat then
+        if hat.prefab == "mask_toadyhat" or 
+            hat.prefab == "mask_sagehat" or 
+            hat.prefab == "mask_halfwithat" then
+
+            local x,y,z = inst.Transform:GetWorldPosition()
+            local playbills = TheSim:FindEntities(x, y, z, 20, PLAYBILL_MUST)
+            for i=#playbills,1, -1 do
+                local bill = playbills[i]
+                if bill.prefab ~= "playbill_the_veil" then
+                    table.remove(playbills,i)
+                end
+            end
+
+            if #playbills < 1 then
+                local newplaybill = SpawnPrefab("playbill_the_veil")
+                local radius = 0.3
+                local theta = math.random()* TWOPI
+                local offset = Vector3(radius * math.cos( theta ), 0, -radius * math.sin( theta ))
+                newplaybill.Transform:SetPosition(x+offset.x,y,z+offset.z)
+                local fx = SpawnPrefab("shadow_puff_solid")
+                fx.Transform:SetPosition(x+offset.x,y,z+offset.z)
+            end
+        end
+    end
+end
+
 local function fn()
     local inst = CreateEntity()
 
@@ -366,6 +396,8 @@ local function fn()
     inst:AddTag("stage")
     inst:AddTag("DECOR")
     inst:AddTag("NOCLICK")
+
+    inst.scrapbook_specialinfo = "CHARLIESTAGE"
 
     inst:DoTaskInTime(0, setup_stage_temptile_test)
 
@@ -451,6 +483,11 @@ local function postfn()
     inst._musictype = net_tinybyte(inst.GUID, "charlie_stage._musictype")
     inst._musictype:set_local(0)
 
+    if not TheNet:IsDedicated() then
+        inst:AddComponent("pointofinterest")
+        inst.components.pointofinterest:SetHeight(-90)
+    end
+
     inst.entity:SetPristine()
     if not TheWorld.ismastersim then
         inst:ListenForEvent("camerafocusdirty", OnCameraFocusDirty)
@@ -470,6 +507,11 @@ local function postfn()
 
     inst:AddComponent("entitytracker")
 
+    inst:AddComponent("playerprox")
+    inst.components.playerprox:SetDist(8,10)
+    inst.components.playerprox:SetOnPlayerNear(onplayernear)
+
+
     inst:SetStateGraph("SGcharlie_stage_post")
 
     inst.SetMusicType = SetStagePostMusicType
@@ -485,6 +527,8 @@ local function postfn()
     inst:ListenForEvent("play_performed", OnPlayPerformed)
 
     inst:DoTaskInTime(0, setup)
+
+    MakeRoseTarget_CreateFuel(inst)
 
     return inst
 end

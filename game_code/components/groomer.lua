@@ -130,8 +130,10 @@ function Groomer:CanBeginChanging(doer)
         return false
     elseif self.shareable then
         return true
-    elseif self.inst.burnable ~= nil and self.inst.burnable:IsBurning() then
+	elseif self.inst.components.burnable and self.inst.components.burnable:IsBurning() then
         return false, "BURNING"
+	elseif not self.canbeshared and next(self.changers) then
+		return false, "INUSE"
     elseif not self.occupant then
         return false, "NOOCCUPANT"
     elseif self.occupant and self.occupant.components.beard and self.occupant.components.beard.bits < TUNING.BEEFALO_BEARD_BITS then
@@ -225,14 +227,17 @@ end
 
 function Groomer:ActivateChanging(doer, skins)
     if skins == nil or
-        next(skins) == nil or
         doer.sg.currentstate.name ~= "openwardrobe" or
-        (self.occupant and self.occupant.components.skinner_beefalo == nil) then
-            print(self.occupant,doer.sg.currentstate.name)
+        self.occupant == nil or
+        self.occupant.components.skinner_beefalo == nil or
+        not self.occupant.components.skinner_beefalo:IsClothingDifferent(skins)
+    then
         return false
     elseif self.occupant then
         return DoChange(self, doer, skins)
     end
+
+    return false
 end
 
 function Groomer:ApplyTargetSkins(target, doer, skins)

@@ -336,6 +336,13 @@ local function OnChangeLeaves(inst, monster, monsterout)
     else
         inst:RemoveTag("shelter")
     end
+
+    if monster then
+        inst:RemoveComponent("waxable")
+
+    elseif inst.components.waxable == nil then
+        MakeWaxablePlant(inst)
+    end
 end
 
 local function ChangeSizeFn(inst)
@@ -595,7 +602,7 @@ local function chop_down_tree(inst, chopper)
 
     inst:DoTaskInTime(.4, chop_down_tree_shake)
 
-    inst.AnimState:PushAnimation(inst.anims.stump)
+    inst.AnimState:PushAnimation(inst.anims.stump, false)
 
     make_stump(inst)
 end
@@ -1096,6 +1103,13 @@ local function onload(inst, data)
             Sway(inst)
         end
     end
+
+    if inst.monster then
+        inst:RemoveComponent("waxable")
+
+    elseif inst.components.waxable == nil then
+        MakeWaxablePlant(inst)
+    end
 end
 
 local function OnSeasonChanged(inst, season)
@@ -1236,6 +1250,7 @@ local function makefn(build, stage, data)
         inst.entity:AddNetwork()
 
         MakeObstaclePhysics(inst, .25)
+		inst:SetDeploySmartRadius(DEPLOYSPACING_RADIUS[DEPLOYSPACING.DEFAULT] / 2) --seed/planted_tree deployspacing/2
 
         inst.MiniMapEntity:SetIcon("tree_leaf.png")
         inst.MiniMapEntity:SetPriority(-1)
@@ -1258,6 +1273,11 @@ local function makefn(build, stage, data)
         end
 
         inst:SetPrefabName(GetBuild(inst).prefab_name)
+
+        inst.scrapbook_specialinfo = "TREE"
+        inst.scrapbook_overridedata={"swap_leaves", "tree_leaf_green_build", "swap_leaves"}
+        inst.scrapbook_proxy = "deciduoustree_tall"
+        inst.scrapbook_speechname = inst.prefab
 
         MakeSnowCoveredPristine(inst)
 
@@ -1334,6 +1354,8 @@ local function makefn(build, stage, data)
 
         inst.leaf_state = "normal"
 
+        MakeWaxablePlant(inst)
+
         inst.StartMonster = StartMonster
         inst.StopMonster = StopMonster
         inst.monster = false
@@ -1364,7 +1386,7 @@ local function makefn(build, stage, data)
             --When POPULATING, season won't be valid yet at this point,
             --but we want this immediate for all later spawns.
             OnInitSeason(inst)
-            inst.AnimState:SetTime(math.random() * 2)
+			inst.AnimState:SetFrame(math.random(inst.AnimState:GetCurrentAnimationNumFrames()) - 1)
             if data == "burnt" then
                 OnBurnt(inst, true)
             else
@@ -1375,8 +1397,6 @@ local function makefn(build, stage, data)
 					inst:DoTaskInTime(0, OnInitSeason)
 				end
             end
-
-
         end
 
         inst.OnEntitySleep = OnEntitySleep

@@ -174,6 +174,7 @@ local function fn()
     inst.entity:AddMiniMapEntity()
     inst.entity:AddNetwork()
 
+	inst:SetDeploySmartRadius(DEPLOYSPACING_RADIUS[DEPLOYSPACING.DEFAULT] / 2) --item deployspacing/2
     inst:SetPhysicsRadiusOverride(.5)
     MakeObstaclePhysics(inst, inst.physicsradiusoverride)
 
@@ -275,6 +276,8 @@ local function itemfn()
     inst:AddTag("portableitem")
 
     MakeInventoryFloatable(inst, nil, 0.05, 0.7)
+
+    inst.scrapbook_anim = "idle_item"
 
     inst.entity:SetPristine()
 

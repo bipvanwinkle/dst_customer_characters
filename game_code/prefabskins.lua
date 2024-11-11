@@ -3,23 +3,39 @@
 PREFAB_SKINS = {
 	abigail =
 	{
+		"abigail_creepy",
 		"abigail_formal",
+		"abigail_funeral",
+		"abigail_gladiator",
 		"abigail_handmedown",
+		"abigail_ice",
 		"abigail_lunar",
+		"abigail_lureplant",
+		"abigail_magma",
 		"abigail_nature",
 		"abigail_rose",
 		"abigail_shadow",
 		"abigail_survivor",
+		"abigail_victorian",
+		"abigail_yule",
 	},
 	abigail_flower =
 	{
+		"abigail_flower_creepy",
 		"abigail_flower_formal",
+		"abigail_flower_funeral",
+		"abigail_flower_gladiator",
 		"abigail_flower_handmedown",
+		"abigail_flower_ice",
 		"abigail_flower_lunar",
+		"abigail_flower_lureplant",
+		"abigail_flower_magma",
 		"abigail_flower_nature",
 		"abigail_flower_rose",
 		"abigail_flower_shadow",
 		"abigail_flower_survivor",
+		"abigail_flower_victorian",
+		"abigail_flower_yule",
 	},
 	alterguardianhat =
 	{
@@ -29,6 +45,7 @@ PREFAB_SKINS = {
 	{
 		"amulet_red_heart",
 		"amulet_red_occulteye",
+		"amulet_red_rose",
 	},
 	anchor =
 	{
@@ -38,10 +55,15 @@ PREFAB_SKINS = {
 	{
 		"anchor_nautical_item",
 	},
+	armor_bramble =
+	{
+		"armor_bramble_ancient",
+	},
 	armor_sanity =
 	{
 		"armor_sanity_curve",
 		"armor_sanity_sharp",
+		"armor_sanity_wizard",
 	},
 	armordragonfly =
 	{
@@ -49,6 +71,10 @@ PREFAB_SKINS = {
 		"armor_dragonfly_haramaki",
 		"armor_dragonfly_lamellar",
 		"armor_dragonfly_roman",
+	},
+	armordreadstone =
+	{
+		"armor_dreadstone_horn",
 	},
 	armorgrass =
 	{
@@ -63,6 +89,7 @@ PREFAB_SKINS = {
 	},
 	armorruins =
 	{
+		"armor_ruins_an",
 		"armor_ruins_arcane",
 		"armor_ruins_bulky",
 		"armor_ruins_leaf",
@@ -127,8 +154,14 @@ PREFAB_SKINS = {
 		"batbat_fantasy",
 		"batbat_scythe",
 	},
+	beargervest =
+	{
+		"beargervest_rose",
+		"beargervest_yule",
+	},
 	bedroll_furry =
 	{
+		"bedroll_furry_catcoon",
 		"bedroll_furry_potato",
 		"bedroll_furry_quilt_blue_frost",
 		"bedroll_furry_quilt_green_hunters",
@@ -139,8 +172,13 @@ PREFAB_SKINS = {
 	beebox =
 	{
 		"beebox_crystal",
+		"beebox_garden",
 		"beebox_house",
 		"beebox_victorian",
+	},
+	beef_bell =
+	{
+		"cowbell_round",
 	},
 	beefalohat =
 	{
@@ -151,6 +189,7 @@ PREFAB_SKINS = {
 	},
 	beehat =
 	{
+		"beehat_garden",
 		"beehat_mourning",
 		"beehat_sunhat",
 	},
@@ -162,17 +201,25 @@ PREFAB_SKINS = {
 	bernie_active =
 	{
 		"bernie_cat_active",
+		"bernie_dog_active",
 	},
 	bernie_big =
 	{
 		"bernie_cat_big",
+		"bernie_cat_lunar_build",
+		"bernie_cat_shadow_build",
+		"bernie_dog_big",
+		"bernie_dog_lunar_build",
+		"bernie_dog_shadow_build",
 	},
 	bernie_inactive =
 	{
 		"bernie_cat",
+		"bernie_dog",
 	},
 	birdcage =
 	{
+		"birdcage_adventure",
 		"birdcage_circus",
 		"birdcage_curly",
 		"birdcage_gothic",
@@ -181,19 +228,53 @@ PREFAB_SKINS = {
 		"birdcage_pirate",
 		"birdcage_romantic",
 	},
+	birdtrap =
+	{
+		"birdtrap_an",
+	},
 	boat =
 	{
 		"boat_nautical",
+		"boat_pirate_skin",
 		"boat_wagstaff",
+	},
+	boat_grass =
+	{
+		"boat_grass_pirate",
+	},
+	boat_grass_item =
+	{
+		"boat_grass_pirate_item",
 	},
 	boat_item =
 	{
 		"boat_nautical_item",
+		"boat_pirate_skin_item",
 		"boat_wagstaff_item",
 	},
 	book_brimstone =
 	{
 		"book_brimstone_gilded",
+	},
+	book_research_station =
+	{
+		"book_research_station_howto",
+	},
+	book_silviculture =
+	{
+		"book_silviculture_livinglog",
+	},
+	book_sleep =
+	{
+		"book_sleep_magazine",
+	},
+	book_temperature =
+	{
+		"book_temperature_romance",
+	},
+	book_web =
+	{
+		"book_web_tallbird",
 	},
 	boomerang =
 	{
@@ -203,6 +284,7 @@ PREFAB_SKINS = {
 	bugnet =
 	{
 		"bugnet_frog",
+		"bugnet_garden",
 		"bugnet_lavaproof",
 		"bugnet_spider",
 		"bugnet_spider_white",
@@ -211,12 +293,14 @@ PREFAB_SKINS = {
 	{
 		"bundle_cawnival",
 		"bundle_gothic",
+		"bundle_kitchen",
 		"bundle_vintage",
 	},
 	bundlewrap =
 	{
 		"bundlewrap_cawnival",
 		"bundlewrap_gothic",
+		"bundlewrap_kitchen",
 		"bundlewrap_vintage",
 	},
 	bushhat =
@@ -232,6 +316,7 @@ PREFAB_SKINS = {
 		"cane_ancient",
 		"cane_candycane",
 		"cane_harlequin",
+		"cane_rose",
 		"cane_sharp",
 		"cane_victorian",
 	},
@@ -262,16 +347,19 @@ PREFAB_SKINS = {
 	},
 	chester =
 	{
+		"chester_horn",
 		"chester_lamb",
 		"chester_walrus",
 	},
 	chester_eyebone =
 	{
+		"chester_eyebone_horn",
 		"chester_eyebone_lamb",
 		"chester_eyebone_walrus",
 	},
 	coldfirepit =
 	{
+		"coldfirepit_an",
 		"coldfirepit_flower",
 		"coldfirepit_gothic",
 		"coldfirepit_teeth",
@@ -281,6 +369,7 @@ PREFAB_SKINS = {
 		"cookpot_cauldron",
 		"cookpot_cauldronp",
 		"cookpot_clay",
+		"cookpot_kitchen",
 		"cookpot_survival",
 		"cookpot_tureen",
 	},
@@ -288,6 +377,7 @@ PREFAB_SKINS = {
 	{
 		"dragonling_bat",
 		"dragonling_batp",
+		"dragonling_mantis",
 		"dragonling_winter",
 		"dragonling_wyvern",
 	},
@@ -295,6 +385,7 @@ PREFAB_SKINS = {
 	{
 		"dragonling_bat_builder",
 		"dragonling_batp_builder",
+		"dragonling_mantis_builder",
 		"dragonling_winter_builder",
 		"dragonling_wyvern_builder",
 	},
@@ -322,14 +413,27 @@ PREFAB_SKINS = {
 	},
 	critter_lamb =
 	{
+		"lamb_cotl",
+		"lamb_dark",
 		"lamb_winter",
 	},
 	critter_lamb_builder =
 	{
+		"lamb_cotl_builder",
+		"lamb_dark_builder",
 		"lamb_winter_builder",
+	},
+	critter_lunarmothling =
+	{
+		"lunarmoth_bright",
+	},
+	critter_lunarmothling_builder =
+	{
+		"lunarmoth_bright_builder",
 	},
 	critter_perdling =
 	{
+		"perdling_crow",
 		"perdling_pelican",
 		"perdling_pollyrogers",
 		"perdling_puffin",
@@ -338,6 +442,7 @@ PREFAB_SKINS = {
 	},
 	critter_perdling_builder =
 	{
+		"perdling_crow_builder",
 		"perdling_pelican_builder",
 		"perdling_pollyrogers_builder",
 		"perdling_puffin_builder",
@@ -361,15 +466,85 @@ PREFAB_SKINS = {
 		"critterlab_fantasy",
 		"critterlab_gothic",
 	},
+	decor_centerpiece =
+	{
+		"decor_centerpiece_fantasy",
+		"decor_centerpiece_hallowed",
+		"decor_centerpiece_handmade",
+		"decor_centerpiece_western",
+	},
+	decor_flowervase =
+	{
+		"decor_flowervase_fantasy",
+		"decor_flowervase_hallowed",
+		"decor_flowervase_handmade",
+		"decor_flowervase_western",
+	},
+	decor_lamp =
+	{
+		"decor_lamp_fantasy",
+		"decor_lamp_hallowed",
+		"decor_lamp_handmade",
+		"decor_lamp_western",
+	},
+	decor_pictureframe =
+	{
+		"decor_pictureframe_fantasy",
+		"decor_pictureframe_hallowed",
+		"decor_pictureframe_handmade",
+		"decor_pictureframe_western",
+	},
+	decor_portraitframe =
+	{
+		"decor_portraitframe_fantasy",
+		"decor_portraitframe_hallowed",
+		"decor_portraitframe_handmade",
+		"decor_portraitframe_western",
+	},
+	deserthat =
+	{
+		"deserthat_fedora",
+	},
+	dock_woodposts =
+	{
+		"dock_woodposts_carved",
+		"dock_woodposts_carved2",
+		"dock_woodposts_carved3",
+		"dock_woodposts_decorated",
+		"dock_woodposts_decorated2",
+		"dock_woodposts_decorated3",
+		"dock_woodposts_kitchen",
+		"dock_woodposts_kitchen2",
+		"dock_woodposts_kitchen3",
+	},
+	dock_woodposts_item =
+	{
+		"dock_woodposts_carved2_item",
+		"dock_woodposts_carved3_item",
+		"dock_woodposts_carved_item",
+		"dock_woodposts_decorated2_item",
+		"dock_woodposts_decorated3_item",
+		"dock_woodposts_decorated_item",
+		"dock_woodposts_kitchen2_item",
+		"dock_woodposts_kitchen3_item",
+		"dock_woodposts_kitchen_item",
+	},
 	dragonflychest =
 	{
 		"dragonflychest_fantasy",
 		"dragonflychest_kraken",
+		"dragonflychest_upgraded_fantasy",
+		"dragonflychest_upgraded_kraken",
 	},
 	dragonflyfurnace =
 	{
+		"dragonflyfurnace_adventure",
 		"dragonflyfurnace_antique",
 		"dragonflyfurnace_crystal",
+	},
+	dreadstonehat =
+	{
+		"hat_dreadstone_horn",
 	},
 	earmuffshat =
 	{
@@ -386,9 +561,19 @@ PREFAB_SKINS = {
 	},
 	eyebrellahat =
 	{
+		"eyebrellahat_adventure",
 		"eyebrellahat_crystal",
 		"eyebrellahat_fantasy",
+		"eyebrellahat_rose",
 		"eyebrellahat_victorian",
+	},
+	eyeturret =
+	{
+		"eyeturret_an",
+	},
+	eyeturret_item =
+	{
+		"eyeturret_anitem",
 	},
 	farm_hoe =
 	{
@@ -407,6 +592,7 @@ PREFAB_SKINS = {
 	},
 	fence =
 	{
+		"fence_ancient",
 		"fence_factory",
 		"fence_fantasy",
 		"fence_gingerbread",
@@ -420,6 +606,7 @@ PREFAB_SKINS = {
 	},
 	fence_gate =
 	{
+		"fence_gate_ancient",
 		"fence_gate_gingerbread",
 		"fence_gate_gothic",
 		"fence_gate_picketbrown",
@@ -431,6 +618,7 @@ PREFAB_SKINS = {
 	},
 	fence_gate_item =
 	{
+		"fencegate_ancient_item",
 		"fencegate_gingerbread_item",
 		"fencegate_gothic_item",
 		"fencegate_picketbrown_item",
@@ -442,6 +630,7 @@ PREFAB_SKINS = {
 	},
 	fence_item =
 	{
+		"fence_ancient_item",
 		"fence_factory_item",
 		"fence_fantasy_item",
 		"fence_gingerbread_item",
@@ -484,6 +673,7 @@ PREFAB_SKINS = {
 	fish_box =
 	{
 		"fishbox_nautical",
+		"fishbox_pirate",
 	},
 	flowerhat =
 	{
@@ -495,6 +685,7 @@ PREFAB_SKINS = {
 	},
 	footballhat =
 	{
+		"footballhat_adventure",
 		"footballhat_combathelm",
 		"footballhat_combathelm2",
 		"footballhat_hockey",
@@ -517,8 +708,13 @@ PREFAB_SKINS = {
 	{
 		"glommerflower_fantasy",
 	},
+	goggleshat =
+	{
+		"goggleshat_fedora",
+	},
 	golden_farm_hoe =
 	{
+		"golden_farmhoe_garden",
 		"golden_farmhoe_invisible",
 	},
 	goldenaxe =
@@ -557,6 +753,7 @@ PREFAB_SKINS = {
 	},
 	greenstaff =
 	{
+		"greenstaff_an",
 		"greenstaff_clockwork",
 	},
 	hambat =
@@ -594,8 +791,13 @@ PREFAB_SKINS = {
 	{
 		"icebox_coffin",
 		"icebox_crystal",
+		"icebox_kitchen",
 		"icebox_porcelain",
 		"icebox_victorian",
+	},
+	icepack =
+	{
+		"icepack_kitchen",
 	},
 	icestaff =
 	{
@@ -615,6 +817,7 @@ PREFAB_SKINS = {
 	krampus_sack =
 	{
 		"krampus_sack_basket",
+		"krampus_sack_garden",
 		"krampus_sack_voidbag",
 	},
 	lantern =
@@ -632,10 +835,16 @@ PREFAB_SKINS = {
 	},
 	lighter =
 	{
+		"lighter_glass",
 		"lighter_haunteddoll",
+		"lighter_heart",
+		"lighter_old",
+		"lighter_ragged",
+		"lighter_rose",
 	},
 	lightning_rod =
 	{
+		"lightning_rod_adventure",
 		"lightning_rod_gothic",
 		"lightning_rod_nautical",
 		"lightning_rod_retro",
@@ -649,11 +858,16 @@ PREFAB_SKINS = {
 	{
 		"eyeplant_bulb_trap_plantera",
 	},
+	magician_chest =
+	{
+		"magician_chest_shadow",
+	},
 	mast =
 	{
 		"mast_crabking",
 		"mast_crabking_alt",
 		"mast_nautical",
+		"mast_pirate",
 		"mast_rose",
 		"mast_rose_alt",
 	},
@@ -662,6 +876,7 @@ PREFAB_SKINS = {
 		"mast_crabking_alt_item",
 		"mast_crabking_item",
 		"mast_nautical_item",
+		"mast_pirate_item",
 		"mast_rose_alt_item",
 		"mast_rose_item",
 	},
@@ -695,6 +910,7 @@ PREFAB_SKINS = {
 	},
 	meatrack =
 	{
+		"meatrack_ancient",
 		"meatrack_butcher",
 		"meatrack_circus",
 		"meatrack_victorian",
@@ -702,6 +918,10 @@ PREFAB_SKINS = {
 	mermhouse_crafted =
 	{
 		"mermhouse_crafted_fantasy",
+	},
+	mighty_gym =
+	{
+		"mighty_gym_ancient",
 	},
 	minerhat =
 	{
@@ -733,6 +953,11 @@ PREFAB_SKINS = {
 		"minisign_pickettan_item",
 		"minisign_picketwhite_item",
 	},
+	molehat =
+	{
+		"molehat_goggles",
+		"molehat_tail",
+	},
 	monkey_mediumhat =
 	{
 		"monkeyhatmedium_blue",
@@ -743,26 +968,40 @@ PREFAB_SKINS = {
 		"monkeyhatsmall_beads",
 		"monkeyhatsmall_belt",
 	},
+	moondial =
+	{
+		"moondial_an",
+	},
 	multitool_axe_pickaxe =
 	{
 		"multitool_axe_pickaxe_pickaxeaxe",
 	},
+	mushroom_farm =
+	{
+		"mushroom_farm_handmade",
+	},
 	mushroom_light =
 	{
+		"mushroom_light_an",
 		"mushroom_light_festive",
+		"mushroom_light_hallowed",
 		"mushroom_light_tiffany",
 	},
 	mushroom_light2 =
 	{
+		"mushroom_light2_an",
 		"mushroom_light2_cawnival",
+		"mushroom_light2_hallowed",
 		"mushroom_light2_lily",
 		"mushroom_light2_victorian",
 	},
 	nightsword =
 	{
+		"nightsword_cotl",
 		"nightsword_curve",
 		"nightsword_lightsbane",
 		"nightsword_sharp",
+		"nightsword_wizard",
 	},
 	oar =
 	{
@@ -772,11 +1011,20 @@ PREFAB_SKINS = {
 	{
 		"oar_driftwood_invisible",
 	},
+	ocean_trawler =
+	{
+		"ocean_trawler_pirate",
+	},
+	ocean_trawler_kit =
+	{
+		"ocean_trawler_pirate_kit",
+	},
 	oceanfishingrod =
 	{
 		"oceanfishingrod_hotline",
 		"oceanfishingrod_ice",
 		"oceanfishingrod_ice_alt",
+		"oceanfishingrod_nautical",
 	},
 	opalstaff =
 	{
@@ -789,6 +1037,7 @@ PREFAB_SKINS = {
 		"orangestaff_candycane",
 		"orangestaff_harlequin",
 		"orangestaff_rodofdiscord",
+		"orangestaff_rose",
 		"orangestaff_sharp",
 		"orangestaff_victorian",
 	},
@@ -796,6 +1045,13 @@ PREFAB_SKINS = {
 	{
 		"panflute_an",
 		"panflute_harlequin",
+	},
+	phonograph =
+	{
+		"decor_phonograph_fantasy",
+		"decor_phonograph_hallowed",
+		"decor_phonograph_handmade",
+		"decor_phonograph_western",
 	},
 	pickaxe =
 	{
@@ -822,10 +1078,27 @@ PREFAB_SKINS = {
 	{
 		"pitchfork_invisible",
 	},
+	pottedfern =
+	{
+		"pottedfern_cotl",
+		"pottedfern_cotl2",
+		"pottedfern_cotl3",
+		"pottedfern_rose",
+		"pottedfern_rose2",
+		"pottedfern_rose3",
+	},
+	premiumwateringcan =
+	{
+		"premiumwateringcan_koalefant",
+	},
 	rabbithouse =
 	{
 		"rabbithouse_carrat",
 		"rabbithouse_yule",
+	},
+	raincoat =
+	{
+		"raincoat_poncho",
 	},
 	rainhat =
 	{
@@ -839,8 +1112,16 @@ PREFAB_SKINS = {
 	},
 	razor =
 	{
+		"razor_barber",
 		"razor_scissors",
 		"razor_straight",
+	},
+	record =
+	{
+		"record_creepyforest",
+		"record_drstyle",
+		"record_efs",
+		"record_hallowednights",
 	},
 	reflectivevest =
 	{
@@ -850,6 +1131,7 @@ PREFAB_SKINS = {
 	{
 		"researchlab_gothic",
 		"researchlab_green",
+		"researchlab_party",
 		"researchlab_retro",
 	},
 	researchlab2 =
@@ -858,9 +1140,11 @@ PREFAB_SKINS = {
 		"researchlab2_crystal",
 		"researchlab2_gothic",
 		"researchlab2_pod",
+		"researchlab2_science",
 	},
 	researchlab3 =
 	{
+		"researchlab3_adventure",
 		"researchlab3_ancient",
 		"researchlab3_crystal",
 		"researchlab3_monster",
@@ -875,6 +1159,7 @@ PREFAB_SKINS = {
 		"researchlab4_chester_costumep",
 		"researchlab4_derby",
 		"researchlab4_festive_bell_red_firehound",
+		"researchlab4_fish",
 		"researchlab4_glommer_costume",
 		"researchlab4_glommer_costumep",
 		"researchlab4_hutch_costume",
@@ -882,11 +1167,19 @@ PREFAB_SKINS = {
 		"researchlab4_merchant",
 		"researchlab4_tophat_circus",
 		"researchlab4_tophat_harlequin",
+		"researchlab4_tophat_spiked",
+		"researchlab4_tophat_wizard",
 		"researchlab4_witch_pyre",
 	},
 	reskin_tool =
 	{
+		"reskin_tool_bouquet",
 		"reskin_tool_brush",
+		"reskin_tool_toilet",
+	},
+	resurrectionstatue =
+	{
+		"resurrectionstatue_barber",
 	},
 	resurrectionstone =
 	{
@@ -907,11 +1200,18 @@ PREFAB_SKINS = {
 	},
 	ruins_bat =
 	{
+		"ruins_bat_an",
+		"ruins_bat_arcane",
 		"ruins_bat_heavy",
 	},
 	ruinshat =
 	{
+		"ruinshat_an",
 		"ruinshat_arcane",
+	},
+	ruinsrelic_chair =
+	{
+		"ruinsrelic_chair_toilet",
 	},
 	saddle_basic =
 	{
@@ -920,6 +1220,7 @@ PREFAB_SKINS = {
 	},
 	saltbox =
 	{
+		"saltbox_kitchen",
 		"saltbox_nautical",
 		"saltbox_shaker",
 		"saltbox_victorian",
@@ -939,11 +1240,17 @@ PREFAB_SKINS = {
 	},
 	seedpouch =
 	{
+		"seedpouch_garden",
 		"seedpouch_rustic",
+	},
+	sewing_mannequin =
+	{
+		"sewing_mannequin_an",
 	},
 	shovel =
 	{
 		"shovel_feathered",
+		"shovel_heart",
 		"shovel_invisible",
 		"shovel_northern",
 		"shovel_victorian",
@@ -969,9 +1276,28 @@ PREFAB_SKINS = {
 	},
 	spear_wathgrithr =
 	{
+		"spear_wathgrithr_lunar",
 		"spear_wathgrithr_northern",
 		"spear_wathgrithr_valkyrie",
 		"spear_wathgrithr_wrestle",
+	},
+	spear_wathgrithr_lightning =
+	{
+		"spear_wathgrithr_lightning_lunar",
+		"spear_wathgrithr_lightning_northern",
+		"spear_wathgrithr_lightning_valkyrie",
+		"spear_wathgrithr_lightning_wrestle",
+	},
+	spear_wathgrithr_lightning_charged =
+	{
+		"spear_wathgrithr_lightning_charged_lunar",
+		"spear_wathgrithr_lightning_charged_northern",
+		"spear_wathgrithr_lightning_charged_valkyrie",
+		"spear_wathgrithr_lightning_charged_wrestle",
+	},
+	staff_tornado =
+	{
+		"tornado_stick_crow",
 	},
 	stagehand =
 	{
@@ -991,11 +1317,39 @@ PREFAB_SKINS = {
 		"steeringwheel_nautical_item",
 		"steeringwheel_wagstaff_item",
 	},
+	stone_chair =
+	{
+		"stone_chair_victorianblack",
+		"stone_chair_victorianbrass",
+		"stone_chair_victorianbronze",
+	},
+	stone_stool =
+	{
+		"stonechair_stool_victorianblack",
+		"stonechair_stool_victorianbrass",
+		"stonechair_stool_victorianbronze",
+	},
+	stone_table_round =
+	{
+		"stonetable_round_victorianblack",
+		"stonetable_round_victorianbrass",
+		"stonetable_round_victorianbronze",
+	},
+	stone_table_square =
+	{
+		"stonetable_square_victorianblack",
+		"stonetable_square_victorianbrass",
+		"stonetable_square_victorianbronze",
+	},
 	strawhat =
 	{
 		"strawhat_bonnet",
 		"strawhat_cowboy",
 		"strawhat_floppy",
+	},
+	succulent_potted =
+	{
+		"succulent_potted_bearclaw",
 	},
 	supertacklecontainer =
 	{
@@ -1017,8 +1371,11 @@ PREFAB_SKINS = {
 	},
 	tent =
 	{
+		"tent_an",
+		"tent_ancient",
 		"tent_beach",
 		"tent_circus",
+		"tent_kid",
 		"tent_leaf",
 	},
 	tophat =
@@ -1035,12 +1392,16 @@ PREFAB_SKINS = {
 		"tophat_circus",
 		"tophat_derby",
 		"tophat_festive_bell_red_firehound",
+		"tophat_fish",
 		"tophat_harlequin",
 		"tophat_merchant",
+		"tophat_spiked",
 		"tophat_witch_pyre",
+		"tophat_wizard",
 	},
 	torch =
 	{
+		"torch_barber",
 		"torch_carrat",
 		"torch_carrat_alt",
 		"torch_nautical",
@@ -1053,6 +1414,10 @@ PREFAB_SKINS = {
 		"torch_spooky",
 		"torch_spookyp",
 	},
+	tornado =
+	{
+		"tornado_crow",
+	},
 	trap =
 	{
 		"trap_basket",
@@ -1064,8 +1429,12 @@ PREFAB_SKINS = {
 	},
 	treasurechest =
 	{
+		"treasurechest_ancient",
+		"treasurechest_cake",
 		"treasurechest_carpetbag",
 		"treasurechest_corruption",
+		"treasurechest_cotl_basic",
+		"treasurechest_cotl_fancy",
 		"treasurechest_crimson",
 		"treasurechest_cupid",
 		"treasurechest_cupidalt",
@@ -1077,7 +1446,36 @@ PREFAB_SKINS = {
 		"treasurechest_steamertrunk",
 		"treasurechest_traincase",
 		"treasurechest_traveltrunk",
+		"treasurechest_upgraded_ancient",
+		"treasurechest_upgraded_cake",
+		"treasurechest_upgraded_carpetbag",
+		"treasurechest_upgraded_corruption",
+		"treasurechest_upgraded_cotl_basic",
+		"treasurechest_upgraded_cotl_fancy",
+		"treasurechest_upgraded_crimson",
+		"treasurechest_upgraded_cupid",
+		"treasurechest_upgraded_gingerbread",
+		"treasurechest_upgraded_monster",
+		"treasurechest_upgraded_posh",
+		"treasurechest_upgraded_poshprint",
+		"treasurechest_upgraded_sacred",
+		"treasurechest_upgraded_steamertrunk",
+		"treasurechest_upgraded_traincase",
+		"treasurechest_upgraded_traveltrunk",
+		"treasurechest_upgraded_vintage",
 		"treasurechest_vintage",
+	},
+	trident =
+	{
+		"trident_merm",
+	},
+	trophyscale_fish =
+	{
+		"trophyscale_fish_handmade",
+	},
+	trophyscale_oversizedveggies =
+	{
+		"trophyscale_oversizedveggies_plant",
 	},
 	umbrella =
 	{
@@ -1089,7 +1487,20 @@ PREFAB_SKINS = {
 	walkingplank =
 	{
 		"walkingplank_nautical",
+		"walkingplank_pirate_skin",
 		"walkingplank_wagstaff",
+	},
+	walkingplank_grass =
+	{
+		"walkingplank_grass_pirate",
+	},
+	wall_hay =
+	{
+		"wall_hay_corn",
+	},
+	wall_hay_item =
+	{
+		"wall_hay_cornitem",
 	},
 	wall_moonrock =
 	{
@@ -1113,6 +1524,7 @@ PREFAB_SKINS = {
 	},
 	wall_stone =
 	{
+		"wall_stone_an",
 		"wall_stone_ancient",
 		"wall_stone_ancient_alt",
 		"wall_stone_gothic",
@@ -1122,6 +1534,7 @@ PREFAB_SKINS = {
 	{
 		"wall_stone_ancient_alt_item",
 		"wall_stone_ancientitem",
+		"wall_stone_anitem",
 		"wall_stone_gothicitem",
 		"wall_stone_victorianitem",
 	},
@@ -1149,9 +1562,12 @@ PREFAB_SKINS = {
 		"walter_lunar",
 		"walter_nature",
 		"walter_none",
+		"walter_rose",
+		"walter_shadow",
 		"walter_survivor",
 		"walter_ventriloquist",
 		"walter_victorian",
+		"walter_yule",
 	},
 	walterhat =
 	{
@@ -1162,9 +1578,12 @@ PREFAB_SKINS = {
 		"walterhat_ice",
 		"walterhat_lunar",
 		"walterhat_nature",
+		"walterhat_rose",
+		"walterhat_shadow",
 		"walterhat_survivor",
 		"walterhat_ventriloquist",
 		"walterhat_victorian",
+		"walterhat_yule",
 	},
 	wanda =
 	{
@@ -1172,8 +1591,12 @@ PREFAB_SKINS = {
 		"wanda_bishop_d",
 		"wanda_bishop_p",
 		"wanda_formal",
+		"wanda_ice",
 		"wanda_lunar",
+		"wanda_masquerade",
+		"wanda_nature",
 		"wanda_none",
+		"wanda_rose",
 		"wanda_shadow",
 		"wanda_steampunk",
 		"wanda_yule",
@@ -1195,24 +1618,31 @@ PREFAB_SKINS = {
 		"warly_carrat_p",
 		"warly_chef",
 		"warly_fisherman",
+		"warly_formal",
 		"warly_ice",
+		"warly_lunar",
+		"warly_masquerade",
 		"warly_nature",
 		"warly_none",
 		"warly_pirate",
 		"warly_rose",
+		"warly_shadow",
 		"warly_victorian",
 	},
 	wateringcan =
 	{
+		"wateringcan_cactus",
 		"wateringcan_rustic",
 	},
 	watermelonhat =
 	{
 		"watermelonhat_banana",
+		"watermelonhat_cantaloupe",
 		"watermelonhat_pumpkin",
 	},
 	wathgrithr =
 	{
+		"wathgrithr_ancient",
 		"wathgrithr_combatant",
 		"wathgrithr_cook",
 		"wathgrithr_deerclops",
@@ -1221,7 +1651,10 @@ PREFAB_SKINS = {
 		"wathgrithr_formal",
 		"wathgrithr_formalp",
 		"wathgrithr_gladiator",
+		"wathgrithr_ice",
+		"wathgrithr_lunar",
 		"wathgrithr_magma",
+		"wathgrithr_masquerade",
 		"wathgrithr_nature",
 		"wathgrithr_none",
 		"wathgrithr_pirate",
@@ -1237,8 +1670,15 @@ PREFAB_SKINS = {
 		"wathgrithr_wrestler",
 		"wathgrithr_yule",
 	},
+	wathgrithr_improvedhat =
+	{
+		"wathgrithr_improvedhat_lunar",
+		"wathgrithr_improvedhat_valkyrie",
+		"wathgrithr_improvedhat_wrestle",
+	},
 	wathgrithrhat =
 	{
+		"wathgrithrhat_lunar",
 		"wathgrithrhat_valkyrie",
 		"wathgrithrhat_wrestle",
 	},
@@ -1247,19 +1687,27 @@ PREFAB_SKINS = {
 		"waxwell_combatant",
 		"waxwell_cook",
 		"waxwell_formal",
+		"waxwell_formalp",
 		"waxwell_gladiator",
+		"waxwell_ice",
 		"waxwell_krampus",
 		"waxwell_krampus_d",
 		"waxwell_krampus_p",
 		"waxwell_lunar",
 		"waxwell_magma",
+		"waxwell_masquerade",
 		"waxwell_nature",
 		"waxwell_none",
+		"waxwell_pirate",
 		"waxwell_rose",
+		"waxwell_rosep",
 		"waxwell_survivor",
+		"waxwell_survivorp",
 		"waxwell_unshadow",
+		"waxwell_unshadowp",
 		"waxwell_vampire",
 		"waxwell_victorian",
+		"waxwell_wizard",
 		"waxwell_yule",
 	},
 	webber =
@@ -1278,6 +1726,7 @@ PREFAB_SKINS = {
 		"webber_magma",
 		"webber_nature",
 		"webber_none",
+		"webber_pirate",
 		"webber_punk",
 		"webber_rose",
 		"webber_rosep",
@@ -1287,6 +1736,7 @@ PREFAB_SKINS = {
 		"webber_survivorp",
 		"webber_victorian",
 		"webber_wrestler",
+		"webber_yule",
 	},
 	webber_beard =
 	{
@@ -1298,12 +1748,14 @@ PREFAB_SKINS = {
 		"webber_beard_lunar",
 		"webber_beard_magma",
 		"webber_beard_nature",
+		"webber_beard_pirate",
 		"webber_beard_punk",
 		"webber_beard_rose",
 		"webber_beard_shadow",
 		"webber_beard_survivor",
 		"webber_beard_victorian",
 		"webber_beard_wrestler",
+		"webber_beard_yule",
 	},
 	wendy =
 	{
@@ -1329,6 +1781,7 @@ PREFAB_SKINS = {
 		"wendy_survivor",
 		"wendy_survivorp",
 		"wendy_victorian",
+		"wendy_yule",
 	},
 	wes =
 	{
@@ -1339,10 +1792,13 @@ PREFAB_SKINS = {
 		"wes_formalp",
 		"wes_gladiator",
 		"wes_harlequin",
+		"wes_ice",
+		"wes_lunar",
 		"wes_magma",
 		"wes_mandrake",
 		"wes_mandrake_d",
 		"wes_mandrake_p",
+		"wes_masquerade",
 		"wes_nature",
 		"wes_none",
 		"wes_pirate",
@@ -1373,6 +1829,7 @@ PREFAB_SKINS = {
 		"wickerbottom_lightninggoat_p",
 		"wickerbottom_lunar",
 		"wickerbottom_magma",
+		"wickerbottom_nature",
 		"wickerbottom_none",
 		"wickerbottom_ornate",
 		"wickerbottom_rose",
@@ -1387,6 +1844,7 @@ PREFAB_SKINS = {
 	},
 	willow =
 	{
+		"willow_ancient",
 		"willow_combatant",
 		"willow_cook",
 		"willow_dowdy",
@@ -1398,7 +1856,10 @@ PREFAB_SKINS = {
 		"willow_gladiator",
 		"willow_haunteddoll",
 		"willow_ice",
+		"willow_lunar",
 		"willow_magma",
+		"willow_masquerade",
+		"willow_nature",
 		"willow_none",
 		"willow_pirate",
 		"willow_rose",
@@ -1412,43 +1873,58 @@ PREFAB_SKINS = {
 	},
 	wilson =
 	{
+		"wilson_barber",
 		"wilson_combatant",
 		"wilson_cook",
 		"wilson_formal",
+		"wilson_formalp",
 		"wilson_gladiator",
 		"wilson_ice",
 		"wilson_lunar",
 		"wilson_madscience",
 		"wilson_magma",
+		"wilson_masquerade",
 		"wilson_nature",
 		"wilson_none",
 		"wilson_pigguard",
 		"wilson_pigguard_d",
 		"wilson_pigguard_p",
+		"wilson_pirate",
 		"wilson_rose",
+		"wilson_rosep",
 		"wilson_shadow",
+		"wilson_shadowp",
 		"wilson_survivor",
+		"wilson_survivorp",
 		"wilson_victorian",
 		"wilson_yule",
 	},
 	wilson_beard =
 	{
+		"wilson_beard_barber",
 		"wilson_beard_formal",
 		"wilson_beard_gladiator",
 		"wilson_beard_ice",
 		"wilson_beard_lunar",
 		"wilson_beard_madscience",
 		"wilson_beard_magma",
+		"wilson_beard_masquerade",
 		"wilson_beard_nature",
 		"wilson_beard_pigguard",
+		"wilson_beard_pirate",
 		"wilson_beard_rose",
 		"wilson_beard_shadow",
 		"wilson_beard_survivor",
 		"wilson_beard_victorian",
 		"wilson_beard_yule",
 	},
+	winch =
+	{
+		"winch_pirate",
+	},
 	winona =
 	{
+		"winona_ancient",
 		"winona_combatant",
 		"winona_cook",
 		"winona_factory",
@@ -1460,6 +1936,7 @@ PREFAB_SKINS = {
 		"winona_grassgecko_d",
 		"winona_grassgecko_p",
 		"winona_ice",
+		"winona_lunar",
 		"winona_magma",
 		"winona_nature",
 		"winona_none",
@@ -1473,6 +1950,46 @@ PREFAB_SKINS = {
 		"winona_victorian",
 		"winona_wrestler",
 		"winona_yule",
+	},
+	winona_battery_high =
+	{
+		"winonabattery_high_fancy",
+		"winonabattery_high_spike",
+	},
+	winona_battery_high_item =
+	{
+		"winonabattery_high_item_fancy",
+		"winonabattery_high_item_spike",
+	},
+	winona_battery_low =
+	{
+		"winonabattery_low_fancy",
+		"winonabattery_low_spike",
+	},
+	winona_battery_low_item =
+	{
+		"winonabattery_low_item_fancy",
+		"winonabattery_low_item_spike",
+	},
+	winona_catapult =
+	{
+		"winona_catapult_fancy",
+		"winona_catapult_spike",
+	},
+	winona_catapult_item =
+	{
+		"winona_catapult_item_fancy",
+		"winona_catapult_item_spike",
+	},
+	winona_spotlight =
+	{
+		"winona_spotlight_fancy",
+		"winona_spotlight_spike",
+	},
+	winona_spotlight_item =
+	{
+		"winona_spotlight_item_fancy",
+		"winona_spotlight_item_spike",
 	},
 	winterhat =
 	{
@@ -1491,12 +2008,14 @@ PREFAB_SKINS = {
 	},
 	wolfgang =
 	{
+		"wolfgang_ancient",
 		"wolfgang_combatant",
 		"wolfgang_cook",
 		"wolfgang_formal",
 		"wolfgang_formalp",
 		"wolfgang_gladiator",
 		"wolfgang_ice",
+		"wolfgang_lunar",
 		"wolfgang_magma",
 		"wolfgang_nature",
 		"wolfgang_none",
@@ -1519,8 +2038,37 @@ PREFAB_SKINS = {
 	{
 		"wonkey_none",
 	},
+	wood_chair =
+	{
+		"wood_chair_fantasy",
+		"wood_chair_hallowed",
+		"wood_chair_handmade",
+		"wood_chair_western",
+	},
+	wood_stool =
+	{
+		"chair_stool_fantasy",
+		"chair_stool_hallowed",
+		"chair_stool_handmade",
+		"chair_stool_western",
+	},
+	wood_table_round =
+	{
+		"round_table_fantasy",
+		"round_table_hallowed",
+		"round_table_handmade",
+		"round_table_western",
+	},
+	wood_table_square =
+	{
+		"wood_table_fantasy",
+		"wood_table_hallowed",
+		"wood_table_handmade",
+		"wood_table_western",
+	},
 	woodie =
 	{
+		"woodie_ancient",
 		"woodie_combatant",
 		"woodie_cook",
 		"woodie_formal",
@@ -1528,7 +2076,9 @@ PREFAB_SKINS = {
 		"woodie_gladiator",
 		"woodie_hippie",
 		"woodie_hockey",
+		"woodie_ice",
 		"woodie_magma",
+		"woodie_masquerade",
 		"woodie_nature",
 		"woodie_none",
 		"woodie_pirate",
@@ -1555,9 +2105,13 @@ PREFAB_SKINS = {
 	},
 	wormwood =
 	{
+		"wormwood_ancient",
 		"wormwood_cactus",
+		"wormwood_formal",
+		"wormwood_ice",
 		"wormwood_lunar",
 		"wormwood_mushroom",
+		"wormwood_nature",
 		"wormwood_none",
 		"wormwood_pumpkin",
 		"wormwood_rose",
@@ -1571,7 +2125,9 @@ PREFAB_SKINS = {
 	wortox =
 	{
 		"wortox_dragon",
+		"wortox_formal",
 		"wortox_ice",
+		"wortox_masquerade",
 		"wortox_minotaur",
 		"wortox_nature",
 		"wortox_noeyeddeer",
@@ -1580,13 +2136,19 @@ PREFAB_SKINS = {
 		"wortox_none",
 		"wortox_original",
 		"wortox_pirate",
+		"wortox_rose",
+		"wortox_shadow",
 		"wortox_survivor",
 		"wortox_victorian",
 	},
 	wurt =
 	{
+		"wurt_ancient",
 		"wurt_cave",
 		"wurt_formal",
+		"wurt_ice",
+		"wurt_masquerade",
+		"wurt_nature",
 		"wurt_none",
 		"wurt_pirate",
 		"wurt_rose",
@@ -1627,6 +2189,7 @@ PREFAB_SKINS = {
 	},
 	yellowamulet =
 	{
+		"amulet_yellow_an",
 		"amulet_yellow_ornate",
 	},
 	yellowstaff =
@@ -1636,6 +2199,29 @@ PREFAB_SKINS = {
 	},
 
 }
+
+PREFAB_SKINS_SHOULD_NOT_SELECT = {
+	["dragonflychest_upgraded_fantasy"] = true,
+	["dragonflychest_upgraded_kraken"] = true,
+	["treasurechest_upgraded_ancient"] = true,
+	["treasurechest_upgraded_cake"] = true,
+	["treasurechest_upgraded_carpetbag"] = true,
+	["treasurechest_upgraded_corruption"] = true,
+	["treasurechest_upgraded_cotl_basic"] = true,
+	["treasurechest_upgraded_cotl_fancy"] = true,
+	["treasurechest_upgraded_crimson"] = true,
+	["treasurechest_upgraded_cupid"] = true,
+	["treasurechest_upgraded_gingerbread"] = true,
+	["treasurechest_upgraded_monster"] = true,
+	["treasurechest_upgraded_posh"] = true,
+	["treasurechest_upgraded_poshprint"] = true,
+	["treasurechest_upgraded_sacred"] = true,
+	["treasurechest_upgraded_steamertrunk"] = true,
+	["treasurechest_upgraded_traincase"] = true,
+	["treasurechest_upgraded_traveltrunk"] = true,
+	["treasurechest_upgraded_vintage"] = true,
+}
+
 
 PREFAB_SKINS_IDS = {}
 for prefab,skins in pairs(PREFAB_SKINS) do

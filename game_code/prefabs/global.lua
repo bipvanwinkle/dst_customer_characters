@@ -81,6 +81,9 @@ local assets =
     Asset("SOUNDPACKAGE", "sound/yotc_2022_1.fev"),
     Asset("FILE", "sound/yotc_2022_1.fsb"),
 
+    Asset("SOUNDPACKAGE", "sound/yotr_2023.fev"),
+    Asset("FILE", "sound/yotr_2023.fsb"),
+
     Asset("SOUNDPACKAGE", "sound/ancientguardian_rework.fev"),
     Asset("FILE", "sound/ancientguardian_rework.fsb"),
 
@@ -102,7 +105,51 @@ local assets =
     Asset("SOUNDPACKAGE", "sound/stageplay_set.fev"),
     Asset("FILE", "sound/stageplay_set.fsb"),
     Asset("FILE", "sound/stageplay_set_music.fsb"),
+
+    Asset("SOUNDPACKAGE", "sound/maxwell_rework.fev"),
+    Asset("FILE", "sound/maxwell_rework.fsb"),
+
+    Asset("SOUNDPACKAGE", "sound/daywalker.fev"),
+    Asset("FILE", "sound/daywalker.fsb"),
+
+    Asset("SOUNDPACKAGE", "sound/wilson_rework.fev"),
+    Asset("FILE", "sound/wilson_rework.fsb"),
+
+    Asset("SOUNDPACKAGE", "sound/rifts.fev"),
+    Asset("FILE", "sound/rifts.fsb"),
     
+    Asset("SOUNDPACKAGE", "sound/aqol.fev"),
+    Asset("FILE", "sound/aqol.fsb"),
+
+    Asset("SOUNDPACKAGE", "sound/rifts2.fev"),
+    Asset("FILE", "sound/rifts2.fsb"),
+
+    Asset("SOUNDPACKAGE", "sound/meta2.fev"),
+    Asset("FILE", "sound/meta2.fsb"),
+
+    Asset("SOUNDPACKAGE", "sound/rifts3.fev"),
+    Asset("FILE", "sound/rifts3.fsb"),
+    Asset("FILE", "sound/rifts3_AMB.fsb"),
+
+    Asset("SOUNDPACKAGE", "sound/meta3.fev"),
+    Asset("FILE", "sound/meta3.fsb"),
+
+    Asset("SOUNDPACKAGE", "sound/yotd2024.fev"),
+    Asset("FILE", "sound/yotd2024.fsb"),
+    --Asset("FILE", "sound/yotd2024_music.fsb"),
+
+    Asset("SOUNDPACKAGE", "sound/qol1.fev"),
+    Asset("FILE", "sound/qol1.fsb"),
+
+    Asset("SOUNDPACKAGE", "sound/meta4.fev"),
+    Asset("FILE", "sound/meta4.fsb"),
+
+    Asset("SOUNDPACKAGE", "sound/rifts4.fev"),
+    Asset("FILE", "sound/rifts4.fsb"),
+
+    Asset("SOUNDPACKAGE", "sound/hallowednights2024.fev"),
+    Asset("FILE", "sound/hallowednights2024.fsb"),     
+
     Asset("FILE", "sound/wilton.fsb"),         -- Legacy sound that can be used in mods
     Asset("FILE", "sound/winnie.fsb"),         -- Legacy sound that can be used in mods
     Asset("FILE", "sound/wallace.fsb"),        -- Legacy sound that can be used in mods
@@ -142,6 +189,10 @@ local assets =
     Asset("PKGREF", "anim/woodie.zip"),
     Asset("PKGREF", "anim/wx78.zip"),
 
+    -- Legacy for mods this file is positively dusty.
+    Asset("PKGREF", "anim/ui_krampusbag_2x5.zip"),
+
+    -- Core game.
     Asset("ATLAS", "images/global.xml"),
     Asset("IMAGE", "images/global.tex"),
     Asset("IMAGE", "images/visited.tex"),
@@ -211,6 +262,16 @@ local assets =
 
     Asset("ATLAS", "images/plantregistry.xml"),
     Asset("IMAGE", "images/plantregistry.tex"),
+
+    Asset("ATLAS", "images/scrapbook.xml"),
+    Asset("IMAGE", "images/scrapbook.tex"),
+
+    Asset("ATLAS", "images/scrapbook_icons1.xml"),
+    Asset("IMAGE", "images/scrapbook_icons1.tex"), 
+    Asset("ATLAS", "images/scrapbook_icons2.xml"),
+    Asset("IMAGE", "images/scrapbook_icons2.tex"), 
+    Asset("ATLAS", "images/scrapbook_icons3.xml"),
+    Asset("IMAGE", "images/scrapbook_icons3.tex"),     
 
     Asset("ATLAS", "images/crafting_menu.xml"),
     Asset("IMAGE", "images/crafting_menu.tex"),
@@ -383,6 +444,27 @@ local assets =
     Asset("ATLAS", "images/hud2.xml"),
     Asset("IMAGE", "images/hud2.tex"),
 
+    Asset("ATLAS", "images/skilltree.xml"),
+    Asset("IMAGE", "images/skilltree.tex"),
+
+    Asset("ATLAS", "images/skilltree2.xml"),
+    Asset("IMAGE", "images/skilltree2.tex"),
+
+    Asset("ATLAS", "images/skilltree3.xml"),
+    Asset("IMAGE", "images/skilltree3.tex"),
+
+    Asset("ATLAS", "images/skilltree4.xml"),
+    Asset("IMAGE", "images/skilltree4.tex"),
+
+    Asset("ATLAS", "images/skilltree5.xml"),
+    Asset("IMAGE", "images/skilltree5.tex"),
+
+    Asset("ATLAS", "images/skilltree_icons.xml"),
+    Asset("IMAGE", "images/skilltree_icons.tex"),    
+
+    Asset("ATLAS", "images/customisation.xml"),
+    Asset("IMAGE", "images/customisation.tex"), 
+
     --oft-used panel bgs
     Asset("DYNAMIC_ATLAS", "images/globalpanels2.xml"),
     Asset("PKGREF", "images/globalpanels2.tex"),
@@ -400,6 +482,9 @@ local assets =
 
     Asset("ATLAS", "images/servericons.xml"),
     Asset("IMAGE", "images/servericons.tex"),
+
+    Asset("ATLAS", "images/npcchatflairs.xml"),
+    Asset("IMAGE", "images/npcchatflairs.tex"),
 
     -- Loading screen
     Asset("ATLAS", "images/loading_screen.xml"),

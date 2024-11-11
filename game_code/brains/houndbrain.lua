@@ -1,12 +1,12 @@
 require "behaviours/wander"
 require "behaviours/chaseandattack"
-require "behaviours/panic"
 require "behaviours/attackwall"
 require "behaviours/minperiod"
 require "behaviours/leash"
 require "behaviours/faceentity"
 require "behaviours/doaction"
 require "behaviours/standstill"
+local BrainCommon = require("brains/braincommon")
 
 local HoundBrain = Class(Brain, function(self, inst)
     Brain._ctor(self, inst)
@@ -14,13 +14,11 @@ local HoundBrain = Class(Brain, function(self, inst)
 end)
 
 local SEE_DIST = 30
+local FINDFOOD_CANT_TAGS = { "INLIMBO", "outofreach" }
 
 local MIN_FOLLOW_LEADER = 2
 local MAX_FOLLOW_LEADER = 6
 local TARGET_FOLLOW_LEADER = (MAX_FOLLOW_LEADER + MIN_FOLLOW_LEADER) / 2
-
-local LEASH_RETURN_DIST = 10
-local LEASH_MAX_DIST = 40
 
 local HOUSE_MAX_DIST = 40
 local HOUSE_RETURN_DIST = 50
@@ -28,7 +26,10 @@ local HOUSE_RETURN_DIST = 50
 local SIT_BOY_DIST = 10
 
 local function EatFoodAction(inst)
-    local target = FindEntity(inst, SEE_DIST, function(item) return inst.components.eater:CanEat(item) and item:IsOnPassablePoint(true) end)
+	if inst.sg:HasStateTag("busy") and not inst.sg:HasStateTag("wantstoeat") then
+		return
+	end
+	local target = FindEntity(inst, SEE_DIST, function(item) return inst.components.eater:CanEat(item) and item:IsOnPassablePoint(true) end, nil, FINDFOOD_CANT_TAGS)
     return target ~= nil and BufferedAction(inst, target, ACTIONS.EAT) or nil
 end
 
@@ -107,10 +108,31 @@ local function FaceFormation(inst)
     end
 end
 
+--------------------------------------------------------------------------
+
+local CARCASS_TAGS = { "meat_carcass" }
+local CARCASS_NO_TAGS = { "fire" }
+function HoundBrain:SelectCarcass()
+	self.carcass = FindEntity(self.inst, SEE_DIST, nil, CARCASS_TAGS, CARCASS_NO_TAGS)
+	return self.carcass ~= nil
+end
+
+function HoundBrain:CheckCarcass()
+	return not (self.carcass.components.burnable ~= nil and self.carcass.components.burnable:IsBurning())
+		and self.carcass:IsValid()
+		and self.carcass:HasTag("meat_carcass")
+end
+
+function HoundBrain:GetCarcassPos()
+	return self:CheckCarcass() and self.carcass:GetPosition() or nil
+end
+
+--------------------------------------------------------------------------
+
 function HoundBrain:OnStart()
-    local root = PriorityNode(
-        self.inst:HasTag("clay") and
-        --clay hound brain
+	local root
+	if self.inst:HasTag("clay") then
+		root = PriorityNode(
         {
             WhileNode(function() return self.inst.sg:HasStateTag("statue") end, "Statue",
                 ActionNode(function() TryReanimate(self) end, "TryReanimate")),
@@ -151,14 +173,40 @@ function HoundBrain:OnStart()
 
             WhileNode(function() return GetHome(self.inst) end, "HasHome", Wander(self.inst, GetHomePos, 8)),
             Wander(self.inst, GetWanderPoint, 20),
-        } or
-        --regular hound brains
+		}, .25)
+	else
+		local ismutated = self.inst:HasTag("lunar_aligned")
+		root = PriorityNode(
         {
             WhileNode(function() return not self.inst.sg:HasStateTag("jumping") end, "NotJumpingBehaviour",
                 PriorityNode({
-                    WhileNode(function() return self.inst.components.hauntable and self.inst.components.hauntable.panic end, "PanicHaunted", Panic(self.inst)),
-                    WhileNode(function() return self.inst.components.health.takingfiredamage end, "OnFire", Panic(self.inst)),
+					BrainCommon.PanicTrigger(self.inst),
                     WhileNode(function() return GetLeader(self.inst) == nil end, "NoLeader", AttackWall(self.inst)),
+
+					--Eat carcass behaviour (for non-mutated hounds)
+					WhileNode(
+						function()
+							return not ismutated and (
+								not self.inst.components.combat:HasTarget() or
+								self.inst.components.combat:GetLastAttackedTime() + TUNING.HOUND_FIND_CARCASS_DELAY < GetTime()
+							)
+						end,
+						"not attacked",
+						IfNode(function() return self:SelectCarcass() end, "eat carcass",
+							PriorityNode({
+								FailIfSuccessDecorator(
+									Leash(self.inst,
+										function() return self:GetCarcassPos() end,
+										function() return self.inst.components.combat:GetHitRange() + self.carcass:GetPhysicsRadius(0) - 0.5 end,
+										function() return self.inst.components.combat:GetHitRange() + self.carcass:GetPhysicsRadius(0) - 1 end,
+										true)),
+								IfNode(function() return self:CheckCarcass() and not self.inst.components.combat:InCooldown() end, "chomp",
+									ActionNode(function() self.inst.sg:HandleEvent("chomp", { target = self.carcass }) end)),
+								FaceEntity(self.inst,
+									function() return self.carcass end,
+									function() return self:CheckCarcass() end),
+							}, .25))),
+					--
 
                     WhileNode(function() return self.inst:HasTag("pet_hound") end, "Is Pet", ChaseAndAttack(self.inst, 10)),
                     WhileNode(function() return not self.inst:HasTag("pet_hound") and GetHome(self.inst) ~= nil end, "No Pet Has Home", ChaseAndAttack(self.inst, 10, 20)),
@@ -166,7 +214,8 @@ function HoundBrain:OnStart()
 
                     Leash(self.inst, GetNoLeaderLeashPos, HOUSE_MAX_DIST, HOUSE_RETURN_DIST),
 
-                    DoAction(self.inst, EatFoodAction, "eat food", true),
+					IfNode(function() return not ismutated end, "non-mutated hound eat food",
+						DoAction(self.inst, EatFoodAction, "eat food", true)),
                     Follow(self.inst, GetLeader, MIN_FOLLOW_LEADER, TARGET_FOLLOW_LEADER, MAX_FOLLOW_LEADER),
                     FaceEntity(self.inst, GetLeader, GetLeader),
 
@@ -177,6 +226,7 @@ function HoundBrain:OnStart()
                 }, .25)
             ),
         }, .25 )
+	end
 
     self.bt = BT(self.inst, root)
 end

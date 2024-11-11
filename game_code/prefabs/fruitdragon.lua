@@ -247,7 +247,7 @@ local function Sleeper_WakeTest(inst)
 	end
 
 	if GetRemainingNapTime(inst) <= 0 then
-		inst._sleep_interupted = false
+		inst._sleep_interrupted = false
 		return true
     end
 
@@ -262,7 +262,7 @@ local function Sleeper_OnSleep(inst)
 end
 
 local function Sleeper_OnWakeUp(inst)
-	if not inst._sleep_interupted then
+	if not inst._sleep_interrupted then
 		if not inst._ripen_pending and not inst._is_ripe
 			and IsHomeGoodEnough(inst, TUNING.FRUITDRAGON.NAP_DIST_FROM_HOME, TUNING.FRUITDRAGON.RIPEN_NAP_MIN_HEAT) then
 
@@ -275,7 +275,7 @@ local function Sleeper_OnWakeUp(inst)
 	end
 
 	StartNextNapTimer(inst)
-	inst._sleep_interupted = true -- reseting it
+	inst._sleep_interrupted = true -- reseting it
 end
 
 local function OnSave(inst, data)
@@ -375,7 +375,6 @@ local function fn()
 
     inst.DynamicShadow:SetSize(2, 0.75)
     inst.Transform:SetFourFaced()
-    inst.Transform:SetScale(2, 2, 2) -- woops!
 
     MakeCharacterPhysics(inst, 1, 0.5)
 
@@ -393,6 +392,7 @@ local function fn()
     inst:AddTag("animal")
     inst:AddTag("scarytoprey")
     inst:AddTag("fruitdragon")
+    inst:AddTag("lunar_aligned")
 
     inst.entity:SetPristine()
 
@@ -401,7 +401,7 @@ local function fn()
     end
 
     inst.sounds = fruit_dragon_sounds
-	inst._sleep_interupted = true
+	inst._sleep_interrupted = true
 	inst._wakeup_time = GetTime()
 	inst._nap_time = -math.huge
 
@@ -432,6 +432,8 @@ local function fn()
 
     inst:AddComponent("lootdropper")
     inst.components.lootdropper:SetChanceLootTable('fruit_dragon')
+
+    inst:AddComponent("drownable")
 
     inst:AddComponent("sleeper")
     inst.components.sleeper.testperiod = 3

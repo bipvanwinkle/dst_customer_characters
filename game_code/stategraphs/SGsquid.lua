@@ -327,8 +327,9 @@ local states =
         {
             TimeEvent(7*FRAMES, function(inst) inst.SoundEmitter:PlaySound(inst.sounds.spit) end),
             TimeEvent(15*FRAMES, function(inst)
-                if inst.sg.statemem.target and inst.sg.statemem.target:IsValid() then
-                    inst.sg.statemem.inkpos = Vector3(inst.sg.statemem.target.Transform:GetWorldPosition())
+                local target = inst.sg.statemem.target
+                if target and target:IsValid() then
+                    inst.sg.statemem.inkpos = target:GetPosition()
                     inst:LaunchProjectile(inst.sg.statemem.inkpos)
 
                     inst.components.timer:StopTimer("ink_cooldown")
@@ -581,7 +582,7 @@ local states =
             end
             inst.Physics:Stop()
             inst.AnimState:PlayAnimation("jump")
-            inst.AnimState:SetTime(5*FRAMES)
+			inst.AnimState:SetFrame(5)
             inst.AnimState:PushAnimation("jump_loop")
 
             inst:StopBrain()
@@ -783,7 +784,7 @@ local states =
         onupdate = function(inst)
             if inst.components.oceanfishable ~= nil and inst.components.oceanfishable:GetRod() ~= nil then
                 if not inst:HasTag("partiallyhooked") then
-                    inst.sg.statemem.not_interupted = true
+                    inst.sg.statemem.not_interrupted = true
                     inst.sg:GoToState("idle")
                 end
             else
@@ -793,13 +794,13 @@ local states =
 
         ontimeout = function(inst)
             if inst:HasTag("partiallyhooked") then
-                inst.sg.statemem.not_interupted = true
+                inst.sg.statemem.not_interrupted = true
                 inst.sg:GoToState("bitehook_jump")
             end
         end,
 
         onexit = function(inst)
-            if not inst.sg.statemem.not_interupted and inst.components.oceanfishable ~= nil then
+            if not inst.sg.statemem.not_interrupted and inst.components.oceanfishable ~= nil then
                 inst.components.oceanfishable:SetRod(nil)
             end
         end,
@@ -818,7 +819,7 @@ local states =
         timeline =
         {
             TimeEvent(3*FRAMES, function(inst)
-                local theta, speed = math.random() * 2 * PI, 1
+                local theta, speed = math.random() * TWOPI, 1
                 inst.Physics:SetMotorVelOverride(math.sin(theta) * speed, 0, math.cos(theta) * speed)
             end),
             TimeEvent(21*FRAMES, function(inst)

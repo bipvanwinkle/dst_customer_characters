@@ -1,8 +1,13 @@
 local InventoryItem = Class(function(self, inst)
     self.inst = inst
 
+	--Local override, not networked
+	--self.overrideimage = nil
+
     self._cannotbepickedup = net_bool(inst.GUID, "inventoryitem._cannotbepickedup")
     self._iswet = net_bool(inst.GUID, "inventoryitem._iswet", "iswetdirty")
+    self._isacidsizzling = net_bool(inst.GUID, "inventoryitem._isacidsizzling", "isacidsizzlingdirty")
+    self._grabbableoverridetag = net_hash(inst.GUID, "inventoryitem._grabbableoverridetag")
 
     if TheWorld.ismastersim then
         self.classified = SpawnPrefab("inventoryitem_classified")
@@ -42,7 +47,8 @@ end)
 
 --------------------------------------------------------------------------
 
-function InventoryItem:OnRemoveFromEntity()
+--V2C: OnRemoveFromEntity not supported
+--[[function InventoryItem:OnRemoveFromEntity()
     if self.classified ~= nil then
         if TheWorld.ismastersim then
             self.classified:Remove()
@@ -53,9 +59,14 @@ function InventoryItem:OnRemoveFromEntity()
             self:DetachClassified()
         end
     end
-end
+end]]
 
-InventoryItem.OnRemoveEntity = InventoryItem.OnRemoveFromEntity
+function InventoryItem:OnRemoveEntity()
+	if self.classified and TheWorld.ismastersim then
+		self.classified:Remove()
+		self.classified = nil
+	end
+end
 
 function InventoryItem:AttachClassified(classified)
     self.classified = classified
@@ -74,7 +85,11 @@ function InventoryItem:SetCanBePickedUp(canbepickedup)
     self._cannotbepickedup:set(not canbepickedup)
 end
 
-function InventoryItem:CanBePickedUp()
+function InventoryItem:CanBePickedUp(doer)
+    local restrictedtag = self._grabbableoverridetag:value()
+	if restrictedtag and restrictedtag ~= 0 and doer and doer:HasTag(restrictedtag) then
+		return true
+	end
     return not self._cannotbepickedup:value()
 end
 
@@ -98,11 +113,18 @@ function InventoryItem:SetImage(imagename)
     self.classified.image:set(imagename ~= nil and (imagename..".tex") or 0)
 end
 
+--Local override, not networked
+function InventoryItem:OverrideImage(imagename)
+	self.overrideimage = imagename ~= nil and (imagename..".tex") or nil
+	self.inst:PushEvent("imagechange")
+end
+
 local function GetClientSideInventoryImageOverride(self)
     if self.inst:HasClientSideInventoryImageOverrides() then
-        local imagehash = self.classified ~= nil and
-            self.classified.image:value() ~= 0 and
-            self.classified.image:value() or hash(self.inst.prefab..".tex")
+		local imagehash =
+			(self.overrideimage ~= nil and hash(self.overrideimage)) or
+			(self.classified ~= nil and self.classified.image:value() ~= 0 and self.classified.image:value()) or
+			hash(self.inst.prefab..".tex")
         return self.inst:GetClientSideInventoryImageOverride(imagehash)
     end
 end
@@ -110,6 +132,7 @@ end
 function InventoryItem:GetImage()
     local override = GetClientSideInventoryImageOverride(self)
     return (override and override.image) or
+		self.overrideimage or
         (self.classified ~= nil and self.classified.image:value() ~= 0 and self.classified.image:value()) or
         self.inst.prefab..".tex"
 end
@@ -234,7 +257,15 @@ function InventoryItem:IsDeployable(deployer)
         return false
     end
     local restrictedtag = self.classified.deployrestrictedtag:value()
-    return restrictedtag == nil or restrictedtag == 0 or (deployer ~= nil and deployer:HasTag(restrictedtag))
+	if restrictedtag and restrictedtag ~= 0 and not (deployer and deployer:HasTag(restrictedtag)) then
+		return false
+	end
+	local rider = deployer and deployer.replica.rider or nil
+	if rider and rider:IsRiding() then
+		--can only deploy tossables while mounted
+		return self.inst:HasTag("projectile")
+	end
+	return true
 end
 
 function InventoryItem:SetDeploySpacing(deployspacing)
@@ -285,7 +316,7 @@ function InventoryItem:CanDeploy(pt, mouseover, deployer, rot)
 end
 
 function InventoryItem:SetUseGridPlacer(usegridplacer)
-    self.classified.usegridplacer:set(usegridplacer)
+	self.classified.usegridplacer:set(usegridplacer or false)
 end
 
 function InventoryItem:GetDeployPlacerName()
@@ -383,6 +414,21 @@ end
 
 function InventoryItem:IsWet()
     return self._iswet:value()
+end
+
+function InventoryItem:SetIsAcidSizzling(isacidsizzling)
+    if isacidsizzling ~= self._isacidsizzling:value() then
+        self._isacidsizzling:set(isacidsizzling)
+        self.inst:PushEvent("acidsizzlingchange", isacidsizzling)
+    end
+end
+
+function InventoryItem:IsAcidSizzling()
+    return self._isacidsizzling:value()
+end
+
+function InventoryItem:SetGrabbableOverrideTag(tag)
+    self._grabbableoverridetag:set(tag or 0)
 end
 
 return InventoryItem

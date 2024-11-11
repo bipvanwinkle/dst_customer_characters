@@ -45,8 +45,18 @@ local assets =
 	Asset("IMAGE", "images/waterfall_mask.tex"),
 	Asset("IMAGE", "levels/textures/waterfall_noise1.tex"),
 	Asset("IMAGE", "levels/textures/waterfall_noise2.tex"),
-}
 
+    Asset("SCRIPT", "scripts/prefabs/rift_portal_defs.lua"),
+
+    Asset("ANIM", "anim/poi_marker.zip"),
+    Asset("ANIM", "anim/poi_stand.zip"),    
+
+	Asset("DYNAMIC_ATLAS", "images/pumpkin_carving.xml"),
+	Asset("PKGREF", "images/pumpkin_carving.tex"),
+
+	Asset("DYNAMIC_ATLAS", "images/pumpkin_carving2.xml"),
+	Asset("PKGREF", "images/pumpkin_carving2.tex"),
+}
 
 for k, v in pairs(GroundTiles.assets) do
     table.insert(assets, v)
@@ -139,6 +149,9 @@ local prefabs =
     "turf_desertdirt",
 
     "skeleton",
+    "skeleton_notplayer",
+    "skeleton_notplayer_1",
+    "skeleton_notplayer_2",
     "insanityrock",
     "sanityrock",
     "basalt",
@@ -155,7 +168,6 @@ local prefabs =
     "wormhole_limited_1",
     "diviningrod",
     "diviningrodbase",
-    "splash_ocean",
     "maxwell_smoke",
     "chessjunk1",
     "chessjunk2",
@@ -209,6 +221,8 @@ local prefabs =
     "constructionsite_classified",
 
     "dummytarget",
+    "dummytarget_lunar",
+    "dummytarget_shadow",
     "float_fx_front",
     "float_fx_back",
 
@@ -246,13 +260,30 @@ local prefabs =
 
     -- Pirates
     "monkeyhut",
+
+	-- Planar
+	"planar_hit_fx",
+	"planar_resist_fx",
+
+	-- vinebridgemanager
+	"vine_bridge_fx",
 }
 
-for k, v in pairs(require("prefabs/farm_plant_defs").PLANT_DEFS) do
+for _, v in pairs(require("prefabs/farm_plant_defs").PLANT_DEFS) do
 	table.insert(prefabs, v.prefab)
 end
-for k, v in pairs(require("prefabs/weed_defs").WEED_DEFS) do
+for _, v in pairs(require("prefabs/weed_defs").WEED_DEFS) do
 	table.insert(prefabs, v.prefab)
+end
+for _, v in pairs(require("prefabs/pocketdimensioncontainer_defs").POCKETDIMENSIONCONTAINER_DEFS) do
+    table.insert(prefabs, v.prefab)
+end
+
+require("ocean_util") -- Only here just in case but it should not be needed.
+for _, v in pairs(SINKENTITY_PREFABS) do
+    for _, prefab in pairs(v) do
+        table.insert(prefabs, prefab)
+    end
 end
 
 --------------------------------------------------------------------------
@@ -336,12 +367,24 @@ local function CreateTilePhysics(inst)
             0.25, 64
         )
         inst.Map:AddTileCollisionSet(
-            inst.has_ocean and COLLISION.GROUND or COLLISION.LAND_OCEAN_LIMITS,
+            inst:CanFlyingCrossBarriers() and COLLISION.GROUND or COLLISION.LAND_OCEAN_LIMITS,
             TileGroups.ImpassableTiles, true,
             TileGroups.ImpassableTiles, false,
             0.25, 128
         )
     end
+end
+
+local function SetPocketDimensionContainer(world, name, containerinst)
+    world.PocketDimensionContainers[name] = containerinst
+end
+
+local function GetPocketDimensionContainer(world, name)
+    return world.PocketDimensionContainers[name]
+end
+
+local function CanFlyingCrossBarriers(world) -- NOTES(JBK): Ghosts are flying in this case and has_ocean is backwards compatability.
+    return world.has_ocean or world.cancrossbarriers_flying
 end
 
 --------------------------------------------------------------------------
@@ -397,6 +440,9 @@ function MakeWorld(name, customprefabs, customassets, common_postinit, master_po
 
         inst.tile_physics_init = custom_data.tile_physics_init
 
+        inst.cancrossbarriers_flying = custom_data.cancrossbarriers_flying -- Intentionally not a table for searchability.
+        inst.CanFlyingCrossBarriers = CanFlyingCrossBarriers
+
         if custom_data.common_preinit ~= nil then
             custom_data.common_preinit(inst)
         end
@@ -404,6 +450,14 @@ function MakeWorld(name, customprefabs, customassets, common_postinit, master_po
         --Initialize map
         for i, data in ipairs(GroundTiles.ground) do
             local tile_id, layer_properties = unpack(data)
+            if GROUND_NOGROUNDOVERLAYS[tile_id] then
+                TileGroupManager:SetNoGroundOverlays(tile_id) -- NOTES(JBK): Do not call this after the map finalizes a crashing race condition may occur!
+            end
+            if GROUND_INVISIBLETILES[tile_id] then
+                TileGroupManager:SetInvisibleTile(tile_id) -- NOTES(JBK): Do not call this after the map finalizes a crashing race condition may occur!
+                TileGroupManager:AddValidTile(TileGroups.LandTilesInvisible, tile_id)
+                TileGroupManager:AddInvalidTile(TileGroups.LandTilesWithDefaultFalloff, tile_id)
+            end
             local handle = MapLayerManager:CreateRenderLayer(
                 tile_id, --embedded map array value
                 layer_properties.atlas or resolvefilepath(GroundAtlas(layer_properties.name)),
@@ -512,8 +566,12 @@ function MakeWorld(name, customprefabs, customassets, common_postinit, master_po
         inst:AddComponent("farming_manager")
 
         inst:AddComponent("dockmanager")
+        inst:AddComponent("vinebridgemanager")
 
         inst:AddComponent("playerspawner")
+
+        inst:AddComponent("nightlightmanager")
+        inst:AddComponent("winonateleportpadmanager")
 
         --World health management
         inst:AddComponent("skeletonsweeper")
@@ -532,6 +590,10 @@ function MakeWorld(name, customprefabs, customassets, common_postinit, master_po
         inst.game_data_task = nil
 
         inst:ListenForEvent("ms_playerspawn", OnPlayerSpawn)
+
+        inst.PocketDimensionContainers = {}
+        inst.SetPocketDimensionContainer = SetPocketDimensionContainer
+        inst.GetPocketDimensionContainer = GetPocketDimensionContainer
 
         return inst
     end

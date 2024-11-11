@@ -361,6 +361,7 @@ local replace =
     ["farmplot3"] = "fast_farmplot",
     ["sinkhole"] = "cave_entrance",
     ["cave_stairs"] = "cave_entrance",
+    --["feather"] = "feather_crow", -- NOTES(JBK): This rename is so old no world around today should need this fixup. Leaving a comment here in case someone comes knocking later.
 }
 
 local function TryGetGemCoreTileData(savedata)
@@ -565,6 +566,8 @@ local function PopulateWorld(savedata, profile)
 		if world.ismastersim then
 			local retrofiting = require("map/retrofit_savedata")
 			retrofiting.DoRetrofitting(savedata, world.Map)
+
+			require("worldentities").AddWorldEntities(savedata)
 		end
 
 		TheFrontEnd:GetGraphicsOptions():DisableStencil()
@@ -630,6 +633,9 @@ local function PopulateWorld(savedata, profile)
 
             if savedata.world_network ~= nil and savedata.world_network.persistdata ~= nil then
                 world.net:SetPersistData(savedata.world_network.persistdata)
+            end
+            if savedata.shard_network ~= nil and savedata.shard_network.persistdata ~= nil then
+                world.shard:SetPersistData(savedata.shard_network.persistdata)
             end
         end
 
@@ -752,8 +758,7 @@ end
 local function OnPlayerActivated(world, player)
 	if player.isseamlessswaptarget then
 		if player.prefab == "wonkey" then
-			local kv = TheInventory:GetLocalGenericKV()
-			if kv.wonkey_played ~= "played" then
+			if TheGenericKV:GetKV("wonkey_played") then
 				TheInventory:SetGenericKVValue( "wonkey_played", "played" )
 			end
 		end
@@ -1312,7 +1317,7 @@ if DEBUGGER_ENABLED then
     print('Debuggee start ->', startResult, breakerType )
 end
 
-ConsoleScreenSettings:Load( function() end )
+ConsoleScreenSettings:Load()
 
 Print(VERBOSITY.DEBUG, "[Loading profile and save index]")
 Profile:Load( function()

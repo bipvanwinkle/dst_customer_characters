@@ -470,6 +470,13 @@ local function make_stump(inst)
     end
 end
 
+local function TransformIntoLeif(inst, chopper)
+    inst.noleif = true
+    inst.leifscale = GetGrowthStages(inst)[inst.components.growable.stage].leifscale or 1
+    inst.chopper = chopper
+    inst:DoTaskInTime(1 + math.random() * 3, spawn_leif)
+end
+
 local LEIFTARGET_MUST_TAGS = { "evergreens", "tree" }
 local LEIFTARGET_CANT_TAGS = { "leif", "stump", "burnt" }
 local function chop_down_tree(inst, chopper)
@@ -502,7 +509,7 @@ local function chop_down_tree(inst, chopper)
     end
 
     make_stump(inst)
-    inst.AnimState:PushAnimation(inst.anims.stump)
+    inst.AnimState:PushAnimation(inst.anims.stump, false)
 
     if GetBuild(inst).leif ~= nil then
         local days_survived = chopper.components.age ~= nil and chopper.components.age:GetAgeInDays() or TheWorld.state.cycles
@@ -517,10 +524,7 @@ local function chop_down_tree(inst, chopper)
                 for k = 1, (days_survived <= 30 and 1) or math.random(days_survived <= 80 and 2 or 3) do
                     local target = FindEntity(inst, TUNING.LEIF_MAXSPAWNDIST, find_leif_spawn_target, LEIFTARGET_MUST_TAGS, LEIFTARGET_CANT_TAGS)
                     if target ~= nil then
-                        target.noleif = true
-                        target.leifscale = GetGrowthStages(target)[target.components.growable.stage].leifscale or 1
-                        target.chopper = chopper
-                        target:DoTaskInTime(1 + math.random() * 3, spawn_leif)
+                        target:TransformIntoLeif(chopper)
                     end
                 end
             end
@@ -530,7 +534,7 @@ end
 
 local function onpineconetask(inst)
     local pt = inst:GetPosition()
-    local angle = math.random() * 2 * PI
+    local angle = math.random() * TWOPI
     pt.x = pt.x + math.cos(angle)
     pt.z = pt.z + math.sin(angle)
     inst.components.lootdropper:DropLoot(pt)
@@ -803,6 +807,8 @@ local function tree(name, build, stage, data)
 
         MakeObstaclePhysics(inst, .25)
 
+		inst:SetDeploySmartRadius(DEPLOYSPACING_RADIUS[DEPLOYSPACING.DEFAULT] / 2) --seed/planted_tree deployspacing/2
+
         if build == "twiggy" then
 
             inst:AddTag("renewable")
@@ -832,6 +838,10 @@ local function tree(name, build, stage, data)
         inst:AddTag(GetBuild(inst).prefab_name) -- used by regrowth
 
         MakeSnowCoveredPristine(inst)
+
+        inst.scrapbook_specialinfo = "TREE"
+        inst.scrapbook_proxy = build == "twiggy" and "twiggy_tall" or inst.prefab.."_tall"
+        inst.scrapbook_speechname = inst.prefab
 
         inst.entity:SetPristine()
 
@@ -889,6 +899,8 @@ local function tree(name, build, stage, data)
         if build ~= "twiggy" then
             inst:AddComponent("petrifiable")
             inst.components.petrifiable:SetPetrifiedFn(onpetrifiedfn_evergreen)
+
+            inst.TransformIntoLeif = TransformIntoLeif
         end
 
         ---------------------
@@ -905,6 +917,9 @@ local function tree(name, build, stage, data)
         inst.OnLoad = onload
 
         MakeSnowCovered(inst)
+
+        MakeWaxablePlant(inst)
+
         ---------------------
 
         if GetBuild(inst).rebirth_loot ~= nil then
@@ -935,7 +950,7 @@ local function tree(name, build, stage, data)
             inst.AnimState:PlayAnimation(inst.anims.stump)
             inst.MiniMapEntity:SetIcon(build == "twiggy" and "twiggy_stump.png" or "evergreen_stump.png")
         else
-            inst.AnimState:SetTime(math.random() * 2)
+			inst.AnimState:SetFrame(math.random(inst.AnimState:GetCurrentAnimationNumFrames()) - 1)
             if data == "burnt" then
                 OnBurnt(inst)
             end

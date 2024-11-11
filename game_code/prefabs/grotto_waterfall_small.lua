@@ -85,7 +85,7 @@ local function falls1()
 
     inst.no_wet_prefix = true
 
-    inst:SetDeployExtraSpacing(2)
+	inst:SetDeploySmartRadius(1.5)
 
     inst:SetPhysicsRadiusOverride(2.5)
 
@@ -100,7 +100,7 @@ local function falls1()
 
     inst._type = 1
 
-    inst.AnimState:SetTime(math.random() * inst.AnimState:GetCurrentAnimationLength())
+	inst.AnimState:SetFrame(math.random(inst.AnimState:GetCurrentAnimationNumFrames()) - 1)
 
     inst:AddComponent("workable")
     inst.components.workable.savestate = true
@@ -131,13 +131,15 @@ local function falls2()
 
     inst.no_wet_prefix = true
 
-    inst:SetDeployExtraSpacing(2)
+	inst:SetDeploySmartRadius(1)
 
     inst:SetPhysicsRadiusOverride(2.5)
 
     inst:AddTag("moonglass")
 
     inst:SetPrefabNameOverride("moonglass_rock")
+
+    inst.scrapbook_proxy = "grotto_pool_small"
 
     inst.entity:SetPristine()
     if not TheWorld.ismastersim then
@@ -146,7 +148,7 @@ local function falls2()
 
     inst._type = 2
 
-    inst.AnimState:SetTime(math.random() * inst.AnimState:GetCurrentAnimationLength())
+	inst.AnimState:SetFrame(math.random(inst.AnimState:GetCurrentAnimationNumFrames()) - 1)
 
     inst:AddComponent("workable")
     inst.components.workable.savestate = true

@@ -128,6 +128,8 @@ local function fn()
     inst.entity:AddMiniMapEntity()
     inst.entity:AddNetwork()
 
+	inst:SetDeploySmartRadius(0.75) --recipe min_spacing/2
+
 	inst.Transform:SetScale(FISH_BOX_SCALE, FISH_BOX_SCALE, FISH_BOX_SCALE)
 
 	inst.MiniMapEntity:SetPriority(4)
@@ -139,7 +141,10 @@ local function fn()
     inst.AnimState:SetBuild("fish_box")
     inst.AnimState:PlayAnimation("closed")
 
-    MakeSnowCoveredPristine(inst)
+    inst.scrapbook_anim = "closed"
+    inst.scrapbook_specialinfo = "FISHBOX"
+
+   	MakeSnowCoveredPristine(inst)
 
     inst.entity:SetPristine()
 

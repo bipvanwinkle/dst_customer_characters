@@ -7,9 +7,9 @@ TileManager.AddFalloffTexture(
     {
         name = "falloff",
         noise_texture = "images/square.tex",
-        should_have_falloff = TileGroups.LandTilesNotDock,
+        should_have_falloff = TileGroups.LandTilesWithDefaultFalloff,
         should_have_falloff_result = true,
-        neighbor_needs_falloff = TileGroups.LandTilesNotDock,
+        neighbor_needs_falloff = TileGroups.LandTilesWithDefaultFalloff,
         neighbor_needs_falloff_result = false
     }
 )
@@ -23,6 +23,30 @@ TileManager.AddFalloffTexture(
         should_have_falloff_result = true,
         neighbor_needs_falloff = TileGroups.TransparentOceanTiles,
         neighbor_needs_falloff_result = true
+    }
+)
+
+TileManager.AddFalloffTexture(
+    FALLOFF_IDS.OCEANICE_FALLOFF,
+    {
+        name = "oceanice_falloff",
+        noise_texture = "images/square.tex",
+        should_have_falloff = TileGroups.OceanIceTiles,
+        should_have_falloff_result = true,
+        neighbor_needs_falloff = TileGroups.TransparentOceanTiles,
+        neighbor_needs_falloff_result = true,
+    }
+)
+
+TileManager.AddFalloffTexture(
+    FALLOFF_IDS.INVISIBLE,
+    {
+        name = "invisible_falloff",
+        noise_texture = "images/square.tex",
+        should_have_falloff = TileGroups.LandTilesInvisible,
+        should_have_falloff_result = true,
+        neighbor_needs_falloff = TileGroups.LandTilesWithDefaultFalloff,
+        neighbor_needs_falloff_result = true,
     }
 )
 

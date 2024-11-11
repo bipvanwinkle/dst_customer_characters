@@ -9,6 +9,18 @@ local prefabs =
 	"slingshotammo_rock_proj",
 }
 
+local SCRAPBOOK_DEPS =
+{
+    "slingshotammo_rock",
+    "slingshotammo_gold",
+    "slingshotammo_marble",
+    "slingshotammo_thulecite",
+    "slingshotammo_freeze",
+    "slingshotammo_slow",
+    "slingshotammo_poop",
+    "trinket_1",
+}
+
 local PROJECTILE_DELAY = 2 * FRAMES
 
 local function OnEquip(inst, owner)
@@ -64,6 +76,7 @@ local function OnAmmoLoaded(inst, data)
 	if inst.components.weapon ~= nil then
 		if data ~= nil and data.item ~= nil then
 			inst.components.weapon:SetProjectile(data.item.prefab.."_proj")
+			inst:AddTag("ammoloaded")
 			data.item:PushEvent("ammoloaded", {slingshot = inst})
 		end
 	end
@@ -72,6 +85,7 @@ end
 local function OnAmmoUnloaded(inst, data)
 	if inst.components.weapon ~= nil then
 		inst.components.weapon:SetProjectile(nil)
+		inst:RemoveTag("ammoloaded")
 		if data ~= nil and data.prev_item ~= nil then
 			data.prev_item:PushEvent("ammounloaded", {slingshot = inst})
 		end
@@ -110,6 +124,9 @@ local function fn()
         return inst
     end
 
+    inst.scrapbook_adddeps = SCRAPBOOK_DEPS
+    inst.scrapbook_weapondamage = { TUNING.SLINGSHOT_AMMO_DAMAGE_ROCKS, TUNING.SLINGSHOT_AMMO_DAMAGE_MAX }
+
     inst:AddComponent("inspectable")
 
     inst:AddComponent("inventoryitem")
@@ -130,6 +147,7 @@ local function fn()
     inst:AddComponent("container")
     inst.components.container:WidgetSetup("slingshot")
 	inst.components.container.canbeopened = false
+    inst.components.container.stay_open_on_hide = true
     inst:ListenForEvent("itemget", OnAmmoLoaded)
     inst:ListenForEvent("itemlose", OnAmmoUnloaded)
 

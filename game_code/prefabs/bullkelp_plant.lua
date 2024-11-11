@@ -34,9 +34,30 @@ local function makeemptyfn(inst)
     inst.AnimState:PlayAnimation("picked", true)
     inst.underwater.AnimState:PlayAnimation("picked", true)
 
-	local time = math.random() * inst.AnimState:GetCurrentAnimationLength()
-    inst.AnimState:SetTime(time)
-    inst.underwater.AnimState:SetTime(time)
+	local fr = math.random(inst.AnimState:GetCurrentAnimationNumFrames()) - 1
+	inst.AnimState:SetFrame(fr)
+	inst.underwater.AnimState:SetFrame(fr)
+end
+
+local function CheckBeached(inst)
+    -- NOTES(JBK): If this is now beached it was ran ashore through something external force so do not spawn the bullkelp_beachedroot prefab instead spawn the expiring items.
+    inst._checkgroundtask = nil
+    local x, y, z = inst.Transform:GetWorldPosition()
+    if inst:GetCurrentPlatform() ~= nil or TheWorld.Map:IsVisualGroundAtPoint(x, y, z) then
+        if inst.components.pickable ~= nil then
+            inst.components.pickable:Pick(TheWorld)
+        end
+        inst:Remove()
+        local beached = SpawnPrefab("bullkelp_root")
+        beached.Transform:SetPosition(x, y, z)
+    end
+end
+
+local function OnCollide(inst, other)
+    if inst._checkgroundtask == nil then
+        -- This collision callback is called very fast so only do the checks after some time in a staggered method.
+        inst._checkgroundtask = inst:DoTaskInTime(1 + math.random(), CheckBeached)
+    end
 end
 
 local function fn()
@@ -51,6 +72,7 @@ local function fn()
     inst.MiniMapEntity:SetIcon("bullkelp_plant.png")
 
     MakeInventoryPhysics(inst, nil, 0.7)
+	inst:SetDeploySmartRadius(DEPLOYSPACING_RADIUS[DEPLOYSPACING.MEDIUM] / 2) --bullkelp_root deployspacing/2
 
     inst.AnimState:SetBank("bullkelp")
     inst.AnimState:SetBuild("bullkelp")
@@ -58,11 +80,10 @@ local function fn()
 	inst.AnimState:SetFinalOffset(1)
 
 	AddDefaultRippleSymbols(inst, true, false)
-    
+
     inst:AddTag("kelp")
 
     inst.entity:SetPristine()
-
     if not TheWorld.ismastersim then
         return inst
     end
@@ -73,19 +94,19 @@ local function fn()
 	inst.underwater.Transform:SetPosition(0,0,0)
     ---------------------
 
-	local start_time = math.random() * 2
-    inst.AnimState:SetTime(start_time)
-    inst.underwater.AnimState:SetTime(start_time)
+	local start_frame = math.random(inst.AnimState:GetCurrentAnimationNumFrames()) - 1
+	inst.AnimState:SetFrame(start_frame)
+	inst.underwater.AnimState:SetFrame(start_frame)
 
     local color = 0.75 + math.random() * 0.25
     inst.AnimState:SetMultColour(color, color, color, 1)
 
-    inst:AddComponent("pickable")
-    inst.components.pickable.picksound = "turnoftides/common/together/water/harvest_plant"
-    inst.components.pickable:SetUp("kelp", TUNING.BULLKELP_REGROW_TIME)
-    inst.components.pickable.onregenfn = onregenfn
-    inst.components.pickable.onpickedfn = onpickedfn
-    inst.components.pickable.makeemptyfn = makeemptyfn
+    local pickable = inst:AddComponent("pickable")
+    pickable.picksound = "turnoftides/common/together/water/harvest_plant"
+    pickable:SetUp("kelp", TUNING.BULLKELP_REGROW_TIME)
+    pickable.onregenfn = onregenfn
+    pickable.onpickedfn = onpickedfn
+    pickable.makeemptyfn = makeemptyfn
 
     inst:AddComponent("inspectable")
 
@@ -94,6 +115,9 @@ local function fn()
     MakeSmallPropagator(inst)
     MakeHauntableIgnite(inst)
     ---------------------
+
+    inst.Physics:SetCollisionCallback(OnCollide)
+    inst:DoTaskInTime(1 + math.random(), CheckBeached) -- Does not need to be immediately done stagger over time.
 
     return inst
 end

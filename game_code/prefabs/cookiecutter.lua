@@ -12,14 +12,17 @@ local prefabs =
 	"wood_splinter_jump",
 	"wood_splinter_drill",
 	"splash",
+
+	"fx_kelp_boat_fluff",
 }
 
 local brain = require("brains/cookiecutterbrain")
 
 SetSharedLootTable("cookiecutter",
 {
-    {"monstermeat",			1.0},
-    {"cookiecuttershell",	0.5},
+    {"monstermeat",			1.00},
+    {"cookiecuttershell",	0.50},
+    {"cookiecuttershell",	0.25},
 })
 
 local function OnAttacked(inst, data)
@@ -76,7 +79,7 @@ local function ValidateTargetWood(inst)
 end
 
 local FINDEDIBLE_CANT_TAGS = { "INLIMBO", "fire", "smolder" }
-local FINDEDIBLE_ONEOF_TAGS = { "boat", "edible_WOOD" }
+local FINDEDIBLE_ONEOF_TAGS = { "wood", "edible_WOOD" }
 local function CheckForBoats(inst)
 	if inst.sg ~= nil and not (inst.sg:HasStateTag("drilling") or inst.sg:HasStateTag("jumping") or inst.sg:HasStateTag("busy")) then
 		if not CanTargetBoats(inst) then
@@ -155,13 +158,13 @@ local function fn()
     inst.AnimState:SetBuild("cookiecutter_build")
     inst.AnimState:PlayAnimation("idle")
 
+	inst.no_wet_prefix = true
+
     inst.entity:SetPristine()
 
     if not TheWorld.ismastersim then
         return inst
     end
-
-	inst.no_wet_prefix = true
 
     inst:AddComponent("locomotor") -- locomotor must be constructed before the stategraph
 	inst.components.locomotor.runspeed = TUNING.COOKIECUTTER.RUN_SPEED

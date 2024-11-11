@@ -22,6 +22,29 @@ local function AddEnemyDebuffFx(fx, target)
     end)
 end
 
+local function DoRevive(target, singer)
+    target:PushEvent("respawnfromghost", { user = singer })
+
+    local x, y, z = target.Transform:GetWorldPosition()
+    local fx = SpawnPrefab("lightning")
+    if fx then
+        fx.Transform:SetPosition(x, y, z)
+    end
+end
+
+local function CheckValidAttackData(attacker, data)
+	if data then
+		if data.projectile and data.projectile.components.projectile and data.projectile.components.projectile:IsBounced() then
+			--bounced projectiles don't count
+			return false
+		elseif data.weapon and data.weapon.components.inventoryitem == nil then
+			--fake "weapons" used for detached aoe dmg don't count (e.g. flamethrower_fx)
+			return false
+		end
+	end
+	return true
+end
+
 -- Possible params: TICK_RATE, ONAPPLY, ONEXTENDED, ONDETACH, TICK_FN, ATTACH_FX, DETTACH_FX, INSTANT, DELTA, USES, SOUND
 -- INSTANT, DELTA AND TARGET_PLAYERS are quote only
 -- I'm keeping USES around in case we change our minds and decide the make the battlesongs consumable
@@ -66,11 +89,13 @@ local song_defs =
         ONAPPLY = function(inst, target)
             if target.components.health then
                 inst:ListenForEvent("onattackother", function(attacker, data)
-                    if target:HasTag("battlesinger") then
-                        target.components.health:DoDelta(TUNING.BATTLESONG_HEALTHGAIN_DELTA_SINGER)
-                    else
-                        target.components.health:DoDelta(TUNING.BATTLESONG_HEALTHGAIN_DELTA)
-                    end
+					if CheckValidAttackData(attacker, data) then
+						if target:HasTag("battlesinger") then
+							target.components.health:DoDelta(TUNING.BATTLESONG_HEALTHGAIN_DELTA_SINGER)
+						else
+							target.components.health:DoDelta(TUNING.BATTLESONG_HEALTHGAIN_DELTA)
+						end
+					end
                 end, target)
             end
         end,
@@ -86,7 +111,9 @@ local song_defs =
         ONAPPLY = function(inst, target)
             if target.components.sanity then
                 inst:ListenForEvent("onattackother", function(attacker, data)
-                    target.components.sanity:DoDelta(TUNING.BATTLESONG_SANITYGAIN_DELTA)
+					if CheckValidAttackData(attacker, data) then
+						target.components.sanity:DoDelta(TUNING.BATTLESONG_SANITYGAIN_DELTA)
+					end
                 end, target)
             end
         end,
@@ -137,6 +164,64 @@ local song_defs =
         SOUND = "dontstarve_DLC001/characters/wathgrithr/song/fireresistance",
     },
 
+    battlesong_lunaraligned =
+    {
+        ONAPPLY = function(inst, target)
+            if target.components.damagetyperesist ~= nil then
+                target.components.damagetyperesist:AddResist("lunar_aligned", inst, TUNING.BATTLESONG_LUNARALIGNED_LUNAR_RESIST, "battlesong_lunaraligned")
+            end
+
+            if target.components.damagetypebonus ~= nil then
+                target.components.damagetypebonus:AddBonus("shadow_aligned", inst, TUNING.BATTLESONG_LUNARALIGNED_VS_SHADOW_BONUS, "battlesong_lunaraligned")
+            end
+        end,
+
+        ONDETACH = function(inst, target)
+            if target.components.damagetyperesist ~= nil then
+                target.components.damagetyperesist:RemoveResist("lunar_aligned", inst, "battlesong_lunaraligned")
+            end
+
+            if target.components.damagetypebonus ~= nil then
+                target.components.damagetypebonus:RemoveBonus("shadow_aligned", inst, "battlesong_lunaraligned")
+            end
+        end,
+
+        ATTACH_FX = "battlesong_attach",
+        LOOP_FX = "battlesong_lunaraligned_fx",
+        DETACH_FX = "battlesong_detach",
+        SOUND = "dontstarve_DLC001/characters/wathgrithr/song/lunar",
+        REQUIRE_SKILL = "wathgrithr_allegiance_lunar",
+    },
+
+    battlesong_shadowaligned =
+    {
+        ONAPPLY = function(inst, target)
+            if target.components.damagetyperesist ~= nil then
+                target.components.damagetyperesist:AddResist("shadow_aligned", inst, TUNING.BATTLESONG_SHADOWALIGNED_SHADOW_RESIST, "battlesong_shadowaligned")
+            end
+
+            if target.components.damagetypebonus ~= nil then
+                target.components.damagetypebonus:AddBonus("lunar_aligned", inst, TUNING.BATTLESONG_SHADOWALIGNED_VS_LUNAR_BONUS, "battlesong_shadowaligned")
+            end
+        end,
+
+        ONDETACH = function(inst, target)
+            if target.components.damagetyperesist ~= nil then
+                target.components.damagetyperesist:RemoveResist("shadow_aligned", inst, "battlesong_shadowaligned")
+            end
+
+            if target.components.damagetypebonus ~= nil then
+                target.components.damagetypebonus:RemoveBonus("lunar_aligned", inst, "battlesong_shadowaligned")
+            end
+        end,
+
+        ATTACH_FX = "battlesong_attach",
+        LOOP_FX = "battlesong_shadowaligned_fx",
+        DETACH_FX = "battlesong_detach",
+        SOUND = "dontstarve_DLC001/characters/wathgrithr/song/shadow",
+        REQUIRE_SKILL = "wathgrithr_allegiance_shadow",
+    },
+
     ------------------------------------------------
     ------------- Quotes/Instant songs -------------
     ------------------------------------------------
@@ -144,15 +229,16 @@ local song_defs =
     battlesong_instant_taunt =
     {
         ONINSTANT = function(singer, target)
-			if not target:HasTag("bird") and target.components.combat then
-	            target.components.combat:SetTarget(singer)
-		        AddEnemyDebuffFx("battlesong_instant_taunt_fx", target)
-			end
+            if not target:HasTag("bird") and target.components.combat then
+                target.components.combat:SetTarget(singer)
+                AddEnemyDebuffFx("battlesong_instant_taunt_fx", target)
+            end
         end,
 
         INSTANT = true,
         DELTA = TUNING.BATTLESONG_INSTANT_COST,
-		ATTACH_FX = "battlesong_instant_taunt_fx",
+        COOLDOWN = TUNING.SKILLS.WATHGRITHR.BATTLESONG_INSTANT_COOLDOWN,
+        ATTACH_FX = "battlesong_instant_taunt_fx",
         SOUND = "dontstarve_DLC001/characters/wathgrithr/quote/taunt",
     },
 
@@ -160,16 +246,47 @@ local song_defs =
     {
         ONINSTANT = function(singer, target)
             if target.components.hauntable ~= nil and target.components.hauntable.panicable then
-				target.components.hauntable:Panic(TUNING.BATTLESONG_PANIC_TIME)
-				AddEnemyDebuffFx("battlesong_instant_panic_fx", target)
-			end
+                target.components.hauntable:Panic(TUNING.BATTLESONG_PANIC_TIME)
+                AddEnemyDebuffFx("battlesong_instant_panic_fx", target)
+            end
         end,
 
         INSTANT = true,
         DELTA = TUNING.BATTLESONG_INSTANT_COST,
-		ATTACH_FX = "battlesong_instant_panic_fx",
+        COOLDOWN = TUNING.SKILLS.WATHGRITHR.BATTLESONG_INSTANT_COOLDOWN,
+        ATTACH_FX = "battlesong_instant_panic_fx",
         SOUND = "dontstarve_DLC001/characters/wathgrithr/quote/dropattack",
-    }
+    },
+
+    battlesong_instant_revive =
+    {
+        ONINSTANT = function(singer, target)
+            if target:HasTag("playerghost") then
+                target:DoTaskInTime(0.5 + (math.random() * 2.5), DoRevive, singer)
+            end
+        end,
+
+        CUSTOMTARGETFN = function(singer)
+            if TheNet:GetPVPEnabled() then
+                return nil
+            end
+
+            local x, y, z = singer.Transform:GetWorldPosition()
+            local radius = singer.components.singinginspiration.attach_radius
+
+            local players = FindPlayersInRange(x, y, z, radius, false)
+            local num = players ~= nil and math.min(#players, TUNING.BATTLESONG_INSTANT_REVIVE_NUM_PLAYERS) or nil
+
+            return num ~= nil and PickSome(num, players) or nil
+        end,
+
+        INSTANT = true,
+        DELTA = TUNING.BATTLESONG_INSTANT_COST_HIGH,
+        COOLDOWN = TUNING.SKILLS.WATHGRITHR.BATTLESONG_INSTANT_COOLDOWN_HIGH,
+        ATTACH_FX = "battlesong_instant_electric_fx",
+        SOUND = "dontstarve_DLC001/characters/wathgrithr/song/revive",
+        REQUIRE_SKILL = "wathgrithr_songs_revivewarrior",
+    },
 }
 
 local battlesong_netid = 1

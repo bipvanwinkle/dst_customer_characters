@@ -74,12 +74,15 @@ local function fn()
     inst.MiniMapEntity:SetCanUseCache(false)
     inst.MiniMapEntity:SetDrawOverFogOfWar(true)
 
+	inst:SetDeploySmartRadius(0.6) --recipe min_spacing/2
+
     MakeObstaclePhysics(inst, .1)
 
     inst.AnimState:SetBank("sentryward")
     inst.AnimState:SetBuild("sentryward")
     inst.AnimState:PlayAnimation("idle_full_loop", true)
     inst.AnimState:SetBloomEffectHandle("shaders/anim.ksh")
+    inst.scrapbook_anim ="idle_full_loop"
 
     inst:AddTag("structure")
 
@@ -92,7 +95,7 @@ local function fn()
         return inst
     end
 
-    inst.AnimState:SetTime(math.random() * 1.8)
+	inst.AnimState:SetFrame(math.random(inst.AnimState:GetCurrentAnimationNumFrames()) - 1)
 
     -----------------------
     MakeSmallBurnable(inst, nil, nil, true)

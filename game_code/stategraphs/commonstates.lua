@@ -16,8 +16,13 @@ end
 --------------------------------------------------------------------------
 local function onsleep(inst)
     if inst.components.health == nil or (inst.components.health ~= nil and not inst.components.health:IsDead()) then
-		if inst.sg:HasStateTag("jumping") and inst.components.drownable ~= nil and inst.components.drownable:ShouldDrown() then
-			inst.sg:GoToState("sink")
+        local fallingreason = inst.components.drownable and inst.components.drownable:GetFallingReason() or nil
+        if fallingreason ~= nil and inst.sg:HasStateTag("jumping") then
+            if fallingreason == FALLINGREASON.OCEAN then
+                inst.sg:GoToState("sink")
+            elseif fallingreason == FALLINGREASON.VOID then
+                inst.sg:GoToState("abyss_fall")
+            end
 		else
 		    inst.sg:GoToState(inst.sg:HasStateTag("sleeping") and "sleeping" or "sleep")
 		end
@@ -108,6 +113,12 @@ local function update_hit_recovery_delay(inst)
 end
 
 CommonHandlers.UpdateHitRecoveryDelay = update_hit_recovery_delay
+
+CommonHandlers.ResetHitRecoveryDelay = function(inst)
+	inst._last_hitreact_time = nil
+	inst._last_hitreact_count = nil
+end
+
 local function onattacked(inst, data, hitreact_cooldown, max_hitreacts, skip_cooldown_fn)
     if inst.components.health ~= nil and not inst.components.health:IsDead()
 		and not hit_recovery_delay(inst, hitreact_cooldown, max_hitreacts, skip_cooldown_fn)
@@ -142,7 +153,9 @@ end
 
 --------------------------------------------------------------------------
 local function ondeath(inst, data)
-    inst.sg:GoToState("death", data)
+	if not inst.sg:HasStateTag("dead") then
+		inst.sg:GoToState("death", data)
+	end
 end
 
 CommonHandlers.OnDeath = function()
@@ -236,7 +249,7 @@ CommonStates.AddSimpleState = function(states, name, anim, tags, finishstate, ti
 				fns.onenter(inst, params)
 			end
         end,
-        
+
         timeline = timeline,
 
         events =
@@ -273,7 +286,7 @@ CommonStates.AddSimpleActionState = function(states, name, anim, time, tags, fin
 			end
         end,
 
-        timeline = timeline or 
+        timeline = timeline or
         {
             TimeEvent(time, performbufferedaction),
         },
@@ -349,16 +362,15 @@ CommonStates.AddRunStates = function(states, timelines, anims, softstop, delayst
         tags = { "moving", "running", "canrotate" },
 
         onenter = function(inst)
-			if fns ~= nil and fns.startonenter ~= nil then
+			if fns ~= nil and fns.startonenter ~= nil then -- this has to run before RunForward so that startonenter has a chance to update the run speed
 				fns.startonenter(inst)
 			end
-			if not delaystart then
+			if delaystart then
+				inst.components.locomotor:StopMoving()
+			else
 	            inst.components.locomotor:RunForward()
 			end
             inst.AnimState:PlayAnimation(get_loco_anim(inst, anims ~= nil and anims.startrun or nil, "run_pre"))
-			if fns ~= nil and fns.startonenter ~= nil then
-				fns.startonenter(inst)
-			end
         end,
 
         timeline = timelines ~= nil and timelines.starttimeline or nil,
@@ -382,8 +394,11 @@ CommonStates.AddRunStates = function(states, timelines, anims, softstop, delayst
 				fns.runonenter(inst)
 			end
             inst.components.locomotor:RunForward()
-            local anim_to_play = get_loco_anim(inst, anims ~= nil and anims.run or nil, "run_loop")
-            inst.AnimState:PlayAnimation(anim_to_play, true)
+			--V2C: -normally we wouldn't restart an already looping anim
+			--     -however, changing this might affect softstop behaviour
+			--     -i.e. PushAnimation over a looping anim (first play vs subsequent loops)
+			--     -why do we even tell it to loop here then?  for smoother playback on clients
+			inst.AnimState:PlayAnimation(get_loco_anim(inst, anims ~= nil and anims.run or nil, "run_loop"), true)
             inst.sg:SetTimeout(inst.AnimState:GetCurrentAnimationLength())
         end,
 
@@ -410,9 +425,6 @@ CommonStates.AddRunStates = function(states, timelines, anims, softstop, delayst
             else
                 inst.AnimState:PlayAnimation(get_loco_anim(inst, anims ~= nil and anims.stoprun or nil, "run_pst"))
             end
-			if fns ~= nil and fns.endonenter ~= nil then
-				fns.endonenter(inst)
-			end
         end,
 
         timeline = timelines ~= nil and timelines.endtimeline or nil,
@@ -453,7 +465,9 @@ CommonStates.AddWalkStates = function(states, timelines, anims, softstop, delays
 			if fns ~= nil and fns.startonenter ~= nil then -- this has to run before WalkForward so that startonenter has a chance to update the walk speed
 				fns.startonenter(inst)
 			end
-			if not delaystart then
+			if delaystart then
+				inst.components.locomotor:StopMoving()
+			else
 	            inst.components.locomotor:WalkForward()
 			end
             inst.AnimState:PlayAnimation(get_loco_anim(inst, anims ~= nil and anims.startwalk or nil, "walk_pre"))
@@ -480,6 +494,10 @@ CommonStates.AddWalkStates = function(states, timelines, anims, softstop, delays
 				fns.walkonenter(inst)
 			end
             inst.components.locomotor:WalkForward()
+			--V2C: -normally we wouldn't restart an already looping anim
+			--     -however, changing this might affect softstop behaviour
+			--     -i.e. PushAnimation over a looping anim (first play vs subsequent loops)
+			--     -why do we even tell it to loop here then?  for smoother playback on clients
             inst.AnimState:PlayAnimation(get_loco_anim(inst, anims ~= nil and anims.walk or nil, "walk_loop"), true)
             inst.sg:SetTimeout(inst.AnimState:GetCurrentAnimationLength())
         end,
@@ -551,7 +569,7 @@ local function DoHopLandSound(inst, land_sound)
 	end
 end
 
-CommonStates.AddHopStates = function(states, wait_for_pre, anims, timelines, land_sound, landed_in_water_state, data)
+CommonStates.AddHopStates = function(states, wait_for_pre, anims, timelines, land_sound, landed_in_falling_state, data)
 	anims = anims or {}
     timelines = timelines or {}
 	data = data or {}
@@ -664,10 +682,9 @@ CommonStates.AddHopStates = function(states, wait_for_pre, anims, timelines, lan
             local nextstate = "hop_pst_complete"
 			if data ~= nil then
 				nextstate = (
-                                data.landed_in_water and landed_in_water_state ~= nil and
+                                data.landed_in_water and landed_in_falling_state ~= nil and
                                 (
-                                    type(landed_in_water_state) ~= "function" and landed_in_water_state or
-                                    landed_in_water_state(inst)
+                                    type(landed_in_falling_state) ~= "function" and landed_in_falling_state or landed_in_falling_state(inst)
                                 )
                             )
 							 or data.queued_post_land_state
@@ -984,6 +1001,7 @@ local function onunfreeze(inst)
 end
 
 local function onthaw(inst)
+	inst.sg.statemem.thawing = true
     inst.sg:GoToState("thaw")
 end
 
@@ -1016,7 +1034,9 @@ local function onenterfrozen(inst)
 end
 
 local function onexitfrozen(inst)
-    inst.AnimState:ClearOverrideSymbol("swap_frozen")
+	if not inst.sg.statemem.thawing then
+		inst.AnimState:ClearOverrideSymbol("swap_frozen")
+	end
 end
 
 local function onenterthawpre(inst)
@@ -1232,8 +1252,13 @@ end
 local function onsleepex(inst)
     inst.sg.mem.sleeping = true
 	if inst.components.health == nil or not inst.components.health:IsDead() then
-		if inst.sg:HasStateTag("jumping") and inst.components.drownable ~= nil and inst.components.drownable:ShouldDrown() then
-			inst.sg:GoToState("sink")
+        local fallingreason = inst.components.drownable and inst.components.drownable:GetFallingReason() or nil
+        if fallingreason ~= nil and inst.sg:HasStateTag("jumping") then
+            if fallingreason == FALLINGREASON.OCEAN then
+                inst.sg:GoToState("sink")
+            elseif fallingreason == FALLINGREASON.VOID then
+                inst.sg:GoToState("abyss_fall")
+            end
 		elseif not (inst.sg:HasStateTag("nosleep") or inst.sg:HasStateTag("sleeping")) then
 		    inst.sg:GoToState("sleep")
 		end
@@ -1279,6 +1304,10 @@ CommonHandlers.OnNoSleepTimeEvent = function(t, fn)
             fn(inst)
         end
     end)
+end
+
+CommonHandlers.OnNoSleepFrameEvent = function(frame, fn)
+	return CommonHandlers.OnNoSleepTimeEvent(frame * FRAMES, fn)
 end
 
 local function sleepexonanimover(inst)
@@ -1732,7 +1761,7 @@ local function DoWashAshore(inst, skip_splash)
 	inst.components.drownable:WashAshore()
 end
 
-CommonStates.AddSinkAndWashAsoreStates = function(states, anims, timelines, fns)
+CommonStates.AddSinkAndWashAshoreStates = function(states, anims, timelines, fns)
 	anims = anims or {}
 	timelines = timelines or {}
 	fns = fns or {}
@@ -1872,27 +1901,230 @@ CommonStates.AddSinkAndWashAsoreStates = function(states, anims, timelines, fns)
 	})
 end
 
+--Backward compatibility for originally mispelt function name
+CommonStates.AddSinkAndWashAsoreStates = CommonStates.AddSinkAndWashAshoreStates
+
+------------ Void falling! ------------
+
+local function onfallinvoid(inst, data)
+    if (inst.components.health == nil or not inst.components.health:IsDead()) and not inst.sg:HasStateTag("falling") and (inst.components.drownable ~= nil and inst.components.drownable:ShouldFallInVoid()) then
+        inst.sg:GoToState("abyss_fall", data)
+    end
+end
+
+CommonHandlers.OnFallInVoid = function()
+    return EventHandler("onfallinvoid", onfallinvoid)
+end
+
+local function DoVoidFall(inst, skip_vfx)
+    if not skip_vfx then
+        local x, y, z = inst.Transform:GetWorldPosition()
+        SpawnPrefab("fallingswish_clouds").Transform:SetPosition(x, y, z)
+        SpawnPrefab("fallingswish_lines").Transform:SetPosition(x, y, z)
+    end
+    inst.sg.statemem.isteleporting = true
+    inst:Hide()
+    if inst.components.health ~= nil then
+        inst.components.health:SetInvincible(true)
+    end
+    if inst.components.drownable ~= nil then
+        inst.components.drownable:VoidArrive()
+    else
+        inst:PutBackOnGround()
+    end
+end
+
+CommonStates.AddVoidFallStates = function(states, anims, timelines, fns)
+	anims = anims or {}
+	timelines = timelines or {}
+	fns = fns or {}
+
+    table.insert(states, State{
+        name = "abyss_fall",
+        tags = { "busy", "nopredict", "nomorph", "falling", "nointerrupt", "nowake" },
+
+        onenter = function(inst, data)
+            inst:ClearBufferedAction()
+
+            inst.components.locomotor:Stop()
+            inst.components.locomotor:Clear()
+
+			inst.sg.statemem.collisionmask = inst.Physics:GetCollisionMask()
+	        inst.Physics:SetCollisionMask(COLLISION.GROUND)
+
+			if data ~= nil and data.teleport_pt ~= nil then
+				inst.components.drownable:OnFallInVoid(data.teleport_pt:Get())
+			else
+				inst.components.drownable:OnFallInVoid()
+			end
+
+			if inst.DynamicShadow ~= nil then
+			    inst.DynamicShadow:Enable(false)
+			end
+
+		    if inst.brain ~= nil then
+				inst.brain:Stop()
+			end
+
+			local skip_anim = data ~= nil and data.noanim
+			if anims.fallinvoid ~= nil and not skip_anim then
+				inst.sg.statemem.has_anim = true
+	            inst.AnimState:PlayAnimation(anims.fallinvoid)
+                -- TODO(JBK): Add inst.AnimState:SetLayer(LAYER_BELOW_GROUND) and inst.AnimState:SetLayer(LAYER_WORLD) timing if overriding the animation.
+			else
+				DoVoidFall(inst, skip_anim)
+			end
+
+        end,
+
+		timeline = timelines.fallinvoid,
+
+        events =
+        {
+            EventHandler("animover", function(inst)
+                if inst.sg.statemem.has_anim and inst.AnimState:AnimDone() then
+					DoVoidFall(inst)
+				end
+            end),
+
+            EventHandler("on_void_arrive", function(inst)
+				inst.sg:GoToState("abyss_drop")
+			end),
+        },
+
+        onexit = function(inst)
+			if inst.sg.statemem.collisionmask ~= nil then
+				inst.Physics:SetCollisionMask(inst.sg.statemem.collisionmask)
+			end
+
+            if inst.sg.statemem.isteleporting then
+				if inst.components.health ~= nil then
+					inst.components.health:SetInvincible(false)
+				end
+				inst:Show()
+			end
+
+			if inst.DynamicShadow ~= nil then
+				inst.DynamicShadow:Enable(true)
+			end
+
+			if inst.components.herdmember ~= nil then
+				inst.components.herdmember:Leave()
+			end
+
+			if inst.components.combat ~= nil then
+				inst.components.combat:DropTarget()
+			end
+
+		    if inst.brain ~= nil then
+				inst.brain:Start()
+			end
+        end,
+    })
+
+    table.insert(states, State{
+        name = "abyss_drop",
+        tags = { "doing", "busy", "nopredict", "silentmorph" },
+
+        onenter = function(inst)
+            inst.components.locomotor:Stop()
+            if type(anims.voiddrop) == "table" then
+                for i, v in ipairs(anims.voiddrop) do
+                    if i == 1 then
+                        inst.AnimState:PlayAnimation(v)
+                    else
+                        inst.AnimState:PushAnimation(v, false)
+                    end
+                end
+            elseif anims.voiddrop ~= nil then
+                inst.AnimState:PlayAnimation(anims.voiddrop)
+            else
+                inst.AnimState:PlayAnimation("sleep_loop")
+                inst.AnimState:PushAnimation("sleep_pst", false)
+            end
+
+            if inst.brain ~= nil then
+                inst.brain:Stop()
+            end
+
+            local x, y, z = inst.Transform:GetWorldPosition()
+            SpawnPrefab("fallingswish_clouds_fast").Transform:SetPosition(x, y, z)
+        end,
+
+		timeline = timelines.fallinvoid,
+
+        events =
+        {
+            EventHandler("animqueueover", function(inst)
+                if inst.AnimState:AnimDone() then
+                    inst.sg:GoToState("idle")
+                end
+            end),
+        },
+
+        onexit = function(inst)
+		    if inst.brain ~= nil then
+				inst.brain:Start()
+			end
+        end,
+	})
+end
+
 --------------------------------------------------------------------------
 
 function PlayMiningFX(inst, target, nosound)
     if target ~= nil and target:IsValid() then
         local frozen = target:HasTag("frozen")
         local moonglass = target:HasTag("moonglass")
+        local crystal = target:HasTag("crystal")
         if target.Transform ~= nil then
             SpawnPrefab(
                 (frozen and "mining_ice_fx") or
                 (moonglass and "mining_moonglass_fx") or
+                (crystal and "mining_crystal_fx") or
                 "mining_fx"
             ).Transform:SetPosition(target.Transform:GetWorldPosition())
         end
         if not nosound and inst.SoundEmitter ~= nil then
             inst.SoundEmitter:PlaySound(
                 (frozen and "dontstarve_DLC001/common/iceboulder_hit") or
-                (moonglass and "turnoftides/common/together/moon_glass/mine") or
+                ((moonglass or crystal) and "turnoftides/common/together/moon_glass/mine") or
                 "dontstarve/wilson/use_pick_rock"
             )
         end
     end
+end
+
+--------------------------------------------------------------------------
+
+local function IpecacPoop(inst)
+    if not (inst.sg:HasStateTag("busy") or (inst.components.health ~= nil and inst.components.health:IsDead())) then
+        inst.sg:GoToState("ipecacpoop")
+    end
+end
+
+CommonHandlers.OnIpecacPoop = function()
+    return EventHandler("ipecacpoop", IpecacPoop)
+end
+
+CommonStates.AddIpecacPoopState = function(states, anim)
+    anim = anim or "hit"
+
+    table.insert(states, State{
+        name = "ipecacpoop",
+        tags = { "busy" },
+
+        onenter = function(inst)
+            inst.SoundEmitter:PlaySound("meta2/wormwood/laxative_poot")
+            inst.AnimState:PlayAnimation(anim)
+            inst.Physics:Stop()
+        end,
+
+        events =
+        {
+            EventHandler("animover", idleonanimover),
+        },
+    })
 end
 
 --------------------------------------------------------------------------

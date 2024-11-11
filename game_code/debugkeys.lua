@@ -18,7 +18,7 @@ end
 require "consolecommands"
 
 local fcts = {
-    string = function(value) return string_format('%q', value) end,
+    string = function(value) return string.format('%q', value) end,
     number = function(value) return value end,
     boolean = function(value) return tostring(value) end,
     ['nil'] = function(value) return 'nil' end,
@@ -103,7 +103,9 @@ function DoDebugMouse(button, down,x,y)
 end
 
 function DoReload()
-    dofile("scripts/reload.lua")
+    -- NOTES(JBK): Do not use dofile.
+    package.loaded["scripts/reload.lua"] = nil
+    require("scripts/reload.lua")
 end
 
 -------------------------------------DEBUG KEYS
@@ -160,7 +162,7 @@ GLOBAL_KEY_BINDINGS =
         end
     },
     {
-        binding = { key = KEY_H, SHIFT=true },
+        --binding = { key = KEY_H, SHIFT=true },
 		name = function()
 			local on_off = TheFrontEnd.debugMenu.history:IsEnabled() and "OFF" or "ON"
 			return "Turn "..on_off.." History Recording"
@@ -330,7 +332,7 @@ WINDOW_KEY_BINDINGS =
         end
     },
     {
-		binding = { key = KEY_H },
+		--binding = { key = KEY_H },
 		name = "History",
 		fn = function()
             if not CAN_USE_DBUI or Profile:GetThreadedRenderEnabled() then
@@ -761,7 +763,7 @@ AddGameDebugKey(KEY_F8, function()
         return true
     end
     local pt = Vector3(player.Transform:GetWorldPosition())
-    local theta = math.random() * 2 * PI
+    local theta = math.random() * TWOPI
     local numrings = 10 --How many rings of stuff you spawn
     local radius = 2 --Initial distance from player
     local radius_step_distance = 1 --How much the radius increases per ring.
@@ -774,7 +776,7 @@ AddGameDebugKey(KEY_F8, function()
     local numspawned = 0
     -- Walk the circle trying to find a valid spawn point
     for i = 1, numrings do
-        local circ = 2*PI*radius
+        local circ = TWOPI*radius
         local numitems = circ * itemdensity
 
         for i = 1, numitems do
@@ -786,7 +788,7 @@ AddGameDebugKey(KEY_F8, function()
                 local spawn = SpawnPrefab(GetRandomItem(items))
                 spawn.Transform:SetPosition(wander_point:Get())
             end
-            theta = theta - (2 * PI / numitems)
+            theta = theta - (TWOPI / numitems)
         end
         radius = radius + radius_step_distance
     end
@@ -894,13 +896,12 @@ AddGameDebugKey(KEY_1, function()
         end
         return true
     end
-
 end)
 
 AddGameDebugKey(KEY_X, function()
     currentlySelected = TheInput:GetWorldEntityUnderMouse()
 
-	if TheInput:IsKeyDown(KEY_CTRL) then
+    if TheInput:IsKeyDown(KEY_CTRL) then
 		local inventory = ConsoleCommandPlayer().components and ConsoleCommandPlayer().components.inventory
 						or ConsoleCommandPlayer().replica and ConsoleCommandPlayer().replica.inventory
 						or nil
@@ -918,6 +919,21 @@ AddGlobalDebugKey(KEY_LEFTBRACKET, function()
         TheSim:SetTimeScale(1)
     elseif TheInput:IsKeyDown(KEY_SHIFT) then
         TheSim:SetTimeScale(0)
+    elseif TheInput:IsKeyDown(KEY_ALT) then
+        if ThePlayer and TheWorld.ismastersim then
+            local skilltreeupdater = ThePlayer.components.skilltreeupdater
+            local skilldefs = require("prefabs/skilltree_defs").SKILLTREE_DEFS[ThePlayer.prefab]
+            if skilldefs then
+                local player = ThePlayer
+                if c_sel() and c_sel():HasTag("player") then
+                    player = c_sel()
+                end
+                for skill, data in pairs(skilldefs) do
+                    skilltreeupdater:DeactivateSkill(skill)
+                end
+                skilltreeupdater:AddSkillXP(-skilltreeupdater:GetSkillXP())
+            end
+        end
     else
         TheSim:SetTimeScale(TheSim:GetTimeScale() - .25)
     end
@@ -929,6 +945,19 @@ AddGlobalDebugKey(KEY_RIGHTBRACKET, function()
         TheSim:SetTimeScale(1)
     elseif TheInput:IsKeyDown(KEY_SHIFT) then
         TheSim:SetTimeScale(4)
+
+    elseif TheInput:IsKeyDown(KEY_ALT)then
+        local player = ThePlayer
+        if c_sel() and c_sel():HasTag("player") then
+            player = c_sel()
+        end
+        if player then
+            local skilltreeupdater = player.components.skilltreeupdater
+            local skilldefs = require("prefabs/skilltree_defs").SKILLTREE_DEFS[player.prefab]
+            if skilldefs then
+                skilltreeupdater:AddSkillXP(1)
+            end
+        end
     else
         TheSim:SetTimeScale(TheSim:GetTimeScale() + .25)
     end
@@ -1006,6 +1035,35 @@ AddGameDebugKey(KEY_KP_MINUS, function()
     return true
 end)
 
+-- Boat teleporting helpers
+local TELEPORTBOAT_ITEM_MUST_TAGS = {"_inventoryitem",}
+local TELEPORTBOAT_ITEM_CANT_TAGS = {"FX", "NOCLICK", "DECOR", "INLIMBO",}
+local TELEPORTBOAT_BLOCKER_CANT_TAGS = {"FX", "NOCLICK", "DECOR", "INLIMBO", "_inventoryitem",}
+local function try_boat_teleport(boat, x, y, z)
+    local boatradius = boat:GetSafePhysicsRadius()
+
+    boat.Physics:Teleport(x, y, z)
+    if boat.boat_item_collision then
+        -- NOTES(JBK): This must also teleport or it will fling items off of it in a comical fashion from the physics constraint it has.
+        boat.boat_item_collision.Physics:Teleport(x, y, z)
+    end
+
+    local item_ents = TheSim:FindEntities(x, y, z, boatradius, TELEPORTBOAT_ITEM_MUST_TAGS, TELEPORTBOAT_ITEM_CANT_TAGS)
+    for _, ent in ipairs(item_ents) do
+        ent.components.inventoryitem:SetLanded(false, true)
+    end
+
+    local walkableplatform = boat.components.walkableplatform
+    if walkableplatform then
+        local players = walkableplatform:GetPlayersOnPlatform()
+        for player in pairs(players) do
+            player:SnapCamera()
+        end
+    end
+
+    return true
+end
+
 local wormholetarget = nil
 local tentaholetarget = nil
 AddGameDebugKey(KEY_T, function()
@@ -1016,6 +1074,7 @@ AddGameDebugKey(KEY_T, function()
     else
         local player = ConsoleCommandPlayer()
         if player then
+            local boat = (TheInput:IsKeyDown(KEY_CTRL) and player:GetCurrentPlatform()) or nil
             local topscreen = TheFrontEnd:GetActiveScreen()
             if topscreen.minimap ~= nil then
 
@@ -1026,18 +1085,31 @@ AddGameDebugKey(KEY_T, function()
                 local x,y,z = topscreen.minimap:MapPosToWorldPos( mousemappos:Get() )
 
                 if TheWorld ~= nil and not TheWorld.ismastersim then
-                    ConsoleRemote("c_teleport(%d, %d, %d)", {x, 0, y})
+                    if boat then
+                        ConsoleRemote("d_teleportboat(%d, %d, %d)", {x, 0, y})
+                    else
+                        ConsoleRemote("c_teleport(%d, %d, %d)", {x, 0, y})
+                    end
                 else
-                    player.Physics:Teleport(x, 0, y)
+                    if not boat or not try_boat_teleport(boat, x, 0, y) then
+                        player.Physics:Teleport(x, 0, y)
+                    end
                 end
                 topscreen.minimap.minimap:ResetOffset()
             else
                 if TheWorld ~= nil and not TheWorld.ismastersim then
                     local x, y, z = ConsoleWorldPosition():Get()
-                    player.Transform:SetPosition(x, y, z)
-                    ConsoleRemote("c_teleport(%d, %d, %d)", {x, y, z})
+
+                    if boat then
+                        ConsoleRemote("d_teleportboat(%d, %d, %d)", {x, y, z})
+                    else
+                        ConsoleRemote("c_teleport(%d, %d, %d)", {x, y, z})
+                    end
                 else
-                    player.Physics:Teleport(TheInput:GetWorldPosition():Get())
+                    local x, y, z = TheInput:GetWorldPosition():Get()
+                    if not boat or not try_boat_teleport(boat, x, y, z) then
+                        player.Physics:Teleport(x, y, z)
+                    end
                 end
             end
         end
@@ -1644,6 +1716,24 @@ function d_addemotekeys()
 	AddGameDebugKey(KEY_KP_8, function() UserCommands.RunUserCommand("shrug", {}, ThePlayer, false) end)
 	AddGameDebugKey(KEY_KP_9, function() UserCommands.RunUserCommand("wave", {}, ThePlayer, false) end)
 	AddGameDebugKey(KEY_KP_PERIOD, function() UserCommands.RunUserCommand("fistshake", {}, ThePlayer, false) end)
+
+end
+
+
+function d_gettiles()
+                            local pos = Vector3(ThePlayer.Transform:GetWorldPosition())
+                            local tiles = {}
+                            for x=-5,5,1 do
+                                for z=-5,5,1 do
+                                    local tx = pos.x + (x*4)
+                                    local tz = pos.z + (z*4)
+                                    local tile = TheWorld.Map:GetTileAtPoint(tx, 0, tz)
+                                    if tile == WORLD_TILES.FARMING_SOIL then
+                                        table.insert(tiles,{tx,tz})
+                                    end
+                                end
+                            end
+                            dumptable(tiles,1,1)
 
 end
 

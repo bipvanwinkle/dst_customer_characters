@@ -218,11 +218,12 @@ end
 
 local function oversized_onperish(inst)
     -- vars for rotting on a gym
-    local gym = nil
+	local owner = inst.components.inventoryitem:GetGrandOwner()
+	local gym = owner and owner:HasTag("gym") and owner or nil
     local rot = nil
     local slot = nil
 
-    if inst.components.inventoryitem:GetGrandOwner() ~= nil and not inst.components.inventoryitem:GetGrandOwner():HasTag("gym") then
+	if owner and gym == nil then
         local loots = {}
         for i=1, #inst.components.lootdropper.loot do
             table.insert(loots, "spoiled_food")
@@ -232,8 +233,7 @@ local function oversized_onperish(inst)
     else
         rot = SpawnPrefab(inst.prefab.."_rotten")
         rot.Transform:SetPosition(inst.Transform:GetWorldPosition())
-        if inst.components.inventoryitem:GetGrandOwner() and inst.components.inventoryitem:GetGrandOwner():HasTag("gym") then
-            gym = inst.components.inventoryitem:GetGrandOwner()
+		if gym then
             slot = gym.components.inventory:GetItemSlot(inst)
         end
     end
@@ -271,6 +271,7 @@ end
 
 local function dowaxfn(inst, doer, waxitem)
     local waxedveggie = SpawnPrefab(inst.prefab.."_waxed")
+
     if doer.components.inventory and doer.components.inventory:IsHeavyLifting() and doer.components.inventory:GetEquippedItem(EQUIPSLOTS.BODY) == inst then
         doer.components.inventory:Unequip(EQUIPSLOTS.BODY)
         doer.components.inventory:Equip(waxedveggie)
@@ -279,7 +280,13 @@ local function dowaxfn(inst, doer, waxitem)
         waxedveggie.AnimState:PlayAnimation("wax_oversized", false)
         waxedveggie.AnimState:PushAnimation("idle_oversized")
     end
+
+    if inst.components.pumpkincarvable ~= nil then
+        inst.components.pumpkincarvable:TransferComponent(waxedveggie)
+    end
+
     inst:Remove()
+
     return true
 end
 
@@ -336,6 +343,9 @@ local function MakeVeggie(name, has_seeds)
         name .."_cooked",
         "spoiled_food",
     }
+    if name == "carrot" then
+        table.insert(prefabs, "carrot_spinner")
+    end
 	local dryable = VEGGIES[name].dryable
 
     if has_seeds then
@@ -348,7 +358,9 @@ local function MakeVeggie(name, has_seeds)
         table.insert(assets_dried, Asset("ANIM", "anim/"..dryable.build..".zip"))
 	end
 
+	local plant_def = PLANT_DEFS[name]
 	local seeds_prefabs = has_seeds and { "farm_plant_"..name } or nil
+	local oversized_prefabs = plant_def and plant_def.iscarvable and { "pumpkincarving_swap_fx" } or nil
 
     local assets_oversized = {}
     if has_seeds then
@@ -357,7 +369,39 @@ local function MakeVeggie(name, has_seeds)
         table.insert(prefabs, name.."_oversized_rotten")
         table.insert(prefabs, "splash_green")
 
-        table.insert(assets_oversized, Asset("ANIM", "anim/"..PLANT_DEFS[name].build..".zip"))
+        table.insert(assets_oversized, Asset("ANIM", "anim/"..plant_def.build..".zip"))
+    end
+
+    local function spin(inst, time)
+        inst.entity:AddSoundEmitter()
+        inst.AnimState:PlayAnimation("spin_pre")
+        inst.AnimState:PushAnimation("spin_loop",true)
+        inst.components.timer:StartTimer("spin",time or 2)
+        inst.SoundEmitter:PlaySound("yotr_2023/common/carrot_spin", "spin_lp")
+    end
+
+    local function timerdone(inst,data)
+        if data and data.name then
+            if data.name == "spin" then
+                inst.Transform:SetEightFaced()
+                inst.Transform:SetRotation(math.random()*360)
+                inst.AnimState:PlayAnimation("spin_pst")
+                inst.components.activatable.inactive = true
+                inst.SoundEmitter:PlaySound("yotr_2023/common/carrot_spin_pst")
+                inst.SoundEmitter:KillSound("spin_lp")
+
+                local fx = SpawnPrefab("carrot_spinner")
+                inst:AddChild(fx)
+            end
+        end
+    end
+
+    local function GetActivateVerb()
+        return "SPIN"
+    end    
+
+    local function OnActivateSpin(inst)
+        inst:Spin()
     end
 
     local function fn_seeds()
@@ -373,6 +417,9 @@ local function MakeVeggie(name, has_seeds)
         inst.AnimState:SetBuild("farm_plant_seeds")
         inst.AnimState:PlayAnimation(name)
         inst.AnimState:SetRayTestOnBB(true)
+        inst.scrapbook_anim = name
+
+        inst.pickupsound = "vegetation_firm"
 
         --cookable (from cookable component) added to pristine state for optimization
         inst:AddTag("cookable")
@@ -382,7 +429,7 @@ local function MakeVeggie(name, has_seeds)
 
         inst.overridedeployplacername = "seeds_placer"
 
-		inst.plant_def = PLANT_DEFS[name]
+		inst.plant_def = plant_def
 		inst.displaynamefn = Seed_GetDisplayName
 
 		inst._custom_candeploy_fn = can_plant_seed -- for DEPLOYMODE.CUSTOM
@@ -450,11 +497,18 @@ local function MakeVeggie(name, has_seeds)
         inst.entity:AddAnimState()
         inst.entity:AddNetwork()
 
+        if name == "carrot" then
+            inst.entity:AddSoundEmitter()
+            inst.GetActivateVerb = GetActivateVerb
+        end
+
         MakeInventoryPhysics(inst)
 
         inst.AnimState:SetBank(name)
         inst.AnimState:SetBuild(name)
         inst.AnimState:PlayAnimation("idle")
+
+        inst.pickupsound = "vegetation_firm"
 
         --cookable (from cookable component) added to pristine state for optimization
         inst:AddTag("cookable")
@@ -503,6 +557,12 @@ local function MakeVeggie(name, has_seeds)
         inst.components.perishable:SetPerishTime(VEGGIES[name].perishtime)
         inst.components.perishable:StartPerishing()
         inst.components.perishable.onperishreplacement = "spoiled_food"
+
+        if name == "carrot" then
+            inst:AddComponent("repairer")
+            inst.components.repairer.repairmaterial = MATERIALS.CARROT
+            inst.components.repairer.perishrepairpercent = 0.25
+        end
 
         inst:AddComponent("stackable")
         if name ~= "pumpkin" and
@@ -576,6 +636,18 @@ local function MakeVeggie(name, has_seeds)
 
         MakeHauntableLaunchAndPerish(inst)
 
+        if name == "carrot" then
+            inst.Spin = spin
+            inst:AddComponent("timer")
+            inst:ListenForEvent("timerdone", timerdone)
+            inst:AddComponent("activatable")
+            inst.components.activatable.OnActivate = OnActivateSpin
+            inst.components.activatable.quickaction = true
+            inst.components.inventoryitem:SetOnPickupFn(function()
+                inst.Transform:SetNoFaced()
+            end)
+        end
+
         return inst
     end
 
@@ -591,6 +663,7 @@ local function MakeVeggie(name, has_seeds)
         inst.AnimState:SetBank(name)
         inst.AnimState:SetBuild(name)
         inst.AnimState:PlayAnimation("cooked")
+        inst.scrapbook_anim = "cooked"
 
         if VEGGIES[name].extra_tags_cooked then
             for _, extra_tag in ipairs(VEGGIES[name].extra_tags_cooked) do
@@ -662,6 +735,7 @@ local function MakeVeggie(name, has_seeds)
 		inst.AnimState:SetBank(dryable.build)
 		inst.AnimState:SetBuild(dryable.build)
 		inst.AnimState:PlayAnimation("dried_"..name)
+        inst.scrapbook_anim = "dried_"..name
 
 		MakeInventoryFloatable(inst)
 
@@ -707,17 +781,22 @@ local function MakeVeggie(name, has_seeds)
         inst.entity:AddAnimState()
         inst.entity:AddNetwork()
 
-        local plant_def = PLANT_DEFS[name]
-
         inst.AnimState:SetBank(plant_def.bank)
         inst.AnimState:SetBuild(plant_def.build)
         inst.AnimState:PlayAnimation("idle_oversized")
+        inst.scrapbook_anim = "idle_oversized"
 
         inst:AddTag("heavy")
         inst:AddTag("waxable")
         inst:AddTag("oversized_veggie")
 	    inst:AddTag("show_spoilage")
         inst.gymweight = 4
+
+		if plant_def.iscarvable then
+			inst:AddComponent("pumpkincarvable")
+
+			inst.highlightchildren = {}
+		end
 
         MakeHeavyObstaclePhysics(inst, OVERSIZED_PHYSICS_RADIUS)
         inst:SetPhysicsRadiusOverride(OVERSIZED_PHYSICS_RADIUS)
@@ -795,14 +874,19 @@ local function MakeVeggie(name, has_seeds)
         inst.entity:AddAnimState()
         inst.entity:AddNetwork()
 
-        local plant_def = PLANT_DEFS[name]
-
         inst.AnimState:SetBank(plant_def.bank)
         inst.AnimState:SetBuild(plant_def.build)
         inst.AnimState:PlayAnimation("idle_oversized")
+        inst.scrapbook_anim = "idle_oversized"
 
         inst:AddTag("heavy")
         inst:AddTag("oversized_veggie")
+
+		if plant_def.iscarvable then
+			inst:AddComponent("pumpkincarvable")
+
+			inst.highlightchildren = {}
+		end
 
         inst.gymweight = 4
 
@@ -870,11 +954,10 @@ local function MakeVeggie(name, has_seeds)
         inst.entity:AddAnimState()
         inst.entity:AddNetwork()
 
-        local plant_def = PLANT_DEFS[name]
-
         inst.AnimState:SetBank(plant_def.bank)
         inst.AnimState:SetBuild(plant_def.build)
         inst.AnimState:PlayAnimation("idle_rot_oversized")
+        inst.scrapbook_anim = "idle_rot_oversized"
 
         inst:AddTag("heavy")
         inst:AddTag("farm_plant_killjoy")
@@ -944,8 +1027,8 @@ local function MakeVeggie(name, has_seeds)
 
 	if has_seeds then
 		table.insert(exported_prefabs, Prefab(name.."_seeds", fn_seeds, assets_seeds, seeds_prefabs))
-        table.insert(exported_prefabs, Prefab(name.."_oversized", fn_oversized, assets_oversized))
-        table.insert(exported_prefabs, Prefab(name.."_oversized_waxed", fn_oversized_waxed, assets_oversized))
+        table.insert(exported_prefabs, Prefab(name.."_oversized", fn_oversized, assets_oversized, oversized_prefabs))
+        table.insert(exported_prefabs, Prefab(name.."_oversized_waxed", fn_oversized_waxed, assets_oversized, oversized_prefabs))
         table.insert(exported_prefabs, Prefab(name.."_oversized_rotten", fn_oversized_rotten, assets_oversized))
 	end
 	if dryable ~= nil then

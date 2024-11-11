@@ -1,12 +1,12 @@
 require "behaviours/wander"
 require "behaviours/chaseandattack"
-require "behaviours/panic"
 require "behaviours/attackwall"
 require "behaviours/minperiod"
 require "behaviours/leash"
 require "behaviours/faceentity"
 require "behaviours/doaction"
 require "behaviours/standstill"
+local BrainCommon = require("brains/braincommon")
 
 local SharkBrain = Class(Brain, function(self, inst)
     Brain._ctor(self, inst)
@@ -71,8 +71,17 @@ local function removefood(inst, target)
 	end
 end
 
+local FINDFOOD_CANT_TAGS = { "INLIMBO", "outofreach" }
+
 local function isfoodnearby(inst)
-    local target = FindEntity(inst, SEE_DIST, function(item) return inst.components.eater:CanEat(item) and not item:GetCurrentPlatform() and not TheWorld.Map:IsVisualGroundAtPoint(item.Transform:GetWorldPosition()) end)
+	local target = FindEntity(inst, SEE_DIST,
+		function(item)
+			return inst.components.eater:CanEat(item)
+				and not item:GetCurrentPlatform()
+				and not TheWorld.Map:IsVisualGroundAtPoint(item.Transform:GetWorldPosition())
+		end,
+		nil,
+		FINDFOOD_CANT_TAGS)
 
     -- don't target food if its too close..ironically
     if target and target:GetDistanceSqToInst(inst) < 6*6 then
@@ -98,7 +107,7 @@ local function EatFishAction(inst)
                 return TheWorld.Map:IsOceanAtPoint(inst.Transform:GetWorldPosition())
             end,
             nil,
-            nil,
+			FINDFOOD_CANT_TAGS,
             {"oceanfish"})
 
         if target then
@@ -186,10 +195,9 @@ function SharkBrain:OnStart()
                             DoAction(self.inst, Attack, "attack", true),
                         })),
 
-                    --WhileNode(function() return self.inst.components.hauntable and self.inst.components.hauntable.panic end, "PanicHaunted", Panic(self.inst)),
                     WhileNode(function() return isOnWater(self.inst) end, "on water",
                         PriorityNode({
-                            WhileNode(function() return self.inst.components.health.takingfiredamage end, "OnFire", Panic(self.inst)),
+							BrainCommon.PanicTrigger(self.inst),
                             RunAway(self.inst, function() return self.inst.components.timer:TimerExists("getdistance") and self.inst.components.combat.target end, 10, 20),
                             ChaseAndAttack(self.inst, 100),
                             DoAction(self.inst, isfoodnearby, "gotofood", true),

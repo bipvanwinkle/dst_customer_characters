@@ -3,7 +3,7 @@ require "behaviours/leash"
 require "behaviours/standstill"
 require "behaviours/runaway"
 require "behaviours/doaction"
-require "behaviours/panic"
+local BrainCommon = require("brains/braincommon")
 
 local STOP_RUN_DIST = 10
 local SEE_PLAYER_DIST = 5
@@ -51,7 +51,7 @@ local function GoHomeAction(inst)
 end
 
 local EATFOOD_MUST_TAGS = { "edible_"..FOODTYPE.VEGGIE }
-local EATFOOD_CANT_TAGS = { "INLIMBO" }
+local EATFOOD_CANT_TAGS = { "INLIMBO", "outofreach" }
 local SCARY_TAGS = { "scarytoprey" }
 local function EatFoodAction(inst, checksafety)
     local target =
@@ -154,8 +154,7 @@ end
 function PerdBrain:OnStart()
     local root = PriorityNode(
     {
-        WhileNode(function() return self.inst.components.health.takingfiredamage or self.inst.components.hauntable.panic end, "Panic",
-            Panic(self.inst)),
+		BrainCommon.PanicTrigger(self.inst),
         WhileNode(function() return not TheWorld.state.isday end, "IsNight",
             DoAction(self.inst, GoHomeAction, "Go Home", true)),
         IfNode(function() return self.inst.seekshrine end, "Seek Shrine",

@@ -1,7 +1,7 @@
 --[[
 local function DoSpawnMeteor(target, n)
     local pt = target:GetPosition()
-    local theta = math.random() * 2 * PI
+    local theta = math.random() * TWOPI
     --spread the meteors more once the player is a ghost
     local radius = target:HasTag("playerghost") and math.random(n + 1, 10 + n * 2) or math.random(n - 1, 5 + n * 2)
     local offset = FindWalkableOffset(pt, theta, radius, 12, true)
@@ -85,6 +85,9 @@ function WallUpdate(dt)
     end
 
     TheSim:ProfilerPush("fe")
+    if HashesMessageState == "SHOW_WARNING" then
+        ShowBadHashUI() -- This sets global_error_widget.
+    end
     if global_error_widget then
         TheFrontEnd:OnRenderImGui(dt)
         global_error_widget:OnUpdate(dt)
@@ -134,10 +137,12 @@ function WallUpdate(dt)
     ]]
 end
 
+require("components/updatelooper")
+
 function PostUpdate(dt)
     --TheSim:ProfilerPush("LuaPostUpdate")
     EmitterManager:PostUpdate()
-
+	UpdateLooper_PostUpdate()
     --TheSim:ProfilerPop()
 end
 

@@ -33,7 +33,7 @@ local function FindRelocatePoint(inst)
 		pt = home_pt
 	end
 
-    local theta = math.random() * 2 * PI
+    local theta = math.random() * TWOPI
 	local offset = FindWalkableOffset(pt, theta, 10+math.random()*3, 16, true, true)
 					or FindWalkableOffset(pt, theta, 6+math.random()*3, 12, true, true)
 					or FindWalkableOffset(pt, theta, 3+math.random()*3, 12, true, true)
@@ -177,6 +177,7 @@ local function fn()
 	inst:AddTag("NOBLOCK")
 	inst:AddTag("extinguisher") -- to put out nightlights
 	inst:AddTag("soulless") -- no wortox souls
+	inst:AddTag("lunar_aligned")
 
     inst.Transform:SetFourFaced()
     inst.Transform:SetScale(0.8, 0.8, 0.8)
@@ -209,6 +210,8 @@ local function fn()
 		inst.components.transparentonsanity.onalphachangedfn = SetHeadAlpha
 		inst.components.transparentonsanity:ForceUpdate()
 	end
+
+	inst.scrapbook_inspectonseen = true
 
     inst.entity:SetPristine()
 

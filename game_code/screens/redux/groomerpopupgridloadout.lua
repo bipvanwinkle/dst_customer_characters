@@ -9,6 +9,10 @@ local BEEFALO_COSTUMES = require("yotb_costumes")
 
 local SCREEN_OFFSET = -.38 * RESOLUTION_X
 
+local function _IsUsingController()
+	return TheInput:ControllerAttached() and not TheFrontEnd.tracking_mouse
+end
+
 local GridGroomerPopupScreen = Class(Screen, function(self, target, owner_player, profile, recent_item_types, recent_item_ids, filter)
 	Screen._ctor(self, "GridWardrobePopupScreen")
 	self.target = target
@@ -77,6 +81,12 @@ local GridGroomerPopupScreen = Class(Screen, function(self, target, owner_player
 
 	self.loadout:SetPosition(-306, 0)
 	self.menu:SetPosition(493, -260, 0)
+		
+	-- hide the menu if the player is using a controller; we'll control this with button presses that are listed in the helpbar
+	if _IsUsingController() then
+		self.menu:Hide()
+		self.menu:Disable()
+	end  
 
 	self.default_focus = self.loadout
 
@@ -120,7 +130,7 @@ function GridGroomerPopupScreen:OnBecomeActive()
 		end
 	end
 
-    if TheInput:ControllerAttached() then
+    if _IsUsingController() then
         self.default_focus:SetFocus()
     end
 end
@@ -150,6 +160,10 @@ function GridGroomerPopupScreen:OnControl(control, down)
         self:Cancel()
         TheFrontEnd:GetSound():PlaySound("dontstarve/HUD/click_move")
         return true
+	elseif control == CONTROL_MENU_START and not down then  
+		self:Close()
+		TheFrontEnd:GetSound():PlaySound("dontstarve/HUD/click_move")
+		return true
     end
 end
 
@@ -175,11 +189,16 @@ function GridGroomerPopupScreen:Close(cancel)
     end
 
 	if not data.base or data.base == self.loadout.currentcharacter or data.base == "" or not TheInventory:CheckOwnership(data["base"]) then data.base = (self.loadout.currentcharacter.."_none") end
-	if not self:YOTB_event_check(data.beef_body) or not IsValidBeefaloClothing( data.beef_body ) or not TheInventory:CheckOwnership(data["beef_body"]) then data.beef_body = "" end
-	if not self:YOTB_event_check(data.beef_horn) or not IsValidBeefaloClothing( data.beef_horn ) or not TheInventory:CheckOwnership(data["beef_horn"]) then data.beef_horn = "" end
-	if not self:YOTB_event_check(data.beef_head) or not IsValidBeefaloClothing( data.beef_head ) or not TheInventory:CheckOwnership(data["beef_head"]) then data.beef_head = "" end
-	if not self:YOTB_event_check(data.beef_feet) or not IsValidBeefaloClothing( data.beef_feet ) or not TheInventory:CheckOwnership(data["beef_feet"]) then data.beef_feet = "" end
-	if not self:YOTB_event_check(data.beef_tail) or not IsValidBeefaloClothing( data.beef_tail ) or not TheInventory:CheckOwnership(data["beef_tail"]) then data.beef_tail = "" end
+    local beef_body = data.beef_body or ""
+    local beef_horn = data.beef_horn or ""
+    local beef_head = data.beef_head or ""
+    local beef_feet = data.beef_feet or ""
+    local beef_tail = data.beef_tail or ""
+	if not self:YOTB_event_check(beef_body) and not IsValidBeefaloClothing(beef_body) and not TheInventory:CheckOwnership(beef_body) then data.beef_body = "" end
+	if not self:YOTB_event_check(beef_horn) and not IsValidBeefaloClothing(beef_horn) and not TheInventory:CheckOwnership(beef_horn) then data.beef_horn = "" end
+	if not self:YOTB_event_check(beef_head) and not IsValidBeefaloClothing(beef_head) and not TheInventory:CheckOwnership(beef_head) then data.beef_head = "" end
+	if not self:YOTB_event_check(beef_feet) and not IsValidBeefaloClothing(beef_feet) and not TheInventory:CheckOwnership(beef_feet) then data.beef_feet = "" end
+	if not self:YOTB_event_check(beef_tail) and not IsValidBeefaloClothing(beef_tail) and not TheInventory:CheckOwnership(beef_tail) then data.beef_tail = "" end
 
 	POPUPS.GROOMER:Close(self.owner_player, data.beef_body, data.beef_horn, data.beef_head, data.beef_feet, data.beef_tail, data.cancel)
 
@@ -193,8 +212,8 @@ function GridGroomerPopupScreen:GetHelpText()
 	local controller_id = TheInput:GetControllerID()
 	local t = {}
     table.insert(t, TheInput:GetLocalizedControl(controller_id, CONTROL_CANCEL) .. " " .. STRINGS.UI.HELP.CANCEL)
+    table.insert(t, TheInput:GetLocalizedControl(controller_id, CONTROL_MENU_START) .. " " .. STRINGS.UI.WARDROBE_POPUP.SET)
 	return table.concat(t, "  ")
-
 end
 
 function GridGroomerPopupScreen:OnUpdate(dt)

@@ -45,6 +45,9 @@ local function fn()
     inst.AnimState:SetBank("mandrake")
     inst.AnimState:SetBuild("mandrake")
     inst.AnimState:PlayAnimation("ground")
+    inst.scrapbook_anim = "ground"
+
+	inst:AddTag("donotautopick")
 
     inst.entity:SetPristine()
 

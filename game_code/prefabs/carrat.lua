@@ -223,6 +223,7 @@ local function go_to_submerged(inst)
 	end
 
     inst:RemoveComponent("locomotor")
+    inst:RemoveComponent("drownable")
     inst:RemoveComponent("cookable")
     inst:RemoveComponent("lootdropper")
     inst:RemoveComponent("combat")
@@ -473,6 +474,8 @@ local function go_to_emerged(inst)
     inst.components.locomotor.walkspeed = TUNING.CARRAT.WALK_SPEED
     inst.components.locomotor.runspeed = TUNING.CARRAT.RUN_SPEED
 
+    inst:AddComponent("drownable")
+
     inst:AddComponent("lootdropper")
     inst.components.lootdropper:SetChanceLootTable("carrat")
 
@@ -684,6 +687,7 @@ local function fn()
     inst:AddTag("prey")
     inst:AddTag("smallcreature")
     inst:AddTag("stunnedbybomb")
+    inst:AddTag("lunar_aligned")
 
     --cookable (from cookable component) added to pristine state for optimization
     inst:AddTag("cookable")
@@ -751,6 +755,8 @@ local function fn()
     inst.components.locomotor.walkspeed = TUNING.CARRAT.WALK_SPEED
     inst.components.locomotor.runspeed = TUNING.CARRAT.RUN_SPEED
 
+    inst:AddComponent("drownable")
+
     inst:SetStateGraph("SGcarrat")
     inst:SetBrain(brain)
 
@@ -800,7 +806,8 @@ local function fn()
     inst.GoToSubmerged = go_to_submerged
     inst.GoToEmerged = go_to_emerged
     inst.setbeefalocarratrat = setbeefalocarratrat
-    inst.getcarratfromtrap = getcarratfromtrap
+    --inst.getcarratfromtrap = getcarratfromtrap --deprecated
+	inst.restoredatafromtrap = getcarratfromtrap
     inst.settrapdata = settrapdata
 
 	inst.OnSave = common_onsave
@@ -846,10 +853,10 @@ local function on_planted_prefab_picked(inst)
 	end
 end
 
-local function on_planted_prefab_ignite(inst)
+local function on_planted_prefab_ignite(inst, source, doer)
     local carrat = spawn_carrat_from_planted()
     carrat.Transform:SetPosition(inst.Transform:GetWorldPosition())
-    carrat.components.burnable:Ignite()
+    carrat.components.burnable:Ignite(nil, source, doer)
 
 	if inst._color ~= nil then
 		carrat._setcolorfn(carrat, inst._color)

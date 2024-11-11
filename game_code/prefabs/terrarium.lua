@@ -41,12 +41,12 @@ local function OnUpdateLight(inst, dframes)
 end
 
 local function OnUpdateLightColour(inst)
-    local red, green, blue = 1, 1, 1
 	inst._lighttweener = inst._lighttweener + FRAMES * 1.25
-	if inst._lighttweener > 2 * PI then
-		inst._lighttweener = inst._lighttweener - 2*PI
+	if inst._lighttweener > TWOPI then
+		inst._lighttweener = inst._lighttweener - TWOPI
 	end
 
+    local red, green, blue
     if inst._iscrimson:value() then
         red = 0.90
         green = 0.20
@@ -175,10 +175,18 @@ local function TurnOn(inst, is_loading)
         inst.AnimState:PlayAnimation("activate")
         inst.AnimState:PushAnimation("activated_idle", true)
 
+		if inst._ShadowDelayTask ~= nil then
+			inst._ShadowDelayTask:Cancel()
+		end
         inst._ShadowDelayTask = inst:DoTaskInTime(4*FRAMES, enable_dynshadow)
 
         if TheWorld.state.isnight then
-            inst.components.timer:StartTimer("summon_delay", TUNING.TERRARIUM_SUMMON_DELAY)
+			local t = inst.components.timer:GetTimeLeft("summon_delay")
+			if t == nil then
+				inst.components.timer:StartTimer("summon_delay", TUNING.TERRARIUM_SUMMON_DELAY)
+			elseif t < 1 then
+				inst.components.timer:SetTimeLeft("summon_delay", 1)
+			end
         end
     end
 
@@ -277,6 +285,9 @@ local function TurnOff(inst)
         inst.AnimState:PlayAnimation("deactivate")
         inst.AnimState:PushAnimation("idle", true)
 
+		if inst._ShadowDelayTask ~= nil then
+			inst._ShadowDelayTask:Cancel()
+		end
         inst._ShadowDelayTask = inst:DoTaskInTime(4*FRAMES, disable_dynshadow)
     end
 end
@@ -329,7 +340,7 @@ local function SpawnEyeOfTerror(inst)
         local announce_template = (is_crimson(inst) and STRINGS.TWINS_TARGET) or STRINGS.EYEOFTERROR_TARGET
         TheNet:Announce(subfmt(announce_template, {player_name = targeted_player.name}))
 
-        local angle = math.random() * 2 * PI
+        local angle = math.random() * TWOPI
         local player_pt = targeted_player:GetPosition()
         local spawn_offset = FindWalkableOffset(player_pt, angle, SPAWN_OFFSET, nil, false, true, nil, true, true)
             or Vector3(SPAWN_OFFSET * math.cos(angle), 0, SPAWN_OFFSET * math.sin(angle))
@@ -453,10 +464,12 @@ local function OnSave(inst, data)
     local refs = nil
     if inst.eyeofterror ~= nil then
         -- If the boss is dying as we save, record it.
-        data.boss_dead = inst.eyeofterror:IsDying()
+		data.boss_dead = inst.eyeofterror:IsDying() or nil
 
-        data.boss_guid = inst.eyeofterror.GUID
-        refs = { inst.eyeofterror.GUID }
+		if inst.eyeofterror.persists then
+			data.boss_guid = inst.eyeofterror.GUID
+			refs = { inst.eyeofterror.GUID }
+		end
     end
 
     return refs
@@ -549,6 +562,9 @@ local function fn()
     inst._islighton:set(false)
 
     inst.entity:SetPristine()
+
+    inst.scrapbook_hide = {"terrarium_tree_crimson"}
+
     if not TheWorld.ismastersim then
         inst:ListenForEvent("lightdirty", OnLightDirty)
 
@@ -558,6 +574,7 @@ local function fn()
     inst.on_end_eyeofterror_fn = function()
         if inst.eyeofterror ~= nil then
             OnBossFightOver(inst)
+			inst.eyeofterror = nil
         end
     end
 

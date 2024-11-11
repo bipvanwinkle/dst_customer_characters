@@ -1,4 +1,5 @@
 local SourceModifierList = require("util/sourcemodifierlist")
+local SpDamageUtil = require("components/spdamageutil")
 
 --Update inventoryitem_replica constructor if any more properties are added
 local function onattackrange(self, attackrange)
@@ -18,6 +19,8 @@ local Weapon = Class(function(self, inst)
     self.projectile = nil
     self.stimuli = nil
     --self.overridestimulifn = nil
+    --self.electric_damage_mult = nil
+    --self.electric_wet_damage_mult = nil
 
     self.attackwearmultipliers = SourceModifierList(self.inst)
 
@@ -66,8 +69,11 @@ function Weapon:SetProjectileOffset(offset)
     self.projectile_offset = offset
 end
 
-function Weapon:SetElectric()
+function Weapon:SetElectric(damage_mult, wet_damage_mult)
     self.stimuli = "electric"
+
+    self.electric_damage_mult = damage_mult
+    self.electric_wet_damage_mult = wet_damage_mult
 end
 
 function Weapon:SetOverrideStimuliFn(fn)
@@ -85,7 +91,14 @@ function Weapon:SetAttackCallback(fn)
 end
 
 function Weapon:GetDamage(attacker, target)
-    return FunctionOrValue(self.damage, self.inst, attacker, target)
+	local dmg = FunctionOrValue(self.damage, self.inst, attacker, target)
+	local spdmg = SpDamageUtil.CollectSpDamage(self.inst)
+	if self.inst.components.damagetypebonus ~= nil then
+		local damagetypemult = self.inst.components.damagetypebonus:GetBonus(target)
+		dmg = dmg * damagetypemult
+		spdmg = SpDamageUtil.ApplyMult(spdmg, damagetypemult)
+	end
+	return dmg, spdmg
 end
 
 function Weapon:OnAttack(attacker, target, projectile)
@@ -93,7 +106,9 @@ function Weapon:OnAttack(attacker, target, projectile)
         self.onattack(self.inst, attacker, target)
     end
 
-    if self.inst.components.finiteuses ~= nil and not self.inst.components.finiteuses:IgnoresCombatDurabilityLoss() then
+	if self.inst.components.finiteuses ~= nil and not self.inst.components.finiteuses:IgnoresCombatDurabilityLoss()
+		and not (projectile ~= nil and projectile.components.projectile ~= nil and projectile.components.projectile:IsBounced())
+		then
 		local uses = (self.attackwear or 1) * self.attackwearmultipliers:Get()
 		if attacker ~= nil and attacker:IsValid() and attacker.components.efficientuser ~= nil then
 			uses = uses * (attacker.components.efficientuser:GetMultiplier(ACTIONS.ATTACK) or 1)
@@ -133,7 +148,7 @@ function Weapon:LaunchProjectile(attacker, target)
         end
 
         if self.onprojectilelaunched ~= nil then
-            self.onprojectilelaunched(self.inst, attacker, target)
+            self.onprojectilelaunched(self.inst, attacker, target, proj)
         end
     end
 end

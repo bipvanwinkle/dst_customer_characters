@@ -64,6 +64,7 @@ local function fn()
     --Sneak these into pristine state for optimization
     inst:AddTag("_writeable")
     inst:AddTag("playbill_lecturn") -- from playbill_lecturn component
+    inst.scrapbook_proxy = "charlie_stage_post"
 
     inst.entity:SetPristine()
     if not TheWorld.ismastersim then
@@ -94,6 +95,8 @@ local function fn()
     inst:DoTaskInTime(math.random()*3 + 2, checkidleanim)
 
     inst.OnLoadPostPass = on_load_postpass
+
+    MakeRoseTarget_CreateFuel(inst)
 
     return inst
 end

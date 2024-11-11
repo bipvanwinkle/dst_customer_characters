@@ -418,6 +418,8 @@ local function fn()
 
     inst.AnimState:SetLightOverride(1)
 
+    inst.scrapbook_deps = {"lightbulb"}
+
     inst.Light:SetFalloff(0.7)
     inst.Light:SetIntensity(.5)
     inst.Light:SetRadius(1.8)
@@ -431,6 +433,7 @@ local function fn()
     inst:AddTag("insect")
     inst:AddTag("smallcreature")
     inst:AddTag("lightbattery")
+    inst:AddTag("lunar_aligned")
 
     MakeInventoryFloatable(inst)
 
@@ -510,6 +513,8 @@ local function fn()
     MakeHauntablePanic(inst)
     MakeFeedableSmallLivestock(inst, TUNING.LIGHTFLIER.STARVE_TIME, OnPutInInventory, OnDropped)
 
+    inst.incineratesound = "grotto/creatures/light_bug/death"
+    
     inst.SoundEmitter:PlaySound("grotto/creatures/light_bug/fly_LP", "loop")
 
     inst.EnableBuzz = EnableBuzz

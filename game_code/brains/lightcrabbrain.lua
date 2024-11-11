@@ -1,12 +1,13 @@
 require "behaviours/wander"
 require "behaviours/runaway"
 require "behaviours/doaction"
-require "behaviours/panic"
+local BrainCommon = require("brains/braincommon")
 
 local AVOID_PLAYER_DIST = 5
 local AVOID_PLAYER_STOP = 9
 
 local SEE_BAIT_DIST = 5
+local FINDFOOD_CANT_TAGS = { "INLIMBO", "outofreach" }
 
 local WANDER_TIMING = {minwaittime = 10, randwaittime = 10}
 
@@ -24,14 +25,16 @@ local function GoHomeAction(inst)
 end
 
 local function EatFoodAction(inst)
-    local target = FindEntity(inst, SEE_BAIT_DIST, function(item, i)
+	local target = FindEntity(inst, SEE_BAIT_DIST,
+		function(item, i)
             return i.components.eater:CanEat(item) and
                 item.components.bait and
                 not item:HasTag("planted") and
-                not (item.components.inventoryitem and item.components.inventoryitem:IsHeld()) and
                 item:IsOnPassablePoint() and
                 item:GetCurrentPlatform() == i:GetCurrentPlatform()
-        end)
+		end,
+		nil,
+		FINDFOOD_CANT_TAGS)
 
     if target then
         local act = BufferedAction(inst, target, ACTIONS.EAT)
@@ -47,8 +50,7 @@ function LightCrabBrain:OnStart()
         WhileNode(function() return self.inst.sg:HasStateTag("jumping") end, "Standby",
             ActionNode(function() --[[do nothing]] end)),
 
-        WhileNode( function() return self.inst.components.hauntable and self.inst.components.hauntable.panic end, "PanicHaunted", Panic(self.inst)),
-        WhileNode( function() return self.inst.components.health.takingfiredamage end, "OnFire", Panic(self.inst)),
+		BrainCommon.PanicTrigger(self.inst),
         RunAway(self.inst, "scarytoprey", AVOID_PLAYER_DIST, AVOID_PLAYER_STOP),
         DoAction(self.inst, EatFoodAction),
         Wander(self.inst, nil, nil, WANDER_TIMING),

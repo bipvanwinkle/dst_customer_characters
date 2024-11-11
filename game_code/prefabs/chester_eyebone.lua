@@ -87,7 +87,6 @@ local function MorphSnowEyebone(inst)
     SetBuild(inst)
 end
 
---[[
 local function MorphNormalEyebone(inst)
     inst.AnimState:SetBuild("chester_eyebone_build")
 
@@ -97,10 +96,9 @@ local function MorphNormalEyebone(inst)
 
     inst.EyeboneState = "NORMAL"
 end
-]]
 
 local function GetSpawnPoint(pt)
-    local theta = math.random() * 2 * PI
+    local theta = math.random() * TWOPI
     local radius = SPAWN_DIST
     local offset = FindWalkableOffset(pt, theta, radius, 12, true)
     return offset ~= nil and (pt + offset) or nil
@@ -217,19 +215,18 @@ local function GetStatus(inst)
     return inst.respawntask ~= nil and "WAITING" or nil
 end
 
-local function onstashed(inst)
-    StopRespawn(inst)
-end
-
-
 local function fn()
     local inst = CreateEntity()
 
     inst.entity:AddTransform()
     inst.entity:AddAnimState()
+    inst.entity:AddMiniMapEntity()
     inst.entity:AddNetwork()
 
     MakeInventoryPhysics(inst)
+
+    inst.MiniMapEntity:SetIcon("chester_eyebone.png")
+    inst.MiniMapEntity:SetPriority(7)
 
     inst:AddTag("chester_eyebone")
     inst:AddTag("irreplaceable")
@@ -238,6 +235,8 @@ local function fn()
     inst.AnimState:SetBank("eyebone")
     inst.AnimState:SetBuild("chester_eyebone_build")
     inst.AnimState:PlayAnimation("dead", true)
+    inst.scrapbook_anim = "dead"
+    inst.scrapbook_specialinfo = "EYEBONE"
 
     inst.entity:SetPristine()
 
@@ -263,15 +262,13 @@ local function fn()
 
     MakeHauntableLaunch(inst)
 
-    --inst.MorphNormalEyebone = MorphNormalEyebone
+    inst.MorphNormalEyebone = MorphNormalEyebone
     inst.MorphSnowEyebone = MorphSnowEyebone
     inst.MorphShadowEyebone = MorphShadowEyebone
     inst.StopRespawn = StopRespawn
 
     inst.OnLoad = OnLoad
     inst.OnSave = OnSave
-
-    inst.onstashed = onstashed
 
     inst.fixtask = inst:DoTaskInTime(1, FixChester)
 

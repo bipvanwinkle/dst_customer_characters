@@ -32,6 +32,10 @@ local function onunequip(inst, owner)
     end
 end
 
+local function IsLifeDrainable(target)
+	return not target:HasAnyTag(NON_LIFEFORM_TARGET_TAGS) or target:HasTag("lifedrainable")
+end
+
 local function onattack(inst, owner, target)
     local skin_fx = SKIN_FX_PREFAB[inst:GetSkinName()]
     if skin_fx ~= nil and skin_fx[1] ~= nil and target ~= nil and target.components.combat ~= nil and target:IsValid() then
@@ -44,7 +48,7 @@ local function onattack(inst, owner, target)
             end
         end
     end
-    if owner.components.health ~= nil and owner.components.health:GetPercent() < 1 and not (target:HasTag("wall") or target:HasTag("engineering")) then
+	if owner.components.health and owner.components.health:IsHurt() and IsLifeDrainable(target) then
         owner.components.health:DoDelta(TUNING.BATBAT_DRAIN, false, "batbat")
 		if owner.components.sanity ~= nil then
 	        owner.components.sanity:DoDelta(-.5 * TUNING.BATBAT_DRAIN)
@@ -69,6 +73,9 @@ local function fn()
 
     --weapon (from weapon component) added to pristine state for optimization
     inst:AddTag("weapon")
+
+	--shadowlevel (from shadowlevel component) added to pristine state for optimization
+	inst:AddTag("shadowlevel")
 
     local swap_data = {sym_build = "swap_batbat"}
     MakeInventoryFloatable(inst, "large", 0.05, {0.8, 0.35, 0.8}, true, -27, swap_data)
@@ -97,6 +104,9 @@ local function fn()
     inst:AddComponent("equippable")
     inst.components.equippable:SetOnEquip(onequip)
     inst.components.equippable:SetOnUnequip(onunequip)
+
+	inst:AddComponent("shadowlevel")
+	inst.components.shadowlevel:SetDefaultLevel(TUNING.BATBAT_SHADOW_LEVEL)
 
     MakeHauntableLaunch(inst)
 

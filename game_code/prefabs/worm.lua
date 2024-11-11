@@ -240,6 +240,8 @@ local function fn()
     inst.AnimState:SetBank("worm")
     inst.AnimState:SetBuild("worm")
     inst.AnimState:PlayAnimation("idle_loop", true)
+    inst.scrapbook_anim = "atk"
+    inst.scrapbook_animpercent = 0.37
 
     inst:AddTag("monster")
     inst:AddTag("hostile")
@@ -285,7 +287,9 @@ local function fn()
     inst.components.locomotor.walkspeed = 4
     inst.components.locomotor:SetSlowMultiplier( 1 )
     inst.components.locomotor:SetTriggersCreep(false)
-    inst.components.locomotor.pathcaps = { ignorecreep = true }
+    inst.components.locomotor.pathcaps = { ignorecreep = true, ignorebridges = true, }
+
+    inst:AddComponent("drownable")
 
     inst:AddComponent("eater")
     inst.components.eater:SetDiet({ FOODGROUP.OMNI }, { FOODGROUP.OMNI })
@@ -308,6 +312,10 @@ local function fn()
 
     inst:AddComponent("lootdropper")
     inst.components.lootdropper:SetLoot({ "monstermeat", "monstermeat", "monstermeat", "monstermeat", "wormlight" })
+
+    inst:AddComponent("acidinfusible")
+    inst.components.acidinfusible:SetFXLevel(1)
+    inst.components.acidinfusible:SetMultipliers(TUNING.ACID_INFUSION_MULT.BERSERKER)
 
     --Disable this task for worm attacks
     inst.HomeTask = inst:DoPeriodicTask(3, LookForHome)

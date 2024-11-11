@@ -338,12 +338,19 @@ end
 function GetDescription_AddSpecialCases(ret, charactertable, inst, item, modifier)
     local post = {}
 
-    if item.components.repairable ~= nil and not item.components.repairable.noannounce and item.components.repairable:NeedsRepairs() then
-        table.insert(post, (getcharacterstring(charactertable, "ANNOUNCE_CANFIX", modifier))) -- NOTES(JBK): Encapsulate getcharacterstring to only use the first return value!
+    -- NOTES(JBK): Encapsulate getcharacterstring to only use the first return value!
+    if type(inst) == "table" then
+        if item.components.shadowlevel ~= nil and inst:HasTag("shadowmagic") then
+            table.insert(post, (getcharacterstring(charactertable, "ANNOUNCE_SHADOWLEVEL_ITEM", modifier)))
+        end
+
+        if inst.components.foodmemory ~= nil and inst.components.foodmemory:GetMemoryCount(item.prefab) > 0 then
+            table.insert(post, (getcharacterstring(charactertable, "ANNOUNCE_FOODMEMORY", modifier)))
+        end
     end
 
-    if type(inst) == "table" and inst.components.foodmemory ~= nil and inst.components.foodmemory:GetMemoryCount(item.prefab) > 0 then
-        table.insert(post, (getcharacterstring(charactertable, "ANNOUNCE_FOODMEMORY", modifier))) -- NOTES(JBK): Encapsulate getcharacterstring to only use the first return value!
+    if item.components.repairable ~= nil and not item.components.repairable.noannounce and item.components.repairable:NeedsRepairs() then
+        table.insert(post, (getcharacterstring(charactertable, "ANNOUNCE_CANFIX", modifier)))
     end
 
     if #post > 0 then
@@ -444,7 +451,9 @@ function GetActionFailString(inst, action, reason)
     character = string.upper(character)
 
     return (STRINGS.CHARACTERS[character] ~= nil and getcharacterstring(STRINGS.CHARACTERS[character].ACTIONFAIL, action, reason))
+        or (STRINGS.CHARACTERS[character] ~= nil and getcharacterstring(STRINGS.CHARACTERS[character].ACTIONFAIL, "GENERIC", reason))
         or getcharacterstring(STRINGS.CHARACTERS.GENERIC.ACTIONFAIL, action, reason)
+        or getcharacterstring(STRINGS.CHARACTERS.GENERIC.ACTIONFAIL, "GENERIC", reason)
         or STRINGS.CHARACTERS.GENERIC.ACTIONFAIL_GENERIC
 end
 

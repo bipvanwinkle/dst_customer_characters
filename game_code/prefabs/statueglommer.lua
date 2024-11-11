@@ -69,7 +69,7 @@ end
 
 local function SpawnGlommer(inst)
     local x, y, z = inst.Transform:GetWorldPosition()
-    local offset = FindWalkableOffset(Vector3(x, y, z), math.random() * 2 * PI, 35, 12, true)
+    local offset = FindWalkableOffset(Vector3(x, y, z), math.random() * TWOPI, 35, 12, true)
     local glommer = SpawnPrefab("glommer")
     if glommer ~= nil then
         if glommer.components.follower.leader ~= inst then
@@ -231,6 +231,7 @@ local function fn()
     inst.AnimState:SetBank("glommer_statue")
     inst.AnimState:SetBuild("glommer_statue")
     inst.AnimState:PlayAnimation("full")
+    inst.scrapbook_anim = "full"
 
     inst.Light:SetRadius(0)
     inst.Light:SetIntensity(.9)
@@ -243,7 +244,12 @@ local function fn()
     inst.islighton = net_bool(inst.GUID, "statueglommer.islighton", "lightdirty")
     inst.lighttask = nil
 
-    inst.entity:AddTag("statue")
+    inst:AddTag("statue")
+
+    if not TheNet:IsDedicated() then
+        inst:AddComponent("pointofinterest")
+        inst.components.pointofinterest:SetHeight(120)
+    end
 
     inst.entity:SetPristine()
 

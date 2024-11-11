@@ -29,8 +29,11 @@ local function fn()
     inst.AnimState:SetBank("rocks")
     inst.AnimState:SetBuild("rocks")
 
+    inst.pickupsound = "rock"
+
     inst:AddTag("molebait")
     inst:AddTag("quakedebris")
+    inst:AddTag("rocks")
 
     inst.entity:SetPristine()
 

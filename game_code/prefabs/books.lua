@@ -17,7 +17,7 @@ local SLEEPTARGET_CANT_TAGS = { "playerghost", "FX", "DECOR", "INLIMBO" }
 local GARDENING_CANT_TAGS = { "pickable", "stump", "withered", "barren", "INLIMBO" }
 
 local SILVICULTURE_ONEOF_TAGS = { "leif", "silviculture", "tree", "winter_tree" }
-local SILVICULTURE_CANT_TAGS = { "magicgrowth", "player", "FX", "pickable", "stump", "withered", "barren", "INLIMBO" }
+local SILVICULTURE_CANT_TAGS = { "magicgrowth", "player", "FX", "pickable", "stump", "withered", "barren", "INLIMBO", "ancienttree" }
 
 local HORTICULTURE_ONEOF_TAGS = { "plant", "lichen", "oceanvine", "mushroom_farm", "kelp" }
 local HORTICULTURE_CANT_TAGS = { "magicgrowth", "player", "FX", "leif", "pickable", "stump", "withered", "barren", "INLIMBO", "silviculture", "tree", "winter_tree" }
@@ -208,7 +208,7 @@ local book_defs =
         read_sanity = -TUNING.SANITY_HUGE,
         peruse_sanity = TUNING.SANITY_HUGE,
         fx_under = "tentacles",
-        layer_sound = { frame = 30, sound = "wickerbottom_rework/book_spells/tentacles" },
+        layer_sound = { frame = 22, sound = "wickerbottom_rework/book_spells/tentacles" },
         deps =
         {
             "tentacle",
@@ -222,7 +222,7 @@ local book_defs =
             local positions = {}
 
             for k = 1, numtentacles do
-                local theta = math.random() * 2 * PI
+                local theta = math.random() * TWOPI
                 local radius = math.random(3, 8)
 
                 local result_offset = FindValidPositionByFan(theta, radius, 12, function(offset)
@@ -407,7 +407,9 @@ local book_defs =
                 reader.peruse_sleep(reader)
             end
             reader.components.talker:Say(GetString(reader, "ANNOUNCE_READ_BOOK","BOOK_SLEEP"))
-            inst.SoundEmitter:PlaySound("wickerbottom_rework/book_spells/sleep")
+            if reader.SoundEmitter ~= nil then
+                reader.SoundEmitter:PlaySound("wickerbottom_rework/book_spells/sleep")
+            end
             return true
         end,
     },
@@ -469,7 +471,7 @@ local book_defs =
         read_sanity = -TUNING.SANITY_LARGE,
         peruse_sanity = -TUNING.SANITY_HUGE,
         fx_under = "plants_big",
-        layer_sound = { frame = 30, sound = "wickerbottom_rework/book_spells/upgraded_horticulture" },
+        layer_sound = { frame = 22, sound = "wickerbottom_rework/book_spells/upgraded_horticulture" },
         deps = { "book_horticulture_spell" },
         fn = function(inst, reader)
 			local x, y, z = reader.Transform:GetWorldPosition()
@@ -491,7 +493,7 @@ local book_defs =
         read_sanity = -TUNING.SANITY_LARGE,
         peruse_sanity = -TUNING.SANITY_LARGE,
         fx_under = "roots",
-        layer_sound = { frame = 25, sound = "wickerbottom_rework/book_spells/silviculture" },
+        layer_sound = { frame = 17, sound = "wickerbottom_rework/book_spells/silviculture" },
         fn = function(inst, reader)
 
             local x, y, z = reader.Transform:GetWorldPosition()
@@ -547,7 +549,7 @@ local book_defs =
             local failed_spawn = 0
             
             for i=1, TUNING.BOOK_FISH_AMOUNT do
-                local theta = math.random() * 2 * PI
+                local theta = math.random() * TWOPI
                 local failed_attempts = 0
                 local max_failed_attempts = 36
 
@@ -702,8 +704,8 @@ local book_defs =
 
                 local items = player.components.inventory:ReferenceAllItems()
                 for _, item in ipairs(items) do
-                    if item.components.inventoryitemmoisture ~= nil then
-                        item.components.inventoryitemmoisture:SetMoisture(0)
+                    if item.components.inventoryitem ~= nil then
+                        item.components.inventoryitem:DryMoisture()
                     end
                 end
             end
@@ -967,7 +969,6 @@ local function MakeBook(def)
 
         inst.entity:AddTransform()
         inst.entity:AddAnimState()
-        inst.entity:AddSoundEmitter()
         inst.entity:AddNetwork()
 
         MakeInventoryPhysics(inst)
@@ -975,6 +976,7 @@ local function MakeBook(def)
         inst.AnimState:SetBank("books")
         inst.AnimState:SetBuild("books")
         inst.AnimState:PlayAnimation(def.name)
+        inst.scrapbook_anim = def.name
 
         MakeInventoryFloatable(inst, "med", nil, 0.75)
 

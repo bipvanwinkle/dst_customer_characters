@@ -83,7 +83,7 @@ local function ReviveOwner(inst)
 	end
 	if owner.last_death_shardid == TheShard:GetShardId() then
 		owner:PushEvent("respawnfromghost", { source = inst })
-	end		
+	end
 end
 
 local function revive_reviverfn() -- this is used to revive players after pocketwatch_revive migrates them to another shard
@@ -137,7 +137,7 @@ local function Revive_OnHaunt(inst, haunter)
 	if haunter:HasTag("pocketwatchcaster") and inst.components.pocketwatch:CastSpell(haunter, haunter) then
 		inst.components.lootdropper:DropLoot()
 	    SpawnPrefab("brokentool").Transform:SetPosition(inst.Transform:GetWorldPosition())
-		inst:Remove() -- cannot withstand the paradox of being haunted by Wanda’s timeline
+		inst:Remove() -- cannot withstand the paradox of being haunted by Wandaï¿½s timeline
 	else
         Launch(inst, haunter, TUNING.LAUNCH_SPEED_SMALL)
 	end

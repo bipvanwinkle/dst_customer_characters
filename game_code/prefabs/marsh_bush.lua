@@ -36,7 +36,7 @@ end
 local function onpickedfn(inst, picker)
     inst.AnimState:PlayAnimation("picking")
     inst.AnimState:PushAnimation("picked", false)
-    if picker ~= nil and picker.components.combat ~= nil and not (picker.components.inventory ~= nil and picker.components.inventory:EquipHasTag("bramble_resistant")) then
+    if picker ~= nil and picker.components.combat ~= nil and not (picker.components.inventory ~= nil and picker.components.inventory:EquipHasTag("bramble_resistant")) and not picker:HasTag("shadowminion") then
         picker.components.combat:GetAttacked(inst, TUNING.MARSHBUSH_DAMAGE)
         picker:PushEvent("thorns")
     end
@@ -75,6 +75,8 @@ local function fn()
     inst.entity:AddNetwork()
     inst.entity:AddMiniMapEntity()
 
+	inst:SetDeploySmartRadius(DEPLOYSPACING_RADIUS[DEPLOYSPACING.MEDIUM] / 2) --plantables deployspacing/2
+
     inst.AnimState:SetBuild("marsh_bush")
     inst.AnimState:SetBank("marsh_bush")
     inst.AnimState:PlayAnimation("idle", true)
@@ -92,7 +94,7 @@ local function fn()
         return inst
     end
 
-    inst.AnimState:SetTime(math.random()*2)
+	inst.AnimState:SetFrame(math.random(inst.AnimState:GetCurrentAnimationNumFrames()) - 1)
 
     local color = 0.5 + math.random() * 0.5
     inst.AnimState:SetMultColour(color, color, color, 1)
@@ -117,6 +119,8 @@ local function fn()
     MakeLargeBurnable(inst)
     MakeMediumPropagator(inst)
     MakeHauntableIgnite(inst)
+
+    MakeWaxablePlant(inst)
 
     return inst
 end
@@ -180,7 +184,7 @@ local function PlayErodeAnim(proxy)
     inst.AnimState:SetBuild("ash")
     inst.AnimState:PlayAnimation("disappear")
     inst.AnimState:SetMultColour(.4, .4, .4, 1)
-    inst.AnimState:SetTime(13 * FRAMES)
+	inst.AnimState:SetFrame(13)
 
     inst.SoundEmitter:PlaySound("dontstarve/forest/treeCrumble", nil, .2)
 

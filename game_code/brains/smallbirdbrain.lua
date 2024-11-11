@@ -3,7 +3,7 @@ require "behaviours/wander"
 require "behaviours/faceentity"
 require "behaviours/follow"
 require "behaviours/standstill"
-
+local BrainCommon = require("brains/braincommon")
 
 local MIN_FOLLOW_DIST = 2
 local MAX_FOLLOW_DIST = 9
@@ -35,8 +35,15 @@ local function ShouldStandStill(inst)
     	and (not inst.components.follower.leader or not inst.components.follower.leader:HasTag("tallbird")))
 end
 
+local EATFOOD_CANT_TAGS = { "INLIMBO", "outofreach" }
+
 local function CanSeeFood(inst)
-    local target = FindEntity(inst, SEE_FOOD_DIST, function(item) return inst.components.eater:CanEat(item) and item:IsOnValidGround() end)
+	local target = FindEntity(inst, SEE_FOOD_DIST,
+		function(item)
+			return inst.components.eater:CanEat(item) and item:IsOnValidGround()
+		end,
+		nil,
+		EATFOOD_CANT_TAGS)
     --[[if target then
         print("CanSeeFood", inst.name, target.name)
     end]]
@@ -73,7 +80,7 @@ end)
 function SmallBirdBrain:OnStart()
     local root =
     PriorityNode({
-        WhileNode( function() return self.inst.components.hauntable and self.inst.components.hauntable.panic end, "PanicHaunted", Panic(self.inst)),
+		BrainCommon.PanicTrigger(self.inst),
         FaceEntity(self.inst, GetTraderFn, KeepTraderFn),
         -- when starving prefer finding food over fighting
         SequenceNode{

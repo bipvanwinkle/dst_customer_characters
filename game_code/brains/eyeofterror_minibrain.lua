@@ -1,23 +1,27 @@
 require "behaviours/attackwall"
 require "behaviours/chaseandattack"
 require "behaviours/doaction"
-require "behaviours/panic"
 require "behaviours/wander"
+local BrainCommon = require("brains/braincommon")
 
 local EyeOfTerrorMiniBrain = Class(Brain, function(self, inst)
     Brain._ctor(self, inst)
 end)
 
 local FOOD_DISTANCE = 20
+local EATFOOD_CANT_TAGS = { "outofreach", "INLIMBO" }
 local function EatFoodAction(inst)
     if inst.sg:HasStateTag("busy") then
         return nil
     end
 
-    local food = FindEntity(inst, FOOD_DISTANCE, function(item)
-        return inst.components.eater:CanEat(item)
-            and item:IsOnPassablePoint(true)
-    end)
+	local food = FindEntity(inst,
+		FOOD_DISTANCE,
+		function(item)
+			return inst.components.eater:CanEat(item) and item:IsOnPassablePoint(true)
+		end,
+		nil,
+		EATFOOD_CANT_TAGS)
 
     return (food ~= nil and BufferedAction(inst, food, ACTIONS.EAT))
         or nil
@@ -32,16 +36,7 @@ function EyeOfTerrorMiniBrain:OnStart()
     {
         WhileNode(function() return not self.inst.sg:HasStateTag("charge") end, "Not Attacking",
             PriorityNode({
-                WhileNode(function()
-                        return self.inst.components.hauntable
-                            and self.inst.components.hauntable.panic
-                    end, "PanicHaunted", Panic(self.inst)
-                ),
-                WhileNode(function()
-                        return self.inst.components.health.takingfiredamage
-                    end, "OnFire", Panic(self.inst)
-                ),
-
+				BrainCommon.PanicTrigger(self.inst),
                 AttackWall(self.inst),
                 ChaseAndAttack(self.inst),
                 DoAction(self.inst, EatFoodAction, "Find And Eat Food"),

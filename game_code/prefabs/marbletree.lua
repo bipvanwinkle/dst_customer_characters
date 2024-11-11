@@ -60,6 +60,7 @@ local function makeMarbleTree(animnumber)
         inst.entity:AddNetwork()
 
         MakeObstaclePhysics(inst, 0.1)
+		inst:SetDeploySmartRadius(DEPLOYSPACING_RADIUS[DEPLOYSPACING.DEFAULT] / 2) --seed/planted_tree deployspacing/2
 
         inst.MiniMapEntity:SetIcon("marbletree.png")
         inst.MiniMapEntity:SetPriority(-1)
@@ -69,6 +70,7 @@ local function makeMarbleTree(animnumber)
         if animnumber > 0 then
             inst.AnimState:PlayAnimation("full_"..animnumber)
         end
+        inst.scrapbook_anim ="full_1"
 
         MakeSnowCoveredPristine(inst)
 

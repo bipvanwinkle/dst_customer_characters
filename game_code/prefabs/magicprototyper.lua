@@ -154,6 +154,7 @@ local function createmachine(level, name, soundprefix, sounddelay, techtree, mer
         inst.entity:AddSoundEmitter()
         inst.entity:AddNetwork()
 
+		inst:SetDeploySmartRadius(1) --recipe min_spacing/2
         MakeObstaclePhysics(inst, .4)
 
         inst.MiniMapEntity:SetPriority(5)
@@ -168,6 +169,8 @@ local function createmachine(level, name, soundprefix, sounddelay, techtree, mer
 
         --prototyper (from prototyper component) added to pristine state for optimization
         inst:AddTag("prototyper")
+
+        inst.scrapbook_specialinfo = "SCIENCEPROTOTYPER"
 
         MakeSnowCoveredPristine(inst)
 

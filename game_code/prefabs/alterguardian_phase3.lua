@@ -27,6 +27,7 @@ local prefabs =
 SetSharedLootTable("alterguardian_phase3",
 {
     {"chesspiece_guardianphase3_sketch", 1.00},
+    {"alterguardianhatshard", 1.00},
     {"moonglass",           1.00},
     {"moonglass",           1.00},
     {"moonglass",           1.00},
@@ -132,10 +133,6 @@ local function KeepTarget(inst, target)
         and target:GetDistanceSqToPoint(inst.Transform:GetWorldPosition()) < MAX_KEEPTARGET_DSQ
 end
 
-local function OnAttacked(inst, data)
-    inst.components.combat:SuggestTarget(data.attacker)
-end
-
 local function NoHoles(pt)
     return not TheWorld.Map:IsPointNearHole(pt)
 end
@@ -157,8 +154,8 @@ end
 
 local function teleport_override_fn(inst)
     local ipos = inst:GetPosition()
-    local offset = FindWalkableOffset(ipos, 2*PI*math.random(), 8, 8, true, false)
-        or FindWalkableOffset(ipos, 2*PI*math.random(), 12, 8, true, false)
+    local offset = FindWalkableOffset(ipos, TWOPI*math.random(), 8, 8, true, false)
+        or FindWalkableOffset(ipos, TWOPI*math.random(), 12, 8, true, false)
 
     return (offset ~= nil and ipos + offset) or ipos
 end
@@ -224,6 +221,8 @@ end
 local function OnSave(inst, data)
     data.loot_dropped = inst._loot_dropped
 
+    data.attackerUSERIDs = inst.attackerUSERIDs or nil
+
     data.traps = {}
     local ents = {}
     if GetTableSize(inst._traps) > 0 then
@@ -233,7 +232,7 @@ local function OnSave(inst, data)
                 table.insert(ents, trap.GUID)
             end
         end
-    end
+    end    
 
     return ents
 end
@@ -241,6 +240,7 @@ end
 local function OnLoad(inst, data)
     if data ~= nil then
         inst._loot_dropped = data.loot_dropped
+        inst.attackerUSERIDs = data.attackerUSERIDs or {}
     end
 end
 
@@ -308,22 +308,44 @@ local function hauntchancefn(inst)
 end
 
 local function dropLootFn(lootdropper)
+    if IsSpecialEventActive(SPECIAL_EVENTS.WINTERS_FEAST) then
+        local SELECTION = {
+            "winter_ornament_boss_celestialchampion1",
+            "winter_ornament_boss_celestialchampion2",
+            "winter_ornament_boss_celestialchampion3",
+            "winter_ornament_boss_celestialchampion4",
+        }
 
-        if IsSpecialEventActive(SPECIAL_EVENTS.WINTERS_FEAST) then
-            local SELECTION = {
-                "winter_ornament_boss_celestialchampion1",
-                "winter_ornament_boss_celestialchampion2",
-                "winter_ornament_boss_celestialchampion3",
-                "winter_ornament_boss_celestialchampion4",
-            }
-        
-            for i=1,2 do
-                local ornamentnum = math.random(1,#SELECTION)
-                local ornament = SELECTION[ornamentnum]
-                table.remove(SELECTION,ornamentnum)
-                lootdropper:AddChanceLoot(ornament, 1)
+        for _=1,2 do
+            local ornamentnum = math.random(1,#SELECTION)
+            local ornament = SELECTION[ornamentnum]
+            table.remove(SELECTION,ornamentnum)
+            lootdropper:AddChanceLoot(ornament, 1)
+        end
+    end
+end
+
+local function trackattackers(inst,data)
+    if data.attacker and data.attacker:HasTag("player") then
+        inst.attackerUSERIDs[data.attacker.userid] = true
+    end
+end
+
+local function OnDead(inst,data)
+    trackattackers(inst,data)
+    for ID, data in pairs(inst.attackerUSERIDs) do
+        for i, player in ipairs(AllPlayers) do
+            if player.userid == ID then 
+                SendRPCToClient(CLIENT_RPC.UpdateAccomplishment, player.userid, "celestialchampion_killed")
+                break
             end
         end
+    end
+end
+
+local function OnAttacked(inst, data)
+    trackattackers(inst,data)
+    inst.components.combat:SuggestTarget(data.attacker)
 end
 
 local function fn()
@@ -361,6 +383,9 @@ local function fn()
     inst:AddTag("noepicmusic")
     inst:AddTag("scarytoprey")
     inst:AddTag("soulless")
+    inst:AddTag("lunar_aligned")
+
+    inst.scrapbook_proxy = "alterguardian_phase1"
 
     inst._musicdirty = net_event(inst.GUID, "alterguardian_phase3._musicdirty", "musicdirty")
     inst._playingmusic = false
@@ -429,13 +454,17 @@ local function fn()
     MakeHugeFreezableCharacter(inst)
     inst.components.freezable:SetResistance(8)
 
-    MakeHauntableGoToStateWithChanceFunction(inst, "atk_stab", hauntchancefn, TUNING.ALTERGUARDIAN_PHASE3_ATTACK_PERIOD, TUNING.HAUNT_SMALL)
+	inst:AddComponent("hauntable")
+	inst.components.hauntable:SetHauntValue(TUNING.HAUNT_TINY)
 
     inst.DoTraps = do_traps
     inst.TrackTrap = track_trap
     inst._traps = {}
 
+    inst.attackerUSERIDs = {}
+
     inst:ListenForEvent("attacked", OnAttacked)
+    inst:ListenForEvent("death", OnDead)
 
     inst.OnSave = OnSave
     inst.OnLoad = OnLoad

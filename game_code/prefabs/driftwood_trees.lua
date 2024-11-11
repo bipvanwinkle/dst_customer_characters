@@ -98,6 +98,8 @@ local function on_chopped_down(inst, chopper)
         inst.AnimState:PlayAnimation("fall")
         inst.components.lootdropper:DropLoot()
         inst:ListenForEvent("animover", inst.Remove)
+
+        RemovePhysicsColliders(inst)
     end
 end
 
@@ -200,6 +202,10 @@ local function fn(type_name, is_large)
     inst:SetPrefabNameOverride("DRIFTWOOD_TREE")
 
     MakeSnowCoveredPristine(inst)
+
+    if not is_large then
+        inst.scrapbook_proxy = "driftwood_small1"
+    end
 
     inst.entity:SetPristine()
     if not TheWorld.ismastersim then

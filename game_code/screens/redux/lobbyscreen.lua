@@ -10,7 +10,6 @@ local CharacterButton = require "widgets/redux/characterbutton"
 local CharacterSelect = require "widgets/redux/characterselect"
 local WaitingForPlayers = require "widgets/waitingforplayers"
 local PopupDialogScreen = require "screens/redux/popupdialog"
-
 local LavaarenaBookWidget = require "widgets/redux/lavaarena_book"
 
 local TEMPLATES = require "widgets/redux/templates"
@@ -138,7 +137,7 @@ local WxpPanel = Class(LobbyPanel, function(self, owner)
 	function self:OnControl(control, down)
 		if Widget.OnControl(self, control, down) then return true end
 
-        if TheInput:ControllerAttached() and (not down) and (control == CONTROL_PAUSE or control == CONTROL_ACCEPT) then
+        if TheInput:ControllerAttached() and (not down) and (control == CONTROL_MENU_START or control == CONTROL_ACCEPT) then
 			owner.next_button:onclick()
 			return true
         end
@@ -162,6 +161,8 @@ end)
 
 local CharacterSelectPanel = Class(LobbyPanel, function(self, owner)
     LobbyPanel._ctor(self, "CharacterSelectPanel")
+
+    TheSkillTree:ApplyOnlineProfileData() -- NOTES(JBK): We do not care if this fails this is to apply data if it is available. Widgets using this state should check TheSkillTree.synced for the state.
 
     self:SetPosition(0, 100)
 
@@ -285,7 +286,7 @@ local CharacterSelectPanel = Class(LobbyPanel, function(self, owner)
 		if Widget.OnControl(self, control, down) then return true end
 
 		if TheInput:ControllerAttached() then
-			if (not down) and control == CONTROL_PAUSE then
+			if (not down) and control == CONTROL_MENU_START then
 				OnCharacterClick(self.character_scroll_list.selectedportrait.currentcharacter)
 				return true
 			end
@@ -335,7 +336,7 @@ local LoadoutPanel = Class(LobbyPanel, function(self, owner)
 		if Widget.OnControl(self, control, down) then return true end
 
 		if TheInput:ControllerAttached() then
-			if (not down) and control == CONTROL_PAUSE then
+			if (not down) and control == CONTROL_MENU_START then
 				owner.next_button:onclick()
 				return true
 			end
@@ -345,7 +346,7 @@ local LoadoutPanel = Class(LobbyPanel, function(self, owner)
 	function self:GetHelpText()
 	    local controller_id = TheInput:GetControllerID()
 		local t = {}
-		table.insert(t, TheInput:GetLocalizedControl(controller_id, CONTROL_PAUSE) .. "  " .. self.next_button_title)
+		table.insert(t, TheInput:GetLocalizedControl(controller_id, CONTROL_MENU_START) .. "  " .. self.next_button_title)
 	    return table.concat(t, "  ")
 	end
 
@@ -402,6 +403,12 @@ local LoadoutPanel = Class(LobbyPanel, function(self, owner)
 			return false
 		end
 	end
+	function self:ChangeTitle(str)
+		self.title = str
+		if owner.ChangeTitle then
+			owner:ChangeTitle(self.title)
+		end
+	end	
 end)
 
 local WaitingPanel = Class(LobbyPanel, function(self, owner)
@@ -470,7 +477,7 @@ local LavaarenaFestivalBookPannel = Class(LobbyPanel, function(self, owner)
 
 		if Widget.OnControl(self, control, down) then return true end
 
-        if TheInput:ControllerAttached() and (not down) and (control == CONTROL_PAUSE or control == CONTROL_ACCEPT) and owner.next_button:IsEnabled() then
+        if TheInput:ControllerAttached() and (not down) and (control == CONTROL_MENU_START or control == CONTROL_ACCEPT) and owner.next_button:IsEnabled() then
 			owner.next_button:onclick()
 			return true
         end
@@ -480,7 +487,7 @@ local LavaarenaFestivalBookPannel = Class(LobbyPanel, function(self, owner)
 	    local controller_id = TheInput:GetControllerID()
 		local t = {}
 		if owner.next_button:IsEnabled() then
-			table.insert(t, TheInput:GetLocalizedControl(controller_id, CONTROL_PAUSE) .. "  " .. owner.next_button.text:GetString())
+			table.insert(t, TheInput:GetLocalizedControl(controller_id, CONTROL_MENU_START) .. "  " .. owner.next_button.text:GetString())
 		end
 --		if not self.eventbook.focus then
 --			table.insert(t, self.eventbook:GetHelpText())
@@ -500,9 +507,6 @@ local LavaarenaFestivalBookPannel = Class(LobbyPanel, function(self, owner)
 
 
 end)
-
-
-
 
 local LobbyScreen = Class(Screen, function(self, profile, cb)
     Screen._ctor(self, "LobbyScreen")
@@ -576,6 +580,7 @@ local LobbyScreen = Class(Screen, function(self, profile, cb)
     self.panel_title = self.root:AddChild(TEMPLATES.ScreenTitle_BesideLeftSideBar( "" ))
 
 	self.back_button = self.root:AddChild(TEMPLATES.BackButton_BesideLeftSidebar(function() if self.panel.OnBackButton == nil or self.panel:OnBackButton() then self.back_button._onclick_goback() end end, "", nil))
+
 	self.next_button = self.root:AddChild(TEMPLATES.StandardButton(function() if self.panel.OnNextButton == nil or self.panel:OnNextButton() then self:ToNextPanel(1) end end, "", {200, 50}))
 	self.next_button:SetPosition(500, self.back_button:GetPosition().y - 5)
     if TheInput:ControllerAttached() then
@@ -750,7 +755,7 @@ function LobbyScreen:ToNextPanel(dir)
 		else
 			self.next_button:SetText(self.panel.next_button_title)
 			if TheInput:ControllerAttached() then
-				self.next_button:Hide()
+				self.next_button:Hide()				
 			else
 				self.next_button:Show()
 			end
@@ -759,6 +764,10 @@ function LobbyScreen:ToNextPanel(dir)
 		self.panel_root.focus_forward = self.panel
 		self:DoFocusHookups()
 	end
+end
+
+function LobbyScreen:ChangeTitle(str)
+	self.panel_title:SetString(str)
 end
 
 function LobbyScreen:OnFocusMove(dir, down)

@@ -130,6 +130,7 @@ local function fn()
     inst:AddTag("monster")
     inst:AddTag("hostile")
     inst:AddTag("epic")
+    inst:AddTag("smallepic")
     inst:AddTag("largecreature")
     inst:AddTag("spiderqueen")
     inst:AddTag("spider")
@@ -210,7 +211,8 @@ local function fn()
 
     inst:AddComponent("leader")
 
-    MakeHauntableGoToState(inst, "poop", TUNING.HAUNT_CHANCE_OCCASIONAL, TUNING.HAUNT_COOLDOWN_MEDIUM, TUNING.HAUNT_CHANCE_LARGE)
+	inst:AddComponent("hauntable")
+	inst.components.hauntable:SetHauntValue(TUNING.HAUNT_TINY)
 
     ------------------
 

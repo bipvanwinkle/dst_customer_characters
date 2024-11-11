@@ -81,9 +81,11 @@ function FireFX:SetPercentInLevel(percent)
     self.light.Light:SetIntensity(percent * (highval_i - lowval_i) + lowval_i)
 end
 
-function FireFX:SetLevel(lev, immediate)
-    if lev > 0 and lev ~= self.level then
-        if self.playignitesound and (self.level == nil or lev > self.level) then
+function FireFX:SetLevel(lev, immediate, controlled_burn)
+    local stopcontrolled = self.controlled_burn ~= nil and controlled_burn == nil
+    self.controlled_burn = controlled_burn
+    if lev > 0 and lev ~= self.level or stopcontrolled then
+        if self.playignitesound and (self.level == nil or lev > self.level or stopcontrolled) then
             self.inst.SoundEmitter:PlaySound(self.lightsound or (lev >= self.bigignitesoundthresh and "dontstarve/common/fireBurstLarge" or "dontstarve/common/fireBurstSmall"))
         end
 
@@ -93,12 +95,13 @@ function FireFX:SetLevel(lev, immediate)
 
         self.level = math.min(lev, #self.levels)
         local params = self.levels[self.level]
+
         if immediate or params.pre == nil then
-            self.inst.AnimState:PlayAnimation(params.anim, true)
+            self.inst.AnimState:PlayAnimation(self.controlled_burn and params.anim_controlled_burn or params.anim, true)            
         else
-            self.inst.AnimState:PlayAnimation(params.pre)
-            self.inst.AnimState:PushAnimation(params.anim, true)
-        end
+            self.inst.AnimState:PlayAnimation(self.controlled_burn and params.pre_controlled_burn or params.pre)
+            self.inst.AnimState:PushAnimation(self.controlled_burn and params.anim_controlled_burn or params.anim, true)
+        end        
 
         self.current_radius = self:GetLevelRadius(self.level)
         self.light.Light:Enable(true)
@@ -129,7 +132,7 @@ end
 
 --- Kill the fx.
 -- Returns true if there's a 'going out' animation and the owning entity shouldn't be removed instantly
-function FireFX:Extinguish()
+function FireFX:Extinguish(fast)
     if self.playingsound ~= nil then
         self.inst.SoundEmitter:KillSound("fire")
         self.playingsound = nil
@@ -138,8 +141,10 @@ function FireFX:Extinguish()
 
     if self.extinguishsoundtest == nil or self.extinguishsoundtest() then
         self.inst.SoundEmitter:PlaySound(self.extinguishsound or "dontstarve/common/fireOut")
-        if self.levels[self.level] ~= nil and self.levels[self.level].pst ~= nil then
-            self.inst.AnimState:PlayAnimation(self.levels[self.level].pst)
+		local leveldata = self.levels[self.level]
+		local anim = leveldata ~= nil and ((fast and leveldata.pst_fast) or (self.controlled_burn and leveldata.pst_controlled_burn) or  leveldata.pst) or nil
+		if anim ~= nil then
+			self.inst.AnimState:PlayAnimation(anim)
             return true
         end
     end

@@ -23,6 +23,15 @@ local function OnHammered(inst, worker)
     inst:Remove()
 end
 
+local function OnHit(inst)
+	local idleanim = "idle"..inst._post_id
+	if inst.AnimState:IsCurrentAnimation(idleanim) or inst.AnimState:GetCurrentAnimationFrame() >= 15 then
+		inst.AnimState:PlayAnimation("place"..inst._post_id)
+		inst.AnimState:SetFrame(11)
+		inst.AnimState:PushAnimation(idleanim, false)
+	end
+end
+
 local function setpostid(inst, id)
     if inst._post_id == nil or (id ~= nil and inst._post_id ~= id) then
         inst._post_id = id or tostring(math.random(1, 3))
@@ -42,7 +51,7 @@ local function place(inst)
     inst.SoundEmitter:PlaySound("monkeyisland/dock/post_place")
     
     inst.AnimState:PlayAnimation("place"..inst._post_id)
-    inst.AnimState:PushAnimation("idle"..inst._post_id)
+	inst.AnimState:PushAnimation("idle"..inst._post_id, false)
 end
 
 local function fn()
@@ -53,14 +62,20 @@ local function fn()
     inst.entity:AddNetwork()
     inst.entity:AddSoundEmitter()
 
+	inst:SetDeploySmartRadius(DEPLOYSPACING_RADIUS[DEPLOYSPACING.LESS] / 2) --dock_woodposts_item deployspacing/2
+
     inst.AnimState:SetBank("dock_woodposts")
     inst.AnimState:SetBuild("dock_woodposts")
     inst.AnimState:PlayAnimation("idle1")
+
+    inst.scrapbook_inspectonseen = true
 
     inst.entity:SetPristine()
     if not TheWorld.ismastersim then
         return inst
     end
+
+    inst.scrapbook_anim = "idle3"
 
     ---------------------------------------------------------------
     inst:AddComponent("lootdropper")
@@ -71,6 +86,7 @@ local function fn()
     inst.components.workable:SetWorkAction(ACTIONS.HAMMER)
     inst.components.workable:SetWorkLeft(3)
     inst.components.workable:SetOnFinishCallback(OnHammered)
+	inst.components.workable:SetOnWorkCallback(OnHit)
 
     ---------------------------------------------------------------
     --inst._post_id = nil
@@ -103,6 +119,8 @@ local function itemfn()
     inst.entity:AddNetwork()
 
     MakeInventoryPhysics(inst)
+
+	inst:AddTag("deploykititem")
 
     inst.AnimState:SetBank("dock_woodposts")
     inst.AnimState:SetBuild("dock_woodposts")

@@ -8,11 +8,31 @@ local grass_assets =
     Asset("ANIM", "anim/boat_grass.zip"),
 }
 
+local ice_assets =
+{
+    Asset("ANIM", "anim/boat_ice.zip"),
+}
+
+local yotd_assets =
+{
+    Asset("ANIM", "anim/boat_yotd.zip"),
+}
+
+local ancient_assets =
+{
+    Asset("ANIM", "anim/boat_ancient.zip"),
+}
+
+local otterden_assets =
+{
+    Asset("ANIM", "anim/boat_otterden.zip"),
+}
+
 local prefabs =
 {
 }
 
-local function commonfn()
+local function commonfn(bank, build)
     local inst = CreateEntity()
 
     inst.entity:AddTransform()
@@ -23,8 +43,8 @@ local function commonfn()
     inst:AddTag("NOBLOCK")
     inst:AddTag("DECOR")
 
-    inst.AnimState:SetBank("boat_01")
-    inst.AnimState:SetBuild("boat_test")
+    inst.AnimState:SetBank(bank or "boat_01")
+    inst.AnimState:SetBuild(build or "boat_test")
     inst.AnimState:PlayAnimation("lip", true)
     inst.AnimState:SetOrientation(ANIM_ORIENTATION.OnGroundFixed)
     inst.AnimState:SetLayer(LAYER_BELOW_GROUND)
@@ -47,23 +67,32 @@ local function commonfn()
 end
 
 local function fn()
-    local inst = commonfn()
-    return inst
+    return commonfn()
 end
 
 local function grassfn()
-    local inst = commonfn()
+    return commonfn("boat_grass", "boat_grass")
+end
 
-    inst.AnimState:SetBuild("boat_grass")    
-    inst.AnimState:SetBank("boat_grass")
+local function icefn()
+    return commonfn("boat_ice", "boat_ice")
+end
 
-    inst.entity:SetPristine()
-    if not TheWorld.ismastersim then
-        return inst
-    end    
+local function yotdfn()
+    return commonfn("boat_yotd", "boat_yotd")
+end
 
-    return inst
+local function ancientfn()
+    return commonfn("boat_yotd", "boat_ancient")
+end
+
+local function otterdenfn()
+    return commonfn("boat_otterden", "boat_otterden")
 end
 
 return Prefab("boatlip", fn, assets, prefabs),
-    Prefab("boatlip_grass", grassfn, grass_assets, prefabs)
+    Prefab("boatlip_grass", grassfn, grass_assets, prefabs),
+    Prefab("boatlip_ice", icefn, ice_assets, prefabs),
+    Prefab("boatlip_yotd", yotdfn, yotd_assets, prefabs),
+    Prefab("boatlip_ancient", ancientfn, ancient_assets, prefabs),
+    Prefab("boatlip_otterden", otterdenfn, otterden_assets)

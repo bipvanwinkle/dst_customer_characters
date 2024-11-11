@@ -43,12 +43,13 @@ local function onattack(inst, owner, target)
             pt = owner:GetPosition()
             target = nil
         end
-        local offset = FindWalkableOffset(pt, math.random() * 2 * PI, 2, 3, false, true, NoHoles, false, true)
+        local offset = FindWalkableOffset(pt, math.random() * TWOPI, 2, 3, false, true, NoHoles, false, true)
         if offset ~= nil then
             inst.SoundEmitter:PlaySound("dontstarve/common/shadowTentacleAttack_1")
             inst.SoundEmitter:PlaySound("dontstarve/common/shadowTentacleAttack_2")
             local tentacle = SpawnPrefab("shadowtentacle")
             if tentacle ~= nil then
+				tentacle.owner = owner
                 tentacle.Transform:SetPosition(pt.x + offset.x, 0, pt.z + offset.z)
                 tentacle.components.combat:SetTarget(target)
             end
@@ -74,6 +75,9 @@ local function fn()
 
     --weapon (from weapon component) added to pristine state for optimization
     inst:AddTag("weapon")
+
+	--shadowlevel (from shadowlevel component) added to pristine state for optimization
+	inst:AddTag("shadowlevel")
 
     inst.entity:SetPristine()
 
@@ -101,6 +105,9 @@ local function fn()
     inst.components.equippable:SetOnEquip(onequip)
     inst.components.equippable:SetOnUnequip(onunequip)
     inst.components.equippable.walkspeedmult = TUNING.RUINS_BAT_SPEED_MULT
+
+	inst:AddComponent("shadowlevel")
+	inst.components.shadowlevel:SetDefaultLevel(TUNING.RUINS_BAT_SHADOW_LEVEL)
 
     MakeHauntableLaunch(inst)
 

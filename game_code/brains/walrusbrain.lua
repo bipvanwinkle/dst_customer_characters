@@ -5,8 +5,8 @@ require "behaviours/follow"
 require "behaviours/standstill"
 require "behaviours/runaway"
 require "behaviours/doaction"
-require "behaviours/panic"
 require "behaviours/leash"
+local BrainCommon = require("brains/braincommon")
 
 local RUN_START_DIST = 5
 local RUN_STOP_DIST = 15
@@ -62,9 +62,10 @@ local function ShouldRunAway(guy)
 end
 
 local EATFOOD_MUST_TAGS = { "edible_MEAT" }
+local EATFOOD_CANT_TAGS = { "INLIMBO", "outofreach" }
 local CHARACTER_TAGS = {"character"}
 local function EatFoodAction(inst)
-    local target = FindEntity(inst, SEE_FOOD_DIST, nil, EATFOOD_MUST_TAGS)
+	local target = FindEntity(inst, SEE_FOOD_DIST, nil, EATFOOD_MUST_TAGS, EATFOOD_CANT_TAGS)
     --check for scary things near the food, or if it's in the water
     if target ~= nil and (not target:IsOnValidGround() or GetClosestInstWithTag(CHARACTER_TAGS, target, RUN_START_DIST) ~= nil) then
         target = nil
@@ -121,8 +122,7 @@ end)
 function WalrusBrain:OnStart()
     local root = PriorityNode(
     {
-        WhileNode(function() return self.inst.components.hauntable ~= nil and self.inst.components.hauntable.panic end, "PanicHaunted", Panic(self.inst)),
-        WhileNode(function() return self.inst.components.health.takingfiredamage end, "OnFire", Panic(self.inst)),
+		BrainCommon.PanicTrigger(self.inst),
 
         Leash(self.inst, GetNoLeaderLeashPos, LEASH_MAX_DIST, LEASH_RETURN_DIST),
 

@@ -6,8 +6,6 @@ local easing = require("easing")
 local assets =
 {
     Asset("SCRIPT", "scripts/prefabs/player_common.lua"),
-    Asset("ATLAS", "images/hud_wanda.xml"),
-    Asset("IMAGE", "images/hud_wanda.tex"),
 
     Asset("ANIM", "anim/status_oldage.zip"),
     Asset("ANIM", "anim/wanda_basics.zip"),
@@ -51,7 +49,7 @@ local function PlayAgingFx(inst, fx_name)
 end
 
 local function UpdateSkinMode(inst, mode, delay)
-	if inst.queued_skinmode_task ~= nil then
+	if inst.updateskinmodetask ~= nil then
 		inst.updateskinmodetask:Cancel()
 		inst.updateskinmodetask = nil
 	end

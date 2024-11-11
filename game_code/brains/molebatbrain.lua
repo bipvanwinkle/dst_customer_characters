@@ -3,6 +3,7 @@ require "behaviours/runaway"
 require "behaviours/doaction"
 require "behaviours/panic"
 require "behaviours/follow"
+local BrainCommon = require("brains/braincommon")
 
 local MoleBatBrain = Class(Brain, function(self, inst)
     Brain._ctor(self, inst)
@@ -40,7 +41,7 @@ end
 
 local function CreateBurrow(inst)
     local burrow_position = inst:GetPosition()
-    local offset = FindWalkableOffset(burrow_position, math.random()*2*PI, math.random(4, 7), 10, true, false)
+    local offset = FindWalkableOffset(burrow_position, math.random()*TWOPI, math.random(4, 7), 10, true, false)
     if offset ~= nil then
         burrow_position = burrow_position + offset
     end
@@ -83,7 +84,7 @@ local function GoHomeAction(inst)
 end
 
 local SEE_FOOD_DIST         = 25
-local NO_TAGS = { "FX", "NOCLICK", "DECOR", "INLIMBO" }
+local NO_TAGS = { "FX", "NOCLICK", "DECOR", "INLIMBO", "outofreach" }
 local function EatFoodAction(inst)
     if inst.sg:HasStateTag("busy") then
         return nil
@@ -131,16 +132,7 @@ local MAX_CLEAN_ATTEMPT_TIME = 20
 function MoleBatBrain:OnStart()
     local root = PriorityNode(
     {
-        WhileNode(function()
-                return self.inst.components.hauntable ~= nil and self.inst.components.hauntable.panic
-            end, "Haunted",
-            Panic(self.inst)
-        ),
-        WhileNode(function()
-                return self.inst.components.health.takingfiredamage
-            end, "On Fire",
-            Panic(self.inst)
-        ),
+		BrainCommon.PanicTrigger(self.inst),
         WhileNode(function()
                 return self.inst._quaking
             end, "Quaking",

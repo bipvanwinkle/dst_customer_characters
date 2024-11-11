@@ -1,7 +1,7 @@
 require "behaviours/wander"
 require "behaviours/runaway"
 require "behaviours/doaction"
-require "behaviours/panic"
+local BrainCommon = require("brains/braincommon")
 
 local STOP_RUN_DIST = 10
 local SEE_PLAYER_DIST = 5
@@ -33,13 +33,18 @@ local function ShouldMakeHome(inst)
         and (inst.needs_home_time and (GetTime() - inst.needs_home_time > inst.make_home_delay))
 end
 
-local function NoHoles(pt)
+local function NoHolesNoInvisibleTiles(pt)
+    local tile = TheWorld.Map:GetTileAtPoint(pt:Get())
+    if GROUND_INVISIBLETILES[tile] then
+        return false
+    end
+
     return not TheWorld.Map:IsPointNearHole(pt)
 end
 
 local function MakeNewHomeAction(inst)
     local pos = inst:GetPosition()
-    local offset = FindWalkableOffset(pos, math.random() * 2 * PI, math.random(5, 15), 120, false, false, NoHoles)
+    local offset = FindWalkableOffset(pos, math.random() * TWOPI, math.random(5, 15), 120, false, false, NoHolesNoInvisibleTiles)
     if offset ~= nil then
         pos.x = pos.x + offset.x
         pos.y = 0
@@ -85,20 +90,26 @@ end
 function MoleBrain:OnStart()
     local root = PriorityNode(
     {
-        WhileNode( function() return self.inst.components.health.takingfiredamage end, "OnFire", Panic(self.inst)),
-        WhileNode( function() return ShouldMakeHome(self.inst) end, "HomeDugUp",
-            DoAction(self.inst, MakeNewHomeAction, "make home", false)),
+		BrainCommon.PanicTrigger(self.inst),
+        WhileNode( function() return ShouldMakeHome(self.inst) end, "Home Dug Up",
+            DoAction(self.inst, MakeNewHomeAction, "Make Home", false)),
         WhileNode(function() return self.inst.flee == true end, "Flee",
             RunAway(self.inst, "scarytoprey", AVOID_PLAYER_DIST, AVOID_PLAYER_STOP)),
-        WhileNode(function() return (GetTime() > (self.inst.last_above_time + self.inst.peek_interval) and not self.inst.sg:HasStateTag("busy")) end, "Peek", --check if no buffered action?
-            DoAction(self.inst, PeekAction, "peek", false)),
-        WhileNode(function() return self.inst.components.inventory:IsFull() end, "DepositInv",
-            DoAction(self.inst, GoHomeAction, "go home", false)),
+        WhileNode(function() return TheWorld.state.isacidraining end, "Acid Raining",
+            DoAction(self.inst, GoHomeAction, "Go Home", false)),
+        WhileNode(function() return not self.inst.sg:HasStateTag("busy") and
+                                (GetTime() > (self.inst.last_above_time + self.inst.peek_interval))
+                            end, "Should Peek",
+            DoAction(self.inst, PeekAction, "Do Peek", false)),
+        WhileNode(function() return self.inst.components.inventory:IsFull() end, "Deposit Inventory",
+            DoAction(self.inst, GoHomeAction, "Go Home", false)),
         EventNode(self.inst, "gohome",
-            DoAction(self.inst, GoHomeAction, "go home", false)),
-        DoAction(self.inst, TakeBaitAction, "take bait", false),
-        WhileNode(function() return TheWorld.state.isday or (TheWorld.state.iscaveday and self.inst:IsInLight()) end, "IsDay",
-            DoAction(self.inst, GoHomeAction, "go home", false )),
+            DoAction(self.inst, GoHomeAction, "Go Home", false)),
+        DoAction(self.inst, TakeBaitAction, "Take Bait", false),
+        WhileNode(function() return TheWorld.state.isday or
+                            (TheWorld.state.iscaveday and self.inst:IsInLight())
+                        end, "Is Day",
+            DoAction(self.inst, GoHomeAction, "Go Home", false )),
         Wander(self.inst, function() return self.inst.components.knownlocations:GetLocation("home") end, MAX_WANDER_DIST),
     }, .25)
     self.bt = BT(self.inst, root)

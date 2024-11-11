@@ -1,6 +1,3 @@
-local WALK_SPEED = 4
-local RUN_SPEED = 7
-
 require("stategraphs/commonstates")
 
 local actionhandlers =
@@ -10,27 +7,26 @@ local actionhandlers =
 }
 
 
-
 local events=
 {
     CommonHandlers.OnSleep(),
     CommonHandlers.OnFreeze(),
-    EventHandler("attacked", function(inst) if not inst.components.health:IsDead() then inst.sg:GoToState("hit") end end),
---    EventHandler("death", function(inst) inst.sg:GoToState("death") end),
+    EventHandler("attacked", function(inst)
+        if not inst.components.health:IsDead() then
+            inst.sg:GoToState("hit")
+        end
+    end),
     EventHandler("death", function(inst, data)
 				inst.sg:GoToState("death", data)
 			end),
     EventHandler("trapped", function(inst) inst.sg:GoToState("trapped") end),
     EventHandler("locomote",
         function(inst)
-            if not inst.sg:HasStateTag("idle") and not inst.sg:HasStateTag("moving") then return end
-
-            if not inst.components.locomotor:WantsToMoveForward() then
+            if not inst.sg:HasStateTag("idle") and not inst.sg:HasStateTag("moving") then
+                return
+            elseif not inst.components.locomotor:WantsToMoveForward() then
                 if not inst.sg:HasStateTag("idle") then
-                    if not inst.sg:HasStateTag("running") then
-                        inst.sg:GoToState("idle")
-                    end
-                        inst.sg:GoToState("idle")
+                    inst.sg:GoToState("idle")
                 end
             elseif inst.components.locomotor:WantsToRun() then
                 if not inst.sg:HasStateTag("running") then
@@ -42,6 +38,8 @@ local events=
                 end
             end
         end),
+    CommonHandlers.OnSink(),
+    CommonHandlers.OnFallInVoid(),
     EventHandler("stunbomb", function(inst)
         inst.sg:GoToState("stunned")
     end),
@@ -165,25 +163,39 @@ local states=
         tags = {"moving", "running", "canrotate"},
 
         onenter = function(inst)
-            local play_scream = true
-            if inst.components.inventoryitem then
-                play_scream = inst.components.inventoryitem.owner == nil
-            end
-            if play_scream then
+            if not (inst.components.inventoryitem ~= nil and inst.components.inventoryitem:IsHeld()) then
                 inst.SoundEmitter:PlaySound(inst.sounds.scream)
             end
             inst.AnimState:PlayAnimation("run_pre")
-            inst.AnimState:PushAnimation("run", true)
             inst.components.locomotor:RunForward()
         end,
 
-        --[[onupdate= function(inst)
-            if not inst.components.locomotor:WantsToMoveForward() then
-                inst.sg:GoToState("idle")
-            end
-        end, --]]
-
+		events =
+		{
+			EventHandler("animover", function(inst)
+				if inst.AnimState:AnimDone() then
+					inst.sg:GoToState("run_loop")
+				end
+			end),
+		},
     },
+
+	State{
+		name = "run_loop",
+		tags = { "moving", "running", "canrotate" },
+
+		onenter = function(inst)
+			if not inst.AnimState:IsCurrentAnimation("run") then
+				inst.AnimState:PlayAnimation("run", true)
+			end
+			inst.components.locomotor:RunForward()
+			inst.sg:SetTimeout(inst.AnimState:GetCurrentAnimationLength())
+		end,
+
+		ontimeout = function(inst)
+			inst.sg:GoToState("run_loop")
+		end,
+	},
 
     State{
         name = "death",
@@ -289,6 +301,8 @@ local states=
 }
 CommonStates.AddSleepStates(states)
 CommonStates.AddFrozenStates(states)
+CommonStates.AddSinkAndWashAshoreStates(states)
+CommonStates.AddVoidFallStates(states)
 
 
 return StateGraph("rabbit", states, events, "idle", actionhandlers)

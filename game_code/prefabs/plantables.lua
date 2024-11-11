@@ -1,5 +1,7 @@
 require "prefabutil"
 
+local WAXED_PLANTS = require "prefabs/waxed_plant_common"
+
 local function make_plantable(data)
     local bank = data.bank or data.name
     local assets =
@@ -26,6 +28,10 @@ local function make_plantable(data)
                 --     one just for this sound!
                 deployer.SoundEmitter:PlaySound("dontstarve/common/plant")
             end
+
+            if TheWorld.components.lunarthrall_plantspawner and tree:HasTag("lunarplant_target") then
+                TheWorld.components.lunarthrall_plantspawner:setHerdsOnPlantable(tree)
+            end
         end
     end
 
@@ -44,11 +50,28 @@ local function make_plantable(data)
         inst.AnimState:SetBank(data.bank or data.name)
         inst.AnimState:SetBuild(data.build or data.name)
         inst.AnimState:PlayAnimation("dropped")
+        inst.scrapbook_anim = "dropped"
 
         if data.floater ~= nil then
             MakeInventoryFloatable(inst, data.floater[1], data.floater[2], data.floater[3])
         else
             MakeInventoryFloatable(inst)
+        end
+
+        if data.name == "berrybush" or 
+           data.name == "berrybush2" or 
+           data.name == "berrybush_juicy" or
+           data.name == "grass" or
+           data.name == "monkeytail" or
+           data.name == "bananabush" or
+           data.name == "rock_avocado_bush" then
+            inst.scrapbook_specialinfo = "PLANTABLE_FERTILIZE"
+        end
+
+        if data.name == "sapling" or
+           data.name == "sapling_moon" or
+           data.name == "marsh_bush" then
+            inst.scrapbook_specialinfo = "PLANTABLE"
         end
 
         inst.entity:SetPristine()
@@ -158,9 +181,12 @@ local plantables =
 }
 
 local prefabs = {}
-for i, v in ipairs(plantables) do
-    table.insert(prefabs, make_plantable(v))
-    table.insert(prefabs, MakePlacer("dug_"..v.name.."_placer", v.bank or v.name, v.build or v.name, v.anim or "idle"))
+
+for _, data in ipairs(plantables) do
+    table.insert(prefabs, make_plantable(data))
+    table.insert(prefabs, MakePlacer("dug_"..data.name.."_placer", data.bank or data.name, data.build or data.name, data.anim or "idle"))
+
+    table.insert(prefabs, WAXED_PLANTS.CreateDugWaxedPlant(data))
 end
 
 return unpack(prefabs)

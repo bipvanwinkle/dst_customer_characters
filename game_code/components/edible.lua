@@ -26,6 +26,7 @@ local Edible = Class(function(self, inst)
     self.oneaten = nil
     self.degrades_with_spoilage = true
     self.gethealthfn = nil
+    self.getsanityfn = nil
 
     self.temperaturedelta = 0
     self.temperatureduration = 0
@@ -68,11 +69,12 @@ function Edible:GetWoodiness(eater) return 0 end
 --
 
 function Edible:GetSanity(eater)
-    local ignore_spoilage = not self.degrades_with_spoilage or self.sanityvalue < 0 or (eater ~= nil and eater.components.eater ~= nil and eater.components.eater.ignoresspoilage)
+    local sanityvalue = self.getsanityfn ~= nil and self.getsanityfn(self.inst, eater) or self.sanityvalue
+    local ignore_spoilage = not self.degrades_with_spoilage or sanityvalue < 0 or (eater ~= nil and eater.components.eater ~= nil and eater.components.eater.ignoresspoilage)
 
     if not ignore_spoilage and self.inst.components.perishable ~= nil then
         if self.inst.components.perishable:IsStale() then
-            if self.sanityvalue > 0 then
+            if sanityvalue > 0 then
                 return 0
             end
         elseif self.inst.components.perishable:IsSpoiled() then
@@ -85,7 +87,7 @@ function Edible:GetSanity(eater)
         multiplier = multiplier + TUNING.SPICE_MULTIPLIERS[self.spice].SANITY
     end
 
-    return self.sanityvalue * multiplier
+    return sanityvalue * multiplier
 end
 
 function Edible:GetHunger(eater)
@@ -145,6 +147,10 @@ function Edible:SetGetHealthFn(fn)
     self.gethealthfn = fn
 end
 
+function Edible:SetGetSanityFn(fn)
+    self.getsanityfn = fn
+end
+
 function Edible:OnEaten(eater)
     if self.oneaten ~= nil then
         self.oneaten(self.inst, eater)
@@ -173,6 +179,9 @@ function Edible:OnEaten(eater)
     end
 
     self.inst:PushEvent("oneaten", { eater = eater })
+    if self.inst.eatensound ~= nil and eater.SoundEmitter ~= nil then
+        eater.SoundEmitter:PlaySound(self.inst.eatensound)
+    end
 end
 
 function Edible:AddChill(delta)

@@ -17,6 +17,15 @@ end
 local function RiddenTick(inst, dt)
     inst.components.rideable.lastridetime = GetTime()
     inst:PushEvent("beingridden", dt)
+
+    ------------------------
+
+    local _rider = inst.components.rideable:GetRider()
+    local _skilltreeupdater = _rider ~= nil and _rider.components.skilltreeupdater or nil
+
+    if _skilltreeupdater ~= nil and _skilltreeupdater:HasSkillTag("beefaloinspiration") and _rider.components.singinginspiration ~= nil then
+        _rider.components.singinginspiration:OnRidingTick(dt)
+    end
 end
 
 local function StartRiddenTick(self)
@@ -33,7 +42,7 @@ local function StopRiddenTick(self)
 end
 
 local function OnSaddleDiscard(inst)
-	if inst.components.saddler.discardedcb ~= nil then
+	if inst.components.saddler ~= nil and inst.components.saddler.discardedcb ~= nil then
 		inst.components.saddler.discardedcb(inst)
 	end
 
@@ -109,6 +118,8 @@ function Rideable:SetSaddle(doer, newsaddle)
         self.inst:RemoveChild(self.saddle)
         self.saddle:ReturnToScene()
 
+        self.saddle:PushEvent("unequipped", { owner = self.inst })
+
         local pt = self.inst:GetPosition()
         pt.y = 3
 
@@ -129,6 +140,8 @@ function Rideable:SetSaddle(doer, newsaddle)
             newsaddle:RemoveFromScene()
             self.saddle = newsaddle
             self.inst:PushEvent("saddlechanged", { saddle = newsaddle })
+
+            self.saddle:PushEvent("equipped", { owner = self.inst })
 
             local skin_build = self.saddle:GetSkinBuild()
             if skin_build ~= nil then

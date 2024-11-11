@@ -19,6 +19,9 @@ local function onload(inst, data)
         inst.animname = data.anim
         inst.AnimState:PlayAnimation(inst.animname)
     end
+    if inst.skinname then
+        inst.AnimState:PlayAnimation("c")
+    end
 end
 
 local function onhammered(inst)
@@ -37,9 +40,13 @@ local function fn()
     inst.entity:AddAnimState()
     inst.entity:AddNetwork()
 
+	inst:SetDeploySmartRadius(0.45) --recipe min_spacing/2
+
     inst.AnimState:SetBank("ferns_potted")
     inst.AnimState:SetBuild("cave_ferns_potted")
     inst.AnimState:SetRayTestOnBB(true)
+
+    inst.scrapbook_anim = "f1"
 
     inst:AddTag("cavedweller")
 

@@ -26,6 +26,9 @@ local function fn()
     MakeInventoryFloatable(inst, "small", 0.0, 0.8)
 
 	inst:AddTag("trophyscale_fish")
+    inst:AddTag("donotautopick")
+
+    inst.scrapbook_specialinfo = "POCKETSCALE"
 
     inst.entity:SetPristine()
 

@@ -22,6 +22,14 @@ local function oncanonlygoinpocket(self, canonlygoinpocket)
     self.inst.replica.inventoryitem:SetCanOnlyGoInPocket(canonlygoinpocket)
 end
 
+local function onisacidsizzling(self, isacidsizzling)
+    self.inst.replica.inventoryitem:SetIsAcidSizzling(isacidsizzling)
+end
+
+local function ongrabbableoverridetag(self, tag)
+    self.inst.replica.inventoryitem:SetGrabbableOverrideTag(tag)
+end
+
 local function OnStackSizeChange(inst, data)
     local self = inst.components.inventoryitem
     if self.owner ~= nil then
@@ -53,10 +61,11 @@ local InventoryItem = Class(function(self, inst)
     self.keepondeath = false
     self.atlasname = nil
     self.imagename = nil
-    self.onactiveitemfn = nil
     self.trappable = true
     self.sinks = false
     self.droprandomdir = false
+    self.isacidsizzling = false
+    self.grabbableoverridetag = nil
 
     self.pushlandedevents = true
     self:SetLanded(false, true)
@@ -78,6 +87,8 @@ nil,
     canbepickedup = oncanbepickedup,
     cangoincontainer = oncangoincontainer,
     canonlygoinpocket = oncanonlygoinpocket,
+    isacidsizzling = onisacidsizzling,
+    grabbableoverridetag = ongrabbableoverridetag,
 })
 
 function InventoryItem:OnRemoveFromEntity()
@@ -105,10 +116,26 @@ function InventoryItem:IsWet()
     return self.inst.components.inventoryitemmoisture ~= nil and self.inst.components.inventoryitemmoisture.iswet
 end
 
+function InventoryItem:IsAcidSizzling()
+    return self.inst.replica.inventoryitem:IsAcidSizzling()
+end
+
 function InventoryItem:InheritMoisture(moisture, iswet)
     if self.inst.components.inventoryitemmoisture ~= nil then
         self.inst.components.inventoryitemmoisture:InheritMoisture(moisture, iswet)
     end
+end
+
+function InventoryItem:InheritWorldWetnessAtXZ(x, z)
+	if self.inst.components.inventoryitemmoisture ~= nil and not IsUnderRainDomeAtXZ(x, z) then
+		self.inst.components.inventoryitemmoisture:InheritMoisture(TheWorld.state.wetness, TheWorld.state.iswet)
+	end
+end
+
+function InventoryItem:InheritWorldWetnessAtTarget(target)
+	if self.inst.components.inventoryitemmoisture ~= nil and target.components.rainimmunity == nil then
+		self.inst.components.inventoryitemmoisture:InheritMoisture(TheWorld.state.wetness, TheWorld.state.iswet)
+	end
 end
 
 function InventoryItem:DiluteMoisture(item, count)
@@ -120,6 +147,18 @@ end
 function InventoryItem:AddMoisture(delta)
     if self.inst.components.inventoryitemmoisture ~= nil then
         self.inst.components.inventoryitemmoisture:DoDelta(delta)
+    end
+end
+
+function InventoryItem:MakeMoistureAtLeast(min)
+	if self.inst.components.inventoryitemmoisture ~= nil then
+		self.inst.components.inventoryitemmoisture:MakeMoistureAtLeast(min)
+	end
+end
+
+function InventoryItem:DryMoisture()
+    if self.inst.components.inventoryitemmoisture ~= nil then
+        self.inst.components.inventoryitemmoisture:SetMoisture(0)
     end
 end
 
@@ -135,6 +174,7 @@ function InventoryItem:SetOnDroppedFn(fn)
     self.ondropfn = fn
 end
 
+--V2C: Deprecated; please rethink your code if you need to use this
 function InventoryItem:SetOnActiveItemFn(fn)
     self.onactiveitemfn = fn
 end
@@ -251,16 +291,19 @@ function InventoryItem:DoDropPhysics(x, y, z, randomdir, speedmult)
         if not self.nobounce then
             y = y + (heavy and .5 or 1)
         end
-        self.inst.Physics:Teleport(x, y, z)
 
         -- convert x, y, z to velocity
         if randomdir then
             local speed = ((heavy and 1 or 2) + math.random()) * (speedmult or 1)
-            local angle = math.random() * 2 * PI
-            x = speed * math.cos(angle)
+            local angle = math.random() * TWOPI
+			local cos_angle = math.cos(angle)
+			local sin_angle = math.sin(angle)
+			self.inst.Physics:Teleport(x + .01 * cos_angle, y, z - .01 * sin_angle)
+			x = speed * cos_angle
             y = self.nobounce and 0 or speed * 3
-            z = -speed * math.sin(angle)
+			z = -speed * sin_angle
         else
+			self.inst.Physics:Teleport(x, y, z)
             x = 0
             y = (self.nobounce and 0) or (heavy and 2.5) or 5
             z = 0
@@ -290,7 +333,6 @@ function InventoryItem:OnPickup(pickupguy, src_pos)
         end
     end
 
-
     self.inst:PushEvent("onpickup", { owner = pickupguy })
     return self.onpickupfn and self.onpickupfn(self.inst, pickupguy, src_pos)
 end
@@ -308,18 +350,29 @@ function InventoryItem:ChangeImageName(newname)
     self.inst:PushEvent("imagechange")
 end
 
-function InventoryItem:RemoveFromOwner(wholestack)
+function InventoryItem:RemoveFromOwner(wholestack, keepoverstacked)
     if self.owner == nil then
         return
     elseif self.owner.components.inventory ~= nil then
-        return self.owner.components.inventory:RemoveItem(self.inst, wholestack)
+		return self.owner.components.inventory:RemoveItem(self.inst, wholestack, nil, keepoverstacked)
     elseif self.owner.components.container ~= nil then
-        return self.owner.components.container:RemoveItem(self.inst, wholestack)
+		return self.owner.components.container:RemoveItem(self.inst, wholestack, nil, keepoverstacked)
     end
 end
 
 function InventoryItem:OnRemoveEntity()
-    self:RemoveFromOwner(true)
+	if self.owner then
+		if self.owner.components.inventory then
+			self.owner.components.inventory:RemoveItem(self.inst, true)
+		else
+			local container = self.owner.components.container
+			if container then
+				container.ignoreoverstacked = true
+				container:RemoveItem(self.inst, true)
+				container.ignoreoverstacked = false
+			end
+		end
+	end
     TheWorld:PushEvent("forgetinventoryitem", self.inst)
 end
 

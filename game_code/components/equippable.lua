@@ -18,6 +18,10 @@ local function onrestrictedtag(self, restrictedtag)
     end
 end
 
+local function onpreventunequipping(self, prevent)
+    self.inst.replica.equippable:SetPreventUnequipping(prevent)
+end
+
 local Equippable = Class(function(self, inst)
     self.inst = inst
 
@@ -36,6 +40,8 @@ local Equippable = Class(function(self, inst)
     self.equippedmoisture = 0
     self.maxequippedmoisture = 0
 
+    -- self.preventunequipping = nil -- Set to true to block unequipping the item.
+
 	-- self.is_magic_dapperness -- some survivors are only affected by magic sources
 end,
 nil,
@@ -43,6 +49,7 @@ nil,
     equipslot = onequipslot,
     walkspeedmult = onwalkspeedmult,
     restrictedtag = onrestrictedtag,
+    preventunequipping = onpreventunequipping
 })
 
 function Equippable:OnRemoveFromEntity()
@@ -67,6 +74,10 @@ end
 
 function Equippable:SetOnUnequip(fn)
     self.onunequipfn = fn
+end
+
+function Equippable:SetDappernessFn(fn)
+    self.dapperfn = fn
 end
 
 function Equippable:SetOnEquipToModel(fn)
@@ -119,6 +130,36 @@ function Equippable:IsRestricted(target)
         and self.restrictedtag:len() > 0
         and not target:HasTag(self.restrictedtag)
         and target:HasTag("player") --restricted tags only apply to players
+end
+
+function Equippable:IsRestricted_FromLoad(target)
+    if SKILLTREE_EQUIPPABLE_RESTRICTED_TAGS[self.restrictedtag] == target.prefab then
+        -- NOTES(JBK): If a player is resolving equipment from a snapshot load assume the player has the tag only if the tag is from a skill tree.
+        return false
+    end
+    return self:IsRestricted(target)
+end
+
+function Equippable:ShouldPreventUnequipping()
+    return self.preventunequipping
+end
+
+local function OnRemove(inst, data)
+    inst.components.equippable:SetPreventUnequipping(false)
+end
+
+function Equippable:SetPreventUnequipping(shouldprevent)
+    if shouldprevent then
+        if self._onremovelistener == nil then
+            self._onremovelistener = self.inst:ListenForEvent("onremove", OnRemove)
+        end
+    else
+        if self._onremovelistener ~= nil then
+            self.inst:RemoveEventCallback("onremove", OnRemove)
+            self._onremovelistener = nil
+        end
+    end
+    self.preventunequipping = shouldprevent
 end
 
 function Equippable:GetDapperness(owner, ignore_wetness)

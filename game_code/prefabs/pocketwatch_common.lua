@@ -42,6 +42,8 @@ local function common_fn(bank, build, DoCastSpell, cast_from_inventory, tags, co
     inst.AnimState:SetBuild(build)
     inst.AnimState:PlayAnimation("idle")
 
+    inst.scrapbook_deps = {}
+
     MakeInventoryFloatable(inst, "small", 0.05, {1.2, 0.75, 1.2})
 
 	inst:AddTag("pocketwatch")
@@ -71,7 +73,7 @@ local function common_fn(bank, build, DoCastSpell, cast_from_inventory, tags, co
 
     inst:AddComponent("inventoryitem")
     inst.components.inventoryitem:SetOnDroppedFn(OnDropped)
-		
+
 	inst:AddComponent("rechargeable")
 	inst.components.rechargeable:SetOnDischargedFn(OnDischarged)
 	inst.components.rechargeable:SetOnChargedFn(OnCharged)

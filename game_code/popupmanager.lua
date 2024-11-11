@@ -6,10 +6,12 @@ PopupManagerWidget = Class(function(self, data)
 end)
 
 function PopupManagerWidget:Close(inst, ...)
-    if not TheWorld.ismastersim then
-        SendRPCToServer(RPC.ClosePopup, self.code, self.mod_name, ...)
-    else
-        inst:PushEvent("ms_closepopup", {popup = self, args = {...}})
+    if TheWorld ~= nil then -- NOTES(JBK): This is here for running debug panels at the main menu.
+        if not TheWorld.ismastersim then
+            SendRPCToServer(RPC.ClosePopup, self.code, self.mod_name, ...)
+        else
+            inst:PushEvent("ms_closepopup", {popup = self, args = {...}})
+        end
     end
 end
 
@@ -23,6 +25,11 @@ POPUPS = {
     GROOMER = PopupManagerWidget(),
     COOKBOOK = PopupManagerWidget(),
     PLANTREGISTRY = PopupManagerWidget(),
+    SKILLTREE = PopupManagerWidget(),
+    PLAYERINFO = PopupManagerWidget(),
+    SCRAPBOOK = PopupManagerWidget(),
+    INSPECTACLES = PopupManagerWidget(),
+	PUMPKINCARVING = PopupManagerWidget(),
 }
 
 POPUPS_BY_POPUP_CODE = {}
@@ -114,4 +121,52 @@ POPUPS.PLANTREGISTRY.fn = function(inst, show)
             POPUPS.PLANTREGISTRY:Close(inst)
         end
     end
+end
+
+POPUPS.PLAYERINFO.fn = function(inst, show)
+    if inst.HUD then
+        if not show then
+            inst.HUD:ClosePlayerInfoScreen()
+        elseif not inst.HUD:OpenPlayerInfoScreen() then
+            POPUPS.PLAYERINFO:Close(inst)
+        end
+    end
+end
+
+POPUPS.SCRAPBOOK.fn = function(inst, show)
+    if inst.HUD then
+        if not show then
+            inst.HUD:CloseScrapbookScreen()
+        elseif not inst.HUD:OpenScrapbookScreen() then
+            POPUPS.SCRAPBOOK:Close(inst)
+        end
+    end
+end
+
+POPUPS.INSPECTACLES.validaterpcfn = function(solution)
+    return optuint(solution)
+end
+
+POPUPS.INSPECTACLES.fn = function(inst, show)
+    if inst.HUD then
+        if not show then
+            inst.HUD:CloseInspectaclesScreen()
+        elseif not inst.HUD:OpenInspectaclesScreen() then
+            POPUPS.INSPECTACLES:Close(inst)
+        end
+    end
+end
+
+POPUPS.PUMPKINCARVING.validaterpcfn = function(cutdata)
+    return optstring(cutdata)
+end
+
+POPUPS.PUMPKINCARVING.fn = function(inst, show, target)
+	if inst.HUD then
+		if not show then
+			inst.HUD:ClosePumpkinCarvingScreen()
+		elseif not inst.HUD:OpenPumpkinCarvingScreen(target) then
+			POPUPS.PUMPKINCARVING.Close(inst)
+		end
+	end
 end

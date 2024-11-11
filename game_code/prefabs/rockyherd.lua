@@ -3,6 +3,8 @@ local prefabs =
     "rocky",
 }
 
+local ROCKY_CANT = {"shadowthrall_parasite_hosted"}
+
 local function CanSpawn(inst)
     -- Note that there are other conditions inside periodic spawner governing this as well.
 
@@ -11,7 +13,7 @@ local function CanSpawn(inst)
     end
 
     local x, y, z = inst.Transform:GetWorldPosition()
-    return #TheSim:FindEntities(x, y, z, inst.components.herd.gatherrange, { "herdmember", inst.components.herd.membertag }) < TUNING.ROCKYHERD_MAX_IN_RANGE
+    return #TheSim:FindEntities(x, y, z, inst.components.herd.gatherrange, { "herdmember", inst.components.herd.membertag },ROCKY_CANT) < TUNING.ROCKYHERD_MAX_IN_RANGE
 end
 
 local function OnSpawned(inst, newent)
@@ -26,7 +28,8 @@ end
 --end
 
 local function SeasonalSpawningChanges(inst, season)
-    inst.components.periodicspawner:SetRandomTimes(season == SEASONS.SPRING and TUNING.ROCKY_SPAWN_DELAY * TUNING.SPRING_GROWTH_MODIFIER or TUNING.ROCKY_SPAWN_DELAY, TUNING.ROCKY_SPAWN_VAR)
+    local spawndelay = SpringGrowthMod(TUNING.ROCKY_SPAWN_DELAY, season == SEASONS.SPRING)
+    inst.components.periodicspawner:SetRandomTimes(spawndelay, TUNING.ROCKY_SPAWN_VAR)
 end
 
 local function fn()

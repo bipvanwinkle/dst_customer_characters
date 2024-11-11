@@ -199,6 +199,7 @@ local function fn()
     inst.entity:AddNetwork()
 
     inst:AddTag("veggie")
+    inst:AddTag("light")
 
     MakeInventoryPhysics(inst)
 
@@ -217,6 +218,9 @@ local function fn()
     inst._fade:set(FADE_FRAMES * 2 + 1)
 
     MakeInventoryFloatable(inst, "med", 0.1, 0.78)
+
+    inst.scrapbook_anim = "idle_day"
+    inst.scrapbook_specialinfo = "PUMPKINLANTERN"
 
     inst.entity:SetPristine()
 

@@ -172,6 +172,8 @@ local states=
             inst.AnimState:PlayAnimation("death")
             inst.components.locomotor:StopMoving()
             inst.components.lootdropper:DropLoot(Vector3(inst.Transform:GetWorldPosition()))
+
+            RemovePhysicsColliders(inst)
         end,
 
     },
@@ -364,7 +366,7 @@ local states=
             if inst.surfacetime then
                 if not inst.surfacelocation then
                     if not inst.searchrange then 
-                        inst.searchrange = 15 + (math.random()*5)
+                        inst.searchrange = 15 + (math.random()*5) -- Keep in sync with grassgator [GGRANGECHECK]
                     end
                     inst.surfacelocation = inst.findnewshallowlocation(inst, inst.searchrange)
                     inst.searchrange = inst.searchrange + 8

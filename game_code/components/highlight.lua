@@ -79,26 +79,32 @@ function Highlight:OnUpdate(dt)
 end
 
 function Highlight:ApplyColour()
-    if self.inst.AnimState ~= nil then
-        local r = (self.highlight_add_colour_red or 0) + (self.base_add_colour_red or 0) + (self.flash_val or 0)
-        local g = (self.highlight_add_colour_green or 0) + (self.base_add_colour_green or 0) + (self.flash_val or 0)
-        local b = (self.highlight_add_colour_blue or 0) + (self.base_add_colour_blue or 0) + (self.flash_val or 0)
+	local r = (self.highlight_add_colour_red or 0) + (self.base_add_colour_red or 0) + (self.flash_val or 0)
+	local g = (self.highlight_add_colour_green or 0) + (self.base_add_colour_green or 0) + (self.flash_val or 0)
+	local b = (self.highlight_add_colour_blue or 0) + (self.base_add_colour_blue or 0) + (self.flash_val or 0)
+	if self.inst.AnimState then
         self.inst.AnimState:SetHighlightColour(r, g, b, 0)
-        if self.inst.highlightchildren ~= nil then
-            for i, v in ipairs(self.inst.highlightchildren) do
-                v.AnimState:SetHighlightColour(r, g, b, 0)
-            end
-        end
     end
+	if self.inst.highlightchildren then
+		for i, v in ipairs(self.inst.highlightchildren) do
+			v.AnimState:SetHighlightColour(r, g, b, 0)
+		end
+	end
 end
 
 function Highlight:Highlight(r, g, b)
     self.highlit = true
 
     if self.inst:IsValid() and self.inst:HasTag("player") or CanEntitySeeTarget(ThePlayer, self.inst) then
-        self.highlight_add_colour_red = r or .2
-        self.highlight_add_colour_green = g or .2
-        self.highlight_add_colour_blue = b or .2
+        local r2, g2, b2
+        if self.inst.highlightoverride then
+            r2, g2, b2 = self.inst.highlightoverride[1], self.inst.highlightoverride[2], self.inst.highlightoverride[3]
+        else
+            r2, g2, b2 = .2, .2, .2
+        end
+        self.highlight_add_colour_red = r or r2
+        self.highlight_add_colour_green = g or g2
+        self.highlight_add_colour_blue = b or b2
     else
         self.highlight_add_colour_red = nil
         self.highlight_add_colour_green = nil
@@ -122,8 +128,10 @@ function Highlight:UnHighlight()
 end
 
 function Highlight:OnRemoveFromEntity()
-    if self.inst:IsValid() and self.inst.AnimState ~= nil then
-        self.inst.AnimState:SetHighlightColour()
+	if self.inst:IsValid() then
+		if self.inst.AnimState then
+			self.inst.AnimState:SetHighlightColour()
+		end
         if self.inst.highlightchildren ~= nil then
             for i, v in ipairs(self.inst.highlightchildren) do
                 v.AnimState:SetHighlightColour()

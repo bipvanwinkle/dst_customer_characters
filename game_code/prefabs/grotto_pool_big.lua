@@ -154,9 +154,17 @@ local function poolfn()
     -- From watersource component
     inst:AddTag("watersource")
 
+    inst.scrapbook_specialinfo = "GROTTOPOOL"
+
+    inst.scrapbook_build = "moonglass_bigwaterfall"
+    inst.scrapbook_bank  = "moonglass_bigwaterfall"
+    inst.scrapbook_anim   = "water_big"
+
+    inst.scrapbook_adddeps = { "moonglass" }
+    
     inst.no_wet_prefix = true
 
-    inst:SetDeployExtraSpacing(2)
+	inst:SetDeploySmartRadius(5)
 
     if not TheNet:IsDedicated() then
         -- Register into the waterfall sound system.

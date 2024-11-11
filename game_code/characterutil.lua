@@ -114,7 +114,7 @@ function GetKilledByFromMorgueRow(data)
     end
 
     local killed_by =
-        (data.killed_by == "nil" and (data.character == "waxwell" and "charlie" or "darkness")) or
+        (data.killed_by == "nil" and ((data.character == "waxwell" or data.character == "winona") and "charlie" or "darkness")) or
         (data.killed_by == "unknown" and "shenanigans") or
         (data.killed_by == "moose" and ((data.morgue_random or math.random()) < .5 and "moose1" or "moose2")) or
         data.killed_by
@@ -122,5 +122,45 @@ function GetKilledByFromMorgueRow(data)
     killed_by = STRINGS.NAMES[string.upper(killed_by)] or STRINGS.NAMES.SHENANIGANS
 
     return killed_by:gsub("(%a)([%w_']*)", tchelper)
+end
+
+function GetUniquePotentialCharacterStartingInventoryItems(character, with_bonus_items)
+    local inv_item_list = (TUNING.GAMEMODE_STARTING_ITEMS[TheNet:GetServerGameMode()] or TUNING.GAMEMODE_STARTING_ITEMS.DEFAULT)[string.upper(character)]
+    if inv_item_list then
+        -- NOTES(JBK): Do a shallowcopy to not edit the base starting items tables from TUNING.
+        inv_item_list = shallowcopy(inv_item_list)
+    else
+        inv_item_list = {}
+    end
+
+    if with_bonus_items then
+        -- NOTES(JBK): Seasonal items could be added onto from mods iterate always and make it static by ordering alphabetically.
+        for _, season in orderedPairs(SEASONS) do
+            local extra_item_list = TUNING.EXTRA_STARTING_ITEMS[season]
+            if extra_item_list then
+                for _, v in ipairs(extra_item_list) do
+                    table.insert(inv_item_list, v)
+                end
+            end
+            local seasonal_item_list = TUNING.SEASONAL_STARTING_ITEMS[season]
+            if seasonal_item_list then
+                for _, v in ipairs(seasonal_item_list) do
+                    table.insert(inv_item_list, v)
+                end
+            end
+        end
+    end
+
+    -- NOTES(JBK): Remove duplicates we only want single instances.
+    local inv_item_list_no_dupes, inv_item_list_unique = {}, {}
+    for _, v in ipairs(inv_item_list) do
+        if inv_item_list_unique[v] == nil then
+            inv_item_list_unique[v] = true
+            table.insert(inv_item_list_no_dupes, v)
+        end
+    end
+    inv_item_list = inv_item_list_no_dupes
+
+    return inv_item_list
 end
 

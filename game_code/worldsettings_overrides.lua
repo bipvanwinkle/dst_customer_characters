@@ -1,4 +1,5 @@
- function OverrideTuningVariables(tuning)
+-- NOTES(JBK): Fix in here for Missing WorldSettings_Override for customization option error string.
+function OverrideTuningVariables(tuning)
     if tuning ~= nil then
         for k, v in pairs(tuning) do
             if BRANCH == "dev" then
@@ -313,28 +314,28 @@ local applyoverrides_pre = {
             rare = {
                 MALBATROSS_SPAWNDELAY_BASE = TUNING.TOTAL_DAY_TIME * 20,
                 MALBATROSS_SPAWNDELAY_RANDOM = TUNING.TOTAL_DAY_TIME * 10,
-                MALBATROSS_HOOKEDFISH_SUMMONCHANCE = 0.05,
-                MALBATROSS_SHOAL_PERCENTAGE_TO_TEST = 0.125,
+                MALBATROSS_HOOKEDFISH_SUMMONCHANCE = 0.15,
+                MALBATROSS_SHOAL_PERCENTAGE_TO_TEST = 0.25,
             },
             --[[
             default = {
                 MALBATROSS_SPAWNDELAY_BASE = TUNING.TOTAL_DAY_TIME * 10,
                 MALBATROSS_SPAWNDELAY_RANDOM = TUNING.TOTAL_DAY_TIME * 5,
-                MALBATROSS_HOOKEDFISH_SUMMONCHANCE = 0.1,
-                MALBATROSS_SHOAL_PERCENTAGE_TO_TEST = 0.25,
+                MALBATROSS_HOOKEDFISH_SUMMONCHANCE = 0.3,
+                MALBATROSS_SHOAL_PERCENTAGE_TO_TEST = 0.5,
                 SPAWN_MALBATROSS = true,
             },
             --]]
             often = {
                 MALBATROSS_SPAWNDELAY_BASE = TUNING.TOTAL_DAY_TIME * 8,
                 MALBATROSS_SPAWNDELAY_RANDOM = TUNING.TOTAL_DAY_TIME * 4,
-                MALBATROSS_HOOKEDFISH_SUMMONCHANCE = 0.2,
-                MALBATROSS_SHOAL_PERCENTAGE_TO_TEST = 0.5,
+                MALBATROSS_HOOKEDFISH_SUMMONCHANCE = 0.6,
+                MALBATROSS_SHOAL_PERCENTAGE_TO_TEST = 0.75,
             },
             always = {
                 MALBATROSS_SPAWNDELAY_BASE = TUNING.TOTAL_DAY_TIME * 4,
                 MALBATROSS_SPAWNDELAY_RANDOM = TUNING.TOTAL_DAY_TIME * 2,
-                MALBATROSS_HOOKEDFISH_SUMMONCHANCE = 0.4,
+                MALBATROSS_HOOKEDFISH_SUMMONCHANCE = 0.9,
                 MALBATROSS_SHOAL_PERCENTAGE_TO_TEST = 1,
             },
         }
@@ -465,6 +466,72 @@ local applyoverrides_pre = {
             },
             always = {
                 EYEOFTERROR_SPAWNDELAY = TUNING.TOTAL_DAY_TIME * 5,
+            },
+        }
+        OverrideTuningVariables(tuning_vars[difficulty])
+    end,
+    daywalker = function(difficulty)
+        local tuning_vars = {
+            never = {
+                SPAWN_DAYWALKER = false,
+            },
+            rare = {
+                DAYWALKER_RESPAWN_DAYS_COUNT = 20,
+            },
+            --[[
+            default = {
+                DAYWALKER_RESPAWN_DAYS_COUNT = 10,
+            },
+            --]]
+            often = {
+                DAYWALKER_RESPAWN_DAYS_COUNT = 7,
+            },
+            always = {
+                DAYWALKER_RESPAWN_DAYS_COUNT = 1,
+            },
+        }
+        OverrideTuningVariables(tuning_vars[difficulty])
+    end,
+    daywalker2 = function(difficulty)
+        local tuning_vars = {
+            never = {
+                SPAWN_DAYWALKER = false,
+            },
+            rare = {
+                DAYWALKER_RESPAWN_DAYS_COUNT = 20,
+            },
+            --[[
+            default = {
+                DAYWALKER_RESPAWN_DAYS_COUNT = 10,
+            },
+            --]]
+            often = {
+                DAYWALKER_RESPAWN_DAYS_COUNT = 7,
+            },
+            always = {
+                DAYWALKER_RESPAWN_DAYS_COUNT = 1,
+            },
+        }
+        OverrideTuningVariables(tuning_vars[difficulty])
+    end,
+    sharkboi = function(difficulty)
+        local tuning_vars = {
+            never = {
+                SPAWN_SHARKBOI = false,
+            },
+            rare = {
+                SHARKBOI_ARENA_COOLDOWN_DAYS = 40 * TUNING.TOTAL_DAY_TIME,
+            },
+            --[[
+            default = {
+                SHARKBOI_ARENA_COOLDOWN_DAYS = 20 * TUNING.TOTAL_DAY_TIME,
+            },
+            --]]
+            often = {
+                SHARKBOI_ARENA_COOLDOWN_DAYS = 7 * TUNING.TOTAL_DAY_TIME,
+            },
+            always = {
+                SHARKBOI_ARENA_COOLDOWN_DAYS = 1 * TUNING.TOTAL_DAY_TIME,
             },
         }
         OverrideTuningVariables(tuning_vars[difficulty])
@@ -616,6 +683,52 @@ local applyoverrides_pre = {
             },
             always = {
                 MOLEBAT_ALLY_COOLDOWN = TUNING.TOTAL_DAY_TIME / 2,
+            },
+        }
+        OverrideTuningVariables(tuning_vars[difficulty])
+    end,
+    itemmimics = function(difficulty)
+        local tuning_vars =
+        {
+            never = {
+                ITEMMIMIC_CAP = 0,
+            },
+            few = {
+                ITEMMIMIC_CAP = 5,
+            },
+            --[[
+            default = {
+                ITEMMIMIC_CAP = 10,
+            },
+            --]]
+            many = {
+                ITEMMIMIC_CAP = 20,
+            },
+            always = {
+                ITEMMIMIC_CAP = 40,
+            },
+        }
+        OverrideTuningVariables(tuning_vars[difficulty])
+    end,
+    chest_mimics = function(difficulty)
+        local tuning_vars =
+        {
+            never = {
+                CHEST_MIMIC_CHANCE = 0.00,
+            },
+            few = {
+                CHEST_MIMIC_CHANCE = 0.165,
+            },
+            --[[
+            default = {
+                CHEST_MIMIC_CHANCE = 0.33,
+            },
+            --]]
+            many = {
+                CHEST_MIMIC_CHANCE = 0.66,
+            },
+            always = {
+                CHEST_MIMIC_CHANCE = 1.00,
             },
         }
         OverrideTuningVariables(tuning_vars[difficulty])
@@ -958,10 +1071,10 @@ local applyoverrides_pre = {
                     ["full"] = 0,
                 },
                 SQUID_CHANCE = {
-                    ["new"] = 0.1,
-                    ["quarter"] = 0.05,
-                    ["half"] = 0.025,
-                    ["threequarter"] = 0.0125,
+                    ["new"] = 0.125,
+                    ["quarter"] = 0.065,
+                    ["half"] = 0.03,
+                    ["threequarter"] = 0.015,
                     ["full"] = 0,
                 },
             },
@@ -977,10 +1090,10 @@ local applyoverrides_pre = {
                     ["full"] = 0,
                 },
                 SQUID_CHANCE = {
-                    ["new"] = 0.2,
-                    ["quarter"] = 0.1,
-                    ["half"] = 0.05,
-                    ["threequarter"] = 0.025,
+                    ["new"] = 0.25,
+                    ["quarter"] = 0.125,
+                    ["half"] = 0.065,
+                    ["threequarter"] = 0.03,
                     ["full"] = 0,
                 },
             },
@@ -996,10 +1109,10 @@ local applyoverrides_pre = {
                     ["full"] = 0,
                 },
                 SQUID_CHANCE = {
-                    ["new"] = 0.4,
-                    ["quarter"] = 0.2,
-                    ["half"] = 0.1,
-                    ["threequarter"] = 0.05,
+                    ["new"] = 0.5,
+                    ["quarter"] = 0.25,
+                    ["half"] = 0.125,
+                    ["threequarter"] = 0.065,
                     ["full"] = 0,
                 },
             },
@@ -1014,11 +1127,11 @@ local applyoverrides_pre = {
                     ["full"] = 2,
                 },
                 SQUID_CHANCE = {
-                    ["new"] = 0.8,
-                    ["quarter"] = 0.4,
-                    ["half"] = 0.2,
-                    ["threequarter"] = 0.1,
-                    ["full"] = 0.05,
+                    ["new"] = 0.95,
+                    ["quarter"] = 0.5,
+                    ["half"] = 0.25,
+                    ["threequarter"] = 0.125,
+                    ["full"] = 0.065,
                 },
             },
         }
@@ -1846,21 +1959,21 @@ local applyoverrides_pre = {
                 GNARWAIL_TEST_RADIUS = 0,
             },
             few = {
-                GNARWAIL_SPAWN_CHANCE = 0.0375,
+                GNARWAIL_SPAWN_CHANCE = 0.05,
                 GNARWAIL_TEST_RADIUS = 150,
             },
             --[[
             default = {
-                GNARWAIL_SPAWN_CHANCE = 0.075,
+                GNARWAIL_SPAWN_CHANCE = 0.1,
                 GNARWAIL_TEST_RADIUS = 100,
             },
             --]]
             many = {
-                GNARWAIL_SPAWN_CHANCE = 0.15,
+                GNARWAIL_SPAWN_CHANCE = 0.2,
                 GNARWAIL_TEST_RADIUS = 75,
             },
             always = {
-                GNARWAIL_SPAWN_CHANCE = 0.3,
+                GNARWAIL_SPAWN_CHANCE = 0.4,
                 GNARWAIL_TEST_RADIUS = 50,
             },
         }
@@ -1905,6 +2018,30 @@ local applyoverrides_pre = {
                 SCHOOL_SPAWNER_MAX_FISH = 15,
                 SCHOOL_SPAWNER_BLOCKER_MOD = 1/1, -- 3 or more blockers will prevent spawning
                 SCHOOL_SPAWNER_BLOCKER_LIFETIME = TUNING.TOTAL_DAY_TIME / 4,
+            },
+        }
+        OverrideTuningVariables(tuning_vars[difficulty])
+    end,
+    otters_setting = function(difficulty)
+        local tuning_vars =
+        {
+            never = {
+                OTTERDEN_ENABLED = false,
+            },
+            few = {
+                OTTERDEN_REGEN_PERIOD = TUNING.TOTAL_DAY_TIME * 10,
+            },
+            --[[
+            default = {
+                OTTERDEN_REGEN_PERIOD = TUNING.TOTAL_DAY_TIME * 6,
+                OTTERDEN_ENABLED = true,
+            },
+            --]]
+            many = {
+                OTTERDEN_REGEN_PERIOD = TUNING.TOTAL_DAY_TIME * 3,
+            },
+            always = {
+                OTTERDEN_REGEN_PERIOD = TUNING.TOTAL_DAY_TIME * 1,
             },
         }
         OverrideTuningVariables(tuning_vars[difficulty])
@@ -2274,6 +2411,7 @@ local applyoverrides_pre = {
         }
         OverrideTuningVariables(tuning_vars[difficulty])
     end,
+    -- TODO(JBK): cave_banana_tree settings
     saltstack_regrowth = function(difficulty)
         local tuning_vars =
         {
@@ -2803,6 +2941,115 @@ local applyoverrides_pre = {
         }
         OverrideTuningVariables(tuning_vars[difficulty])
     end,
+    rifts_enabled = function(difficulty)
+        local tuning_vars = {
+            never = {
+                SPAWN_RIFTS = 0
+            },
+            --[[
+            default = {
+                SPAWN_RIFTS = 1,
+            },
+            ]]
+            always = {
+                SPAWN_RIFTS = 2,
+            },
+        }
+        OverrideTuningVariables(tuning_vars[difficulty])
+    end,
+    rifts_frequency = function(difficulty)
+        local tuning_vars =
+        {
+            never = {
+                RIFTS_SPAWNDELAY = NEVER_TIME,
+            },
+            rare = {
+                RIFTS_SPAWNDELAY = 12 * TUNING.TOTAL_DAY_TIME,
+            },
+            --[[default = {
+                RIFTS_SPAWNDELAY = 5 * TUNING.TOTAL_DAY_TIME,
+            },]]
+            often = {
+                RIFTS_SPAWNDELAY = TUNING.TOTAL_DAY_TIME,
+            },
+            always = {
+                RIFTS_SPAWNDELAY = TUNING.SEG_TIME,
+            },
+        }
+        OverrideTuningVariables(tuning_vars[difficulty])
+    end,
+    rifts_enabled_cave = function(difficulty)
+        local tuning_vars = {
+            never = {
+                SPAWN_RIFTS = 0
+            },
+            --[[
+            default = {
+                SPAWN_RIFTS = 1,
+            },
+            ]]
+            always = {
+                SPAWN_RIFTS = 2,
+            },
+        }
+        OverrideTuningVariables(tuning_vars[difficulty])
+    end,
+    rifts_frequency_cave = function(difficulty)
+        local tuning_vars =
+        {
+            never = {
+                RIFTS_SPAWNDELAY = NEVER_TIME,
+            },
+            rare = {
+                RIFTS_SPAWNDELAY = 12 * TUNING.TOTAL_DAY_TIME,
+            },
+            --[[default = {
+                RIFTS_SPAWNDELAY = 5 * TUNING.TOTAL_DAY_TIME,
+            },]]
+            often = {
+                RIFTS_SPAWNDELAY = TUNING.TOTAL_DAY_TIME,
+            },
+            always = {
+                RIFTS_SPAWNDELAY = TUNING.SEG_TIME,
+            },
+        }
+        OverrideTuningVariables(tuning_vars[difficulty])
+    end,
+    lunarhail_frequency = function(difficulty)
+        local tuning_vars =
+        {
+            never = {
+                LUNARHAIL_EVENT_COOLDOWN = NEVER_TIME,
+            },
+            rare = {
+                LUNARHAIL_EVENT_COOLDOWN = 25 * TUNING.TOTAL_DAY_TIME,
+            },
+            --[[default = {
+                LUNARHAIL_EVENT_COOLDOWN = 10 * TUNING.TOTAL_DAY_TIME,
+            },]]
+            often = {
+                LUNARHAIL_EVENT_COOLDOWN = 5 * TUNING.TOTAL_DAY_TIME,
+            },
+            always = {
+                LUNARHAIL_EVENT_COOLDOWN = 1,
+            },
+        }
+        OverrideTuningVariables(tuning_vars[difficulty])
+    end,
+    acidrain_enabled = function(difficulty)
+        local tuning_vars =
+        {
+            none = {
+                ACIDRAIN_ENALBED = false
+            },
+            --[[
+            always = {
+                ACIDRAIN_ENALBED = true,
+            },
+            ]]
+        }
+        OverrideTuningVariables(tuning_vars[difficulty])
+    end,
 
     --survivors
 	extrastartingitems = function(difficulty)
@@ -3220,6 +3467,11 @@ local applyoverrides_post = {
             TheWorld:PushEvent("hounded_setdifficulty", difficulty)
         end
     end,
+    wormattacks_boss = function(difficulty)
+        if TheWorld:HasTag("cave") then
+            TheWorld:PushEvent("hounds_worm_boss_setdifficulty", difficulty)
+        end
+    end,     
 	autumn = function(difficulty)
 		if difficulty == "random" then
 			TheWorld:PushEvent("ms_setseasonlength", {season = "autumn", length = GetRandomItem(SEASON_FRIENDLY_LENGTHS), random = true})
@@ -3372,6 +3624,18 @@ local applyoverrides_post = {
         TheWorld:PushEvent("ms_setworldsetting", {setting = "reset_time", value = reset_time})
         TheWorld:PushEvent("ms_setworldresettime", reset_time)
     end,
+    rifts_frequency = function(difficulty)
+        TheWorld:PushEvent("rifts_setdifficulty", difficulty)
+    end,
+    rifts_enabled = function(difficulty)
+        TheWorld:PushEvent("rifts_settingsenabled", difficulty)
+    end,
+    rifts_frequency_cave = function(difficulty)
+        TheWorld:PushEvent("rifts_setdifficulty", difficulty)
+    end,
+    rifts_enabled_cave = function(difficulty)
+        TheWorld:PushEvent("rifts_settingsenabled_cave", difficulty)
+    end,   
 }
 
 local applyoverrides_sync = {

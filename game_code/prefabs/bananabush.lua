@@ -155,6 +155,7 @@ local function fn()
     inst.entity:AddMiniMapEntity()
     inst.entity:AddNetwork()
 
+	inst:SetDeploySmartRadius(DEPLOYSPACING_RADIUS[DEPLOYSPACING.DEFAULT] / 2) --plantables deployspacing/2
     MakeSmallObstaclePhysics(inst, .1)
 
     inst:AddTag("bananabush")
@@ -165,6 +166,7 @@ local function fn()
     inst.AnimState:SetBank("bananabush")
     inst.AnimState:SetBuild("bananabush")
     inst.AnimState:PlayAnimation("idle_small", true)
+    inst.scrapbook_anim = "idle_big"
 
     MakeSnowCoveredPristine(inst)
 
@@ -201,7 +203,6 @@ local function fn()
 
     inst:AddComponent("simplemagicgrower")
     inst.components.simplemagicgrower:SetLastStage(#inst.components.growable.stages)
-
     --------------------------------------------------------------------------
     if not GetGameModeProperty("disable_transplanting") then
         inst:AddComponent("workable")
@@ -229,6 +230,8 @@ local function fn()
 
     --------------------------------------------------------------------------
     MakeHauntableIgnite(inst)
+
+    MakeWaxablePlant(inst)
 
     --------------------------------------------------------------------------
     inst.OnLoad = on_load

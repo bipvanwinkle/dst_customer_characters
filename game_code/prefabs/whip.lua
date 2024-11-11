@@ -29,12 +29,13 @@ end
 
 
 local CRACK_MUST_TAGS = { "_combat" }
-local CRACK_CANT_TAGS = { "player", "epic", "shadow", "shadowminion", "shadowchesspiece" }
+local CRACK_CANT_TAGS = { "player", "epic", "shadow", "shadowminion", "shadowchesspiece", "INLIMBO", "whip_crack_imune" }
 local function supercrack(inst)
+    local owner = inst.components.inventoryitem and inst.components.inventoryitem:GetGrandOwner() or nil
     local x,y,z = inst.Transform:GetWorldPosition()
     local ents = TheSim:FindEntities(x,y,z, TUNING.WHIP_SUPERCRACK_RANGE, CRACK_MUST_TAGS, CRACK_CANT_TAGS)
     for i,v in ipairs(ents) do
-        if v.components.combat:HasTarget() then
+        if v ~= owner and v.components.combat:HasTarget() then
             v.components.combat:DropTarget()
             if v.sg ~= nil and v.sg:HasState("hit")
                 and v.components.health ~= nil and not v.components.health:IsDead()

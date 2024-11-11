@@ -49,6 +49,8 @@ local function onunequip(inst, owner)
 
     if inst.components.fueled ~= nil then
         inst.components.fueled:StopConsuming()
+        inst.components.insulator:SetInsulation(0)
+        inst.components.heater:SetThermics(false, false)
     end
 
     owner.AnimState:Hide("ARM_carry")
@@ -58,6 +60,8 @@ end
 local function onequiptomodel(inst, owner, from_ground)
     if inst.components.fueled ~= nil then
         inst.components.fueled:StopConsuming()
+        inst.components.insulator:SetInsulation(0)
+        inst.components.heater:SetThermics(false, false)
     end
 end
 
@@ -94,6 +98,8 @@ local function fn()
     inst:AddTag("weapon")
 
     MakeInventoryFloatable(inst, "med", 0.05, 0.75)
+
+    inst.scrapbook_subcat = "tool"
 
     inst.entity:SetPristine()
 

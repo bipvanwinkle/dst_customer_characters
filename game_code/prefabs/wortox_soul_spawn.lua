@@ -52,7 +52,7 @@ local function OnUpdateProjectileTail(inst)--, dt)
         local rot = inst.Transform:GetRotation()
         tail.Transform:SetRotation(rot)
         rot = rot * DEGREES
-        local offsangle = math.random() * 2 * PI
+        local offsangle = math.random() * TWOPI
         local offsradius = (math.random() * .2 + .2) * SCALE
         local hoffset = math.cos(offsangle) * offsradius
         local voffset = math.sin(offsangle) * offsradius
@@ -184,7 +184,7 @@ end
 
 local function OnUpdateTargetTint(inst)--, dt)
     if inst._tinttarget:IsValid() then
-        local curframe = inst.AnimState:GetCurrentAnimationTime() / FRAMES
+		local curframe = inst.AnimState:GetCurrentAnimationFrame()
         if curframe < 15 then
             local k = curframe / 15
             k = k * k

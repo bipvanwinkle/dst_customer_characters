@@ -20,6 +20,12 @@ local events =
     CommonHandlers.OnDeath(),
     CommonHandlers.OnHop(),
 	CommonHandlers.OnSink(),
+    CommonHandlers.OnFallInVoid(),
+    EventHandler("cheer", function(inst, data)
+        if not (inst.sg:HasStateTag("busy") or inst.components.health:IsDead()) then
+            inst.sg:GoToState("cheer")
+        end
+    end),
 }
 
 local states =
@@ -65,10 +71,22 @@ local states =
             inst.SoundEmitter:PlaySound("dontstarve/creatures/bunnyman/death")
             inst.AnimState:PlayAnimation("death")
             inst.Physics:Stop()
-            RemovePhysicsColliders(inst)
-            inst.causeofdeath = data ~= nil and data.afflicter or nil
-            inst.components.lootdropper:DropLoot(inst:GetPosition())
+            inst.causeofdeath = data ~= nil and data.afflicter or nil            
+
+            if not inst.shadowthrall_parasite_hosted_death or not TheWorld.components.shadowparasitemanager then
+                RemovePhysicsColliders(inst)
+                inst.components.lootdropper:DropLoot(inst:GetPosition())
+            end            
         end,
+
+        events =
+        {
+            EventHandler("animover", function(inst)
+                if inst.shadowthrall_parasite_hosted_death and TheWorld.components.shadowparasitemanager then
+                    TheWorld.components.shadowparasitemanager:ReviveHosted(inst)
+                end
+            end),
+        },        
     },
 
     State{
@@ -164,6 +182,39 @@ local states =
             end),
         },
     },
+    State{
+        name = "cheer",
+        tags = { "busy" },
+
+        onenter = function(inst)
+            inst.Physics:Stop()
+            CommonHandlers.UpdateHitRecoveryDelay(inst)
+            inst.AnimState:PlayAnimation("idle_happy")
+            inst.SoundEmitter:PlaySound("dontstarve/creatures/bunnyman/happy")
+        end,
+
+        events =
+        {
+            EventHandler("animover", function(inst)
+                inst.sg:GoToState("idle")
+            end),
+        },
+    },
+
+    State{
+        name = "parasite_revive",
+        tags = {"busy"},
+
+        onenter = function(inst)
+            inst.AnimState:PlayAnimation("parasite_death_pst")
+            inst.Physics:Stop()
+        end,
+
+        events=
+        {
+            EventHandler("animover", function(inst) inst.sg:GoToState("idle") end ),
+        },
+    },    
 }
 
 CommonStates.AddWalkStates(states, {
@@ -208,6 +259,7 @@ CommonStates.AddFrozenStates(states)
 CommonStates.AddSimpleActionState(states, "pickup", "pig_pickup", 10 * FRAMES, { "busy" })
 CommonStates.AddSimpleActionState(states, "gohome", "pig_pickup", 4 * FRAMES, { "busy" })
 CommonStates.AddHopStates(states, true, { pre = "boat_jump_pre", loop = "boat_jump_loop", pst = "boat_jump_pst"})
-CommonStates.AddSinkAndWashAsoreStates(states)
+CommonStates.AddSinkAndWashAshoreStates(states)
+CommonStates.AddVoidFallStates(states)
 
 return StateGraph("bunnyman", states, events, "idle", actionhandlers)

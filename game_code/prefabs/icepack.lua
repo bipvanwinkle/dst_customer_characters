@@ -6,16 +6,27 @@ local assets =
 
 local prefabs =
 {
-    "ash",
+
 }
 
 local function onequip(inst, owner)
-    owner.AnimState:OverrideSymbol("swap_body", "swap_icepack", "backpack")
-    owner.AnimState:OverrideSymbol("swap_body", "swap_icepack", "swap_body")
+    local skin_build = inst:GetSkinBuild()
+    if skin_build ~= nil then
+        owner:PushEvent("equipskinneditem", inst:GetSkinName())
+        owner.AnimState:OverrideItemSkinSymbol("backpack", skin_build, "backpack", inst.GUID, "swap_icepack" )
+        owner.AnimState:OverrideItemSkinSymbol("swap_body", skin_build, "swap_body", inst.GUID, "swap_icepack" )
+    else
+        owner.AnimState:OverrideSymbol("backpack", "swap_icepack", "backpack")
+        owner.AnimState:OverrideSymbol("swap_body", "swap_icepack", "swap_body")
+    end
     inst.components.container:Open(owner)
 end
 
 local function onunequip(inst, owner)
+    local skin_build = inst:GetSkinBuild()
+    if skin_build ~= nil then
+        owner:PushEvent("unequipskinneditem", inst:GetSkinName())
+    end
     owner.AnimState:ClearOverrideSymbol("swap_body")
     owner.AnimState:ClearOverrideSymbol("backpack")
     inst.components.container:Close(owner)
@@ -38,7 +49,7 @@ local function fn()
 
     MakeInventoryPhysics(inst)
 
-    inst.AnimState:SetBank("icepack")
+    inst.AnimState:SetBank("backpack1")
     inst.AnimState:SetBuild("swap_icepack")
     inst.AnimState:PlayAnimation("anim")
 
@@ -69,8 +80,6 @@ local function fn()
 
     inst:AddComponent("container")
     inst.components.container:WidgetSetup("icepack")
-    inst.components.container.skipclosesnd = true
-    inst.components.container.skipopensnd = true
 
     MakeHauntableLaunchAndDropFirstItem(inst)
 

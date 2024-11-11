@@ -1,7 +1,7 @@
 require "behaviours/wander"
 require "behaviours/chaseandattack"
 require "behaviours/doaction"
-require "behaviours/panic"
+local BrainCommon = require("brains/braincommon")
 
 local MAX_WANDER_DIST = 20
 local START_RUN_DIST = 3
@@ -13,8 +13,15 @@ local SEE_FOOD_DIST = 10
 local RUN_AWAY_DIST = 6
 local STOP_RUN_AWAY_DIST = 8
 
+local FINDFOOD_CANT_TAGS = { "INLIMBO", "outofreach" }
+
 local function FindFoodAction(inst)
-    local target = FindEntity(inst, SEE_FOOD_DIST, function(item) return inst.components.eater:CanEat(item) and item:IsOnValidGround() end)
+	local target = FindEntity(inst, SEE_FOOD_DIST,
+		function(item)
+			return inst.components.eater:CanEat(item) and item:IsOnValidGround()
+		end,
+		nil,
+		FINDFOOD_CANT_TAGS)
     if target then
         return BufferedAction(inst, target, ACTIONS.EAT)
     end
@@ -45,8 +52,8 @@ function WerePigBrain:OnStart()
     --print(self.inst, "WerePigBrain:OnStart")
     local root = PriorityNode(
     {
-        WhileNode( function() return self.inst.components.hauntable and self.inst.components.hauntable.panic end, "PanicHaunted", Panic(self.inst)),
-        WhileNode( function() return self.inst.components.health.takingfiredamage end, "OnFire", Panic(self.inst)),
+		BrainCommon.PanicTrigger(self.inst),
+        BrainCommon.IpecacsyrupPanicTrigger(self.inst),
         WhileNode(function() return not TargetIsAggressive(self.inst) end, "SafeToEat",
             DoAction(self.inst, function() return FindFoodAction(self.inst) end, "EatMeat", true)
         ),

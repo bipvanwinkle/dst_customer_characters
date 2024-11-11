@@ -84,6 +84,7 @@ local function fn()
 
     inst.MiniMapEntity:SetIcon("glommer.png")
     inst.MiniMapEntity:SetPriority(5)
+    inst.MiniMapEntity:SetCanUseCache(false)
 
     inst.AnimState:SetBank("glommer")
     inst.AnimState:SetBuild("glommer")
@@ -91,6 +92,7 @@ local function fn()
 
     inst:AddTag("glommer")
     inst:AddTag("flying")
+    inst:AddTag("lunar_aligned")
     inst:AddTag("ignorewalkableplatformdrowning")
     inst:AddTag("cattoyairborne")
 

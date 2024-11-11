@@ -81,6 +81,8 @@ local function fn()
 
     inst.MiniMapEntity:SetIcon("monkeytail.png")
     
+	inst:SetDeploySmartRadius(DEPLOYSPACING_RADIUS[DEPLOYSPACING.MEDIUM] / 2) --plantables deployspacing/2
+
     inst:AddTag("plant")
     inst:AddTag("silviculture") -- for silviculture book
 
@@ -90,6 +92,8 @@ local function fn()
     inst.AnimState:SetBank("grass")
     inst.AnimState:SetBuild("reeds_monkeytails")
     inst.AnimState:PlayAnimation("idle", true)
+
+    inst.scrapbook_specialinfo = "NEEDFERTILIZER"
     
     inst.entity:SetPristine()
     if not TheWorld.ismastersim then
@@ -97,7 +101,7 @@ local function fn()
     end
 
     ------------------------------------------------------------------------
-    inst.AnimState:SetTime(math.random() * 2)
+	inst.AnimState:SetFrame(math.random(inst.AnimState:GetCurrentAnimationNumFrames()) - 1)
     local color = 0.75 + math.random() * 0.25
     inst.AnimState:SetMultColour(color, color, color, 1)
 
@@ -140,6 +144,8 @@ local function fn()
 
     ------------------------------------------------------------------------
     MakeNoGrowInWinter(inst)
+
+    MakeWaxablePlant(inst)
 
     ------------------------------------------------------------------------
     MakeHauntableIgnite(inst)

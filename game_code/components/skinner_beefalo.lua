@@ -5,9 +5,47 @@ end,
 nil,
 {})
 
-local clothing_order = { "beef_tail", "beef_body", "beef_feet", "beef_head", "beef_horn" }
+local FACE_SWAP_SYMBOLS = -- NOTES(JBK): Keep this in sync with the skinpuppet_beefalo file. [SBMFF]
+{
+	"beefalo_beard",
+	"beefalo_eye",
+	"beefalo_jowls",
+	--"beefalo_lip_crease", -- Does not have face data use no build_short for this.
+	"beefalo_mouthmouth",
+	"beefalo_nose",
+	"beffalo_lips",
+}
+function SetBeefaloFaceSkinsOnAnim(anim_state, clothing_names, linked_beef_guid, build_short)
+    if BRANCH ~= "dev" then -- FIXME(JBK): Move out of dev when done.
+        return
+    end
+    local name = clothing_names["beef_head"]
+    if BEEFALO_CLOTHING[name] ~= nil then
+        local skin_build = GetBuildForItem(name)
+        if skin_build ~= "beefalo_head_festive" then -- FIXME(JBK): Move out of dev when done.
+            return
+        end
+        for _, symbol in ipairs(FACE_SWAP_SYMBOLS) do
+            if linked_beef_guid == nil then
+                -- nil means we're applying directly to the beefalo
+                anim_state:OverrideSkinSymbol(symbol, skin_build, symbol .. build_short)
+            else
+                --linked_beef_guid means we're applying to a player
+                anim_state:OverrideItemSkinSymbol(symbol, skin_build, symbol .. build_short, linked_beef_guid, "beefalo_build")
+            end
+        end
+        if linked_beef_guid == nil then
+            -- nil means we're applying directly to the beefalo
+            anim_state:OverrideSkinSymbol("beefalo_lip_crease", skin_build, "beefalo_lip_crease")
+        else
+            --linked_beef_guid means we're applying to a player
+            anim_state:OverrideItemSkinSymbol("beefalo_lip_crease", skin_build, "beefalo_lip_crease", linked_beef_guid, "beefalo_build")
+        end
+    end
+end
 
-function SetBeefaloSkinsOnAnim( anim_state, clothing_names, linked_beef_guid )
+local clothing_order = { "beef_tail", "beef_body", "beef_feet", "beef_head", "beef_horn" }
+function SetBeefaloSkinsOnAnim( anim_state, clothing_names, linked_beef_guid, build_short )
 	if linked_beef_guid == nil then
 		-- nil means we're applying directly to the beefalo
 
@@ -25,18 +63,20 @@ function SetBeefaloSkinsOnAnim( anim_state, clothing_names, linked_beef_guid )
 	for _,type in pairs( clothing_order ) do
 		local name = clothing_names[type]
 		if BEEFALO_CLOTHING[name] ~= nil then
-			for _,sym in pairs(BEEFALO_CLOTHING[name].symbol_overrides) do
-				anim_state:ShowSymbol(sym)
+            local skin_build = GetBuildForItem(name)
+            if BEEFALO_CLOTHING[name].symbol_overrides then
+                for _,sym in pairs(BEEFALO_CLOTHING[name].symbol_overrides) do
+                    anim_state:ShowSymbol(sym)
 
-				local skin_build = GetBuildForItem(name)
-				if linked_beef_guid == nil then
-					-- nil means we're applying directly to the beefalo
-					anim_state:OverrideSkinSymbol(sym, skin_build, sym )
-				else
-					--linked_beef_guid means we're applying to a player
-					anim_state:OverrideItemSkinSymbol(sym, skin_build, sym, linked_beef_guid, "beefalo_build" )
-				end
-			end
+                    if linked_beef_guid == nil then
+                        -- nil means we're applying directly to the beefalo
+                        anim_state:OverrideSkinSymbol(sym, skin_build, sym )
+                    else
+                        --linked_beef_guid means we're applying to a player
+                        anim_state:OverrideItemSkinSymbol(sym, skin_build, sym, linked_beef_guid, "beefalo_build" )
+                    end
+                end
+            end
 			if BEEFALO_CLOTHING[name].symbol_hides then
 				for _,sym in pairs(BEEFALO_CLOTHING[name].symbol_hides) do
 					anim_state:HideSymbol(sym)
@@ -50,7 +90,8 @@ function Skinner_Beefalo:SetClothing( name )
 	if IsValidBeefaloClothing(name) then
 		self.clothing[BEEFALO_CLOTHING[name].type] = name
 		self.inst:PushEvent("onclothingchanged",{type=BEEFALO_CLOTHING[name].type, name= name})
-		SetBeefaloSkinsOnAnim( self.inst.AnimState, self.clothing )
+		
+		self.inst:ApplyBuildOverrides(self.inst.AnimState)
 	end
 end
 
@@ -64,8 +105,24 @@ function Skinner_Beefalo:GetClothing()
 	}
 end
 
-function ClearClothing( anim_state, clothing_names )
-	for _,name in pairs(clothing_names) do
+function Skinner_Beefalo:IsClothingDifferent(newclothes)
+    newclothes = newclothes or {}
+    local oldclothes = self:GetClothing()
+    for k, v in pairs(oldclothes) do
+        if (newclothes[k] or "") ~= v then
+            return true
+        end
+    end
+    for k, v in pairs(newclothes) do
+        if (oldclothes[k] or "") ~= v then
+            return true
+        end
+    end
+    return false
+end
+
+function Skinner_Beefalo:HideAllClothing(anim_state)
+	for _,name in pairs(self.clothing) do
 		if name ~= nil and name ~= "" and BEEFALO_CLOTHING[name] ~= nil then
 			for _,sym in pairs(BEEFALO_CLOTHING[name].symbol_overrides) do
 				anim_state:ClearOverrideSymbol(sym)
@@ -74,16 +131,13 @@ function ClearClothing( anim_state, clothing_names )
 	end
 end
 
-function Skinner_Beefalo:HideAllClothing(anim_state)
-	ClearClothing(anim_state, self.clothing)
-end
-
 function Skinner_Beefalo:ClearAllClothing()
 	for type,_ in pairs(self.clothing) do
 		self.clothing[type] = ""
 		self.inst:PushEvent("onclothingchanged",{type=type, name= ""})
 	end
-	SetBeefaloSkinsOnAnim( self.inst.AnimState, self.clothing )
+
+	self.inst:ApplyBuildOverrides(self.inst.AnimState)
 end
 
 function Skinner_Beefalo:ClearClothing(type)
@@ -92,7 +146,7 @@ function Skinner_Beefalo:ClearClothing(type)
 end
 
 function Skinner_Beefalo:ApplyTargetSkins(skins,player)
-assert(player)
+	assert(player)
 
 	local doer_userid = player.userid
 
@@ -121,9 +175,9 @@ function Skinner_Beefalo:reloadclothing(clothing)
         for type,name in pairs(self.clothing)do
         	self.inst:PushEvent("onclothingchanged",{type=type, name= name})
         end
-        SetBeefaloSkinsOnAnim( self.inst.AnimState, self.clothing )
-    end
 
+        self.inst:ApplyBuildOverrides(self.inst.AnimState)
+    end
 end
 
 return Skinner_Beefalo

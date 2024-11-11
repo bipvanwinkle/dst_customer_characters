@@ -70,6 +70,7 @@ local function OnDeploy(inst, pt, deployer)
     local moontree = SpawnPrefab("moonbutterfly_sapling")
     if moontree then
         moontree.Transform:SetPosition(pt:Get())
+        moontree.SoundEmitter:PlaySound("dontstarve/wilson/plant_tree")
         inst.components.stackable:Get():Remove()
     end
 end
@@ -111,7 +112,7 @@ local function fn()
     inst.entity:AddNetwork()
 
     --Initialize physics
-    MakeTinyFlyingCharacterPhysics(inst, 1, .2)
+    MakeTinyFlyingCharacterPhysics(inst, 1, .5)
 
     inst.Transform:SetTwoFaced()
 
@@ -191,7 +192,7 @@ local function fn()
     inst:AddComponent("deployable")
     inst.components.deployable.ondeploy = OnDeploy
     inst.components.deployable:SetDeployMode(DEPLOYMODE.PLANT)
-    inst.components.deployable:SetDeploySpacing(TUNING.MOON_TREE_DEPLOY_SPACING)
+	inst.components.deployable:SetDeploySpacing(DEPLOYSPACING.PLACER_DEFAULT)
 
     MakeHauntablePanicAndIgnite(inst)
 

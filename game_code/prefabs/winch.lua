@@ -108,7 +108,6 @@ local function turn_off_boat_drag(inst)
 end
 
 local function turn_on_boat_drag(inst, boat, duration)
-	boat = boat
 	if boat == nil then
 		return nil
 	end
@@ -242,6 +241,11 @@ local function MakeEmpty(inst)
 	end
 
 	inst.AnimState:ClearOverrideSymbol("swap_body")
+
+	if inst.pumpkincarving_fx then
+		inst.pumpkincarving_fx:Remove()
+		inst.pumpkincarving_fx = nil
+	end
 end
 
 local function OnActivate(inst, doer)
@@ -261,7 +265,7 @@ local function CanActivate(inst, doer)
 	return inst:HasTag("winch_ready")
 end
 
-local function onitemget(inst, data, no_CHEVO_event)
+local function onitemget(inst, data)
 	local item = data.item
 	inst.components.shelf:PutItemOnShelf(item)
 
@@ -273,9 +277,20 @@ local function onitemget(inst, data, no_CHEVO_event)
 		end
 	end
 
-	if not no_CHEVO_event then
-		inst:DoTaskInTime(0,function() TheWorld:PushEvent("CHEVO_heavyobject_winched",{target=inst,doer=nil}) end)
+	if inst.pumpkincarving_fx then
+		inst.pumpkincarving_fx:Remove()
+		inst.pumpkincarving_fx = nil
 	end
+	if item.components.pumpkincarvable then
+		local cutdata = item.components.pumpkincarvable:GetCutData()
+		if string.len(cutdata) > 0 then
+			inst.pumpkincarving_fx = SpawnPrefab("pumpkincarving_swap_fx")
+			inst.pumpkincarving_fx.entity:SetParent(inst.entity)
+			inst.pumpkincarving_fx:SetCutData(cutdata)
+		end
+	end
+
+    inst:DoTaskInTime(0,function() TheWorld:PushEvent("CHEVO_heavyobject_winched",{target=inst,doer=nil}) end)
 end
 
 local function onitemlose(inst, data)
@@ -398,10 +413,19 @@ local function OnLoadPostPass(inst)
 					inst.AnimState:OverrideSymbol("swap_body", item.components.symbolswapdata.build, item.components.symbolswapdata.symbol)
 				end
 			end
+
+			if item.components.pumpkincarvable then
+				local cutdata = item.components.pumpkincarvable:GetCutData()
+				if string.len(cutdata) > 0 then
+					inst.pumpkincarving_fx = SpawnPrefab("pumpkincarving_swap_fx")
+					inst.pumpkincarving_fx.entity:SetParent(inst.entity)
+					inst.pumpkincarving_fx:SetCutData(cutdata)
+				end
+			end
 		end
 
-		if inst:GetCurrentPlatform() ~= nil then
-			if inst.components.winch ~= nil then
+		if inst.components.winch ~= nil then
+			if inst:GetCurrentPlatform() ~= nil then
 				if inst.components.winch.is_static then
 					if inst.components.winch.line_length > 0 then
 						inst.components.winch:StartRaising()
@@ -415,6 +439,9 @@ local function OnLoadPostPass(inst)
 						inst.components.winch:FullyLowered()
 					end
 				end
+
+			elseif not inst:HasTag("lowered_ground") then
+				inst.components.winch:FullyRaised()
 			end
 		end
 
@@ -433,6 +460,8 @@ local function fn()
     inst.AnimState:SetBank("boat_winch")
 	inst.AnimState:SetBuild("boat_winch")
 	inst.AnimState:PlayAnimation("idle", true)
+
+	inst:SetDeploySmartRadius(0.75) --recipe min_spacing/2
 
     inst:AddTag("structure")
 

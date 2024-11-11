@@ -153,6 +153,8 @@ local function fn()
     inst.AnimState:PlayAnimation("idle")
     inst.AnimState:SetFinalOffset(1)
 
+	inst:SetDeploySmartRadius(0) --item has special NONE spacing
+
     inst:AddTag("sign")
 
     --drawable (from drawable component) added to pristine state for optimization
@@ -217,6 +219,8 @@ local function MakeItem(name, drawn)
         end
 
         MakeInventoryFloatable(inst, "med", 0.05, 0.65)
+
+        inst.scrapbook_anim = "item"
 
         inst.entity:SetPristine()
 

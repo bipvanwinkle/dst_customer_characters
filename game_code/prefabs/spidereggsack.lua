@@ -13,9 +13,10 @@ local prefabs =
 
 local function ondeploy(inst, pt)
     inst.SoundEmitter:PlaySound("dontstarve/creatures/spider/spider_egg_sack")
-    local tree = SpawnPrefab("spiderden")
-    if tree ~= nil then
-        tree.Transform:SetPosition(pt:Get())
+	local den = SpawnPrefab("spiderden")
+	if den then
+		den.Transform:SetPosition(pt:Get())
+		PreventCharacterCollisionsWithPlacedObjects(den)
         inst.components.stackable:Get():Remove()
     end
 end
@@ -41,6 +42,8 @@ local function fn()
     inst:AddTag("cattoy")
 
     MakeInventoryFloatable(inst, "med", 0.05, {0.85, 0.6, 0.85})
+
+    inst.scrapbook_specialinfo = "PLANTABLE_ON"
 
     inst.entity:SetPristine()
 

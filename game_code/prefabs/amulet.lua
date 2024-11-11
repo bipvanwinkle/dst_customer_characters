@@ -26,7 +26,7 @@ local function onequip_red(inst, owner)
         owner.AnimState:OverrideSymbol("swap_body", "torso_amulets", "redamulet")
     end
 
-    inst.task = inst:DoPeriodicTask(30, healowner, nil, owner)
+    inst.task = inst:DoPeriodicTask(TUNING.REDAMULET_CONVERSION_TIME, healowner, nil, owner)
 end
 
 local function onunequip_red(inst, owner)
@@ -282,10 +282,27 @@ local function onequiptomodel_yellow(inst, owner, from_ground)
     turnoff_yellow(inst)
 end
 
-local function onfuelchanged_yellow(inst, data)
-    if data and data.percent and data.oldpercent and data.percent > data.oldpercent then
-        inst.SoundEmitter:PlaySound("dontstarve/common/nightmareAddFuel")
-    end
+local function CLIENT_PlayFuelSound(inst)
+	local parent = inst.entity:GetParent()
+	local container = parent ~= nil and (parent.replica.inventory or parent.replica.container) or nil
+	if container ~= nil and container:IsOpenedBy(ThePlayer) then
+		TheFocalPoint.SoundEmitter:PlaySound("dontstarve/common/nightmareAddFuel")
+	end
+end
+
+local function SERVER_PlayFuelSound(inst)
+	local owner = inst.components.inventoryitem.owner
+	if owner == nil then
+		inst.SoundEmitter:PlaySound("dontstarve/common/nightmareAddFuel")
+	elseif inst.components.equippable:IsEquipped() and owner.SoundEmitter ~= nil then
+		owner.SoundEmitter:PlaySound("dontstarve/common/nightmareAddFuel")
+	else
+		inst.playfuelsound:push()
+		--Dedicated server does not need to trigger sfx
+		if not TheNet:IsDedicated() then
+			CLIENT_PlayFuelSound(inst)
+		end
+	end
 end
 
 ---COMMON FUNCTIONS
@@ -303,7 +320,7 @@ local function unimplementeditem(inst)
 end
 --]]
 
-local function commonfn(anim, tag, should_sink)
+local function commonfn(anim, tag, should_sink, can_refuel)
     local inst = CreateEntity()
 
     inst.entity:AddTransform()
@@ -316,12 +333,25 @@ local function commonfn(anim, tag, should_sink)
     inst.AnimState:SetBank("amulets")
     inst.AnimState:SetBuild("amulets")
     inst.AnimState:PlayAnimation(anim)
+    inst.scrapbook_anim = anim
+
+	--shadowlevel (from shadowlevel component) added to pristine state for optimization
+	inst:AddTag("shadowlevel")
 
     if tag ~= nil then
         inst:AddTag(tag)
     end
 
     inst.foleysound = "dontstarve/movement/foley/jewlery"
+
+	if can_refuel then
+		inst.playfuelsound = net_event(inst.GUID, "amulet.playfuelsound")
+
+		if not TheWorld.ismastersim then
+			--delayed because we don't want any old events
+			inst:DoTaskInTime(0, inst.ListenForEvent, "amulet.playfuelsound", CLIENT_PlayFuelSound)
+		end
+	end
 
     if not should_sink then
         MakeInventoryFloatable(inst, "med", nil, 0.6)
@@ -345,11 +375,16 @@ local function commonfn(anim, tag, should_sink)
         inst.components.inventoryitem:SetSinks(true)
     end
 
+	inst:AddComponent("shadowlevel")
+	inst.components.shadowlevel:SetDefaultLevel(TUNING.AMULET_SHADOW_LEVEL)
+
     return inst
 end
 
 local function red()
     local inst = commonfn("redamulet", "resurrector", true)
+
+    inst.scrapbook_specialinfo = "REDAMULET"
 
     if not TheWorld.ismastersim then
         return inst
@@ -464,7 +499,7 @@ local function green()
 end
 
 local function orange()
-    local inst = commonfn("orangeamulet", "repairshortaction")
+    local inst = commonfn("orangeamulet", "repairshortaction", nil, true)
 
     if not TheWorld.ismastersim then
         return inst
@@ -484,6 +519,8 @@ local function orange()
 
     inst:AddComponent("repairable")
     inst.components.repairable.repairmaterial = MATERIALS.NIGHTMARE
+    inst.components.repairable.noannounce = true
+	inst.components.repairable.onrepaired = SERVER_PlayFuelSound
 
     MakeHauntableLaunch(inst)
 
@@ -491,7 +528,7 @@ local function orange()
 end
 
 local function yellow()
-    local inst = commonfn("yellowamulet")
+    local inst = commonfn("yellowamulet", nil, nil, true)
 
     if not TheWorld.ismastersim then
         return inst
@@ -509,7 +546,7 @@ local function yellow()
     inst.components.fueled:SetDepletedFn(inst.Remove)
     inst.components.fueled:SetFirstPeriod(TUNING.TURNON_FUELED_CONSUMPTION, TUNING.TURNON_FULL_FUELED_CONSUMPTION)
     inst.components.fueled.accepting = true
-    inst:ListenForEvent("percentusedchange", onfuelchanged_yellow)
+	inst.components.fueled:SetTakeFuelFn(SERVER_PlayFuelSound)
 
     MakeHauntableLaunch(inst)
 

@@ -54,7 +54,20 @@ function Submersible:OnRemoveFromEntity()
 end
 
 function Submersible:GetUnderwaterObject()
-	return self.inst.components.inventoryitem ~= nil and self.inst.components.inventoryitem:GetContainer() or nil
+    if self.inst.components.inventoryitem == nil then
+        return nil
+    end
+
+    local container = self.inst.components.inventoryitem:GetContainer()
+    if container == nil then
+        return nil
+    end
+
+    if not container.inst:HasTag("underwater_salvageable") then
+        return nil
+    end
+
+    return container
 end
 
 function Submersible:OnLanded()
@@ -146,7 +159,7 @@ function Submersible:Submerge()
 
 			local ind = math.random(#data.landpoints)
 			spawn_x, spawn_z = data.landpoints[ind].x, data.landpoints[ind].z
-			local random_offset = FindWalkableOffset(Vector3(spawn_x, 0, spawn_z), math.random() * 2 * PI, math.random() * 3, 8)
+			local random_offset = FindWalkableOffset(Vector3(spawn_x, 0, spawn_z), math.random() * TWOPI, math.random() * 3, 8)
 			if random_offset ~= nil then
 				spawn_x, spawn_z = spawn_x + random_offset.x, spawn_z + random_offset.z
 			end

@@ -93,7 +93,7 @@ function InvSlot:Click(stack_mod)
             end
             TheFocalPoint.SoundEmitter:PlaySound("dontstarve/HUD/click_object")
         elseif container:CanTakeItemInSlot(active_item, slot_number) then
-            if container_item.prefab == active_item.prefab and container_item.AnimState:GetSkinBuild() == active_item.AnimState:GetSkinBuild() and container_item.replica.stackable ~= nil and container:AcceptsStacks() then --active_item.prefab and container_item.skinname (this does not work on clients, so we're going to use the AnimState hack instead)
+            if container_item.prefab == active_item.prefab and container_item:StackableSkinHack(active_item) and container_item.replica.stackable ~= nil and container:AcceptsStacks() then
                 --Add active item to slot stack
                 if stack_mod and
                     active_item.replica.stackable ~= nil and
@@ -110,7 +110,9 @@ function InvSlot:Click(stack_mod)
             elseif active_item.replica.stackable ~= nil and active_item.replica.stackable:IsStack() and not container:AcceptsStacks() then
                 container:SwapOneOfActiveItemWithSlot(slot_number)
 
-            elseif container:AcceptsStacks() or not (active_item.replica.stackable ~= nil and active_item.replica.stackable:IsStack()) then
+			elseif (container:AcceptsStacks() or not (active_item.replica.stackable and active_item.replica.stackable:IsStack()))
+				and not (container_item.replica.stackable and container_item.replica.stackable:IsOverStacked())
+			then
                 --Swap active item with slot item
                 container:SwapActiveItemWithSlot(slot_number)
                 TheFocalPoint.SoundEmitter:PlaySound("dontstarve/HUD/click_object")
@@ -150,6 +152,7 @@ local function FindBestContainer(self, item, containers, exclude_containers)
     --local containerwithsameitem = nil --reused with construction containers code above
     local containerwithemptyslot = nil
     local containerwithnonstackableslot = nil
+    local containerwithlowpirority = nil
 
     for k, v in pairs(containers) do
         if exclude_containers == nil or not exclude_containers[k] then
@@ -158,7 +161,11 @@ local function FindBestContainer(self, item, containers, exclude_containers)
                 local isfull = container:IsFull()
                 if container:AcceptsStacks() then
                     if not isfull and containerwithemptyslot == nil then
-                        containerwithemptyslot = k
+                        if container.lowpriorityselection then
+                            containerwithlowpirority = k
+                        else
+                            containerwithemptyslot = k
+                        end
                     end
                     if item.replica.equippable ~= nil and container == k.replica.inventory then
                         local equip = container:GetEquippedItem(item.replica.equippable:EquipSlot())
@@ -173,7 +180,11 @@ local function FindBestContainer(self, item, containers, exclude_containers)
                     for k1, v1 in pairs(container:GetItems()) do
                         if v1.prefab == item.prefab and v1.skinname == item.skinname then
                             if v1.replica.stackable ~= nil and not v1.replica.stackable:IsFull() then
-                                return k
+                                if container.lowpriorityselection then
+                                    containerwithlowpirority = k
+                                else
+                                    return k
+                                end
                             elseif not isfull and containerwithsameitem == nil then
                                 containerwithsameitem = k
                             end
@@ -186,7 +197,7 @@ local function FindBestContainer(self, item, containers, exclude_containers)
         end
     end
 
-    return containerwithsameitem or containerwithemptyslot or containerwithnonstackableslot
+    return containerwithsameitem or containerwithemptyslot or containerwithnonstackableslot or containerwithlowpirority
 end
 
 function InvSlot:CanTradeItem()
@@ -256,9 +267,9 @@ function InvSlot:TradeItem(stack_mod)
     end
 end
 
-function InvSlot:DropItem(wholestack)
+function InvSlot:DropItem(single)
     if self.owner and self.owner.replica.inventory and self.tile and self.tile.item then
-        self.owner.replica.inventory:DropItemFromInvTile(self.tile.item, wholestack)
+		self.owner.replica.inventory:DropItemFromInvTile(self.tile.item, single)
     end
 end
 

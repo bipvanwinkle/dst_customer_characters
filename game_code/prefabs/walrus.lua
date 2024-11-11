@@ -152,6 +152,8 @@ local function create_common(build, scale, tag)
     inst.components.locomotor.runspeed = 4
     inst.components.locomotor.walkspeed = 2
 
+    inst:AddComponent("drownable") -- NOTES(JBK): At least if these will not be water aware it is better they sink than to walk over water.
+
     inst:SetStateGraph("SGwalrus")
     inst.soundgroup = "mctusk"
 
@@ -209,11 +211,14 @@ end
 local function create_little()
     local inst = create_common("walrus_baby_build", 1, "taunt_attack")
 
+    inst.scrapbook_deps = {"meat"}
+
     if not TheWorld.ismastersim then
         return inst
     end
 
     inst.soundgroup = "wee_mctusk"
+    inst.scrapbook_damage = 0
 
     inst.components.lootdropper:SetChanceLootTable('walrus_wee_loot')
 

@@ -29,7 +29,7 @@ function Oar:Row(doer, pos)
 	boat_physics:ApplyRowForce(row_dir_x, row_dir_z, self.force * character_force_mult, self.max_velocity + character_extra_max_velocity)
 
 	doer:PushEvent("rowing")
-
+	platform:PushEvent("rowed", doer)
 end
 
 function Oar:RowFail(doer)
@@ -41,7 +41,7 @@ function Oar:RowFail(doer)
     for k, v in pairs(ents) do
         local moisture = v.components.moisture
         if moisture ~= nil then
-            local waterproofness = (v.components.inventory and math.min(v.components.inventory:GetWaterproofness(),1)) or 0
+            local waterproofness = moisture:GetWaterproofness()
             moisture:DoDelta(self.fail_wetness * (1 - waterproofness))
         end
     end

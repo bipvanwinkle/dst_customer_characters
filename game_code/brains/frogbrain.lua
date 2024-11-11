@@ -2,6 +2,7 @@ require "behaviours/wander"
 require "behaviours/doaction"
 require "behaviours/chaseandattack"
 require "behaviours/standstill"
+local BrainCommon = require("brains/braincommon")
 
 local STOP_RUN_DIST = 10
 local SEE_PLAYER_DIST = 5
@@ -28,20 +29,23 @@ local FrogBrain = Class(Brain, function(self, inst)
 end)
 
 function FrogBrain:OnStart()
-
     local root = PriorityNode(
     {
-        WhileNode( function() return self.inst.components.hauntable and self.inst.components.hauntable.panic end, "PanicHaunted", Panic(self.inst)),
+		BrainCommon.PanicTrigger(self.inst),
         ChaseAndAttack(self.inst, MAX_CHASE_TIME),
         WhileNode(function() return ShouldGoHome(self.inst) end, "ShouldGoHome",
             DoAction(self.inst, function() return GoHomeAction(self.inst) end, "go home", true )),
-		WhileNode(function() return TheWorld and not TheWorld.state.isnight end, "IsNotNight",
+		WhileNode(function()
+                if self.inst.islunar then
+                    return true -- NOTES(JBK): Lunar frogs will always stay awake they do not have a sleeper component.
+                end
+                return TheWorld and not TheWorld.state.isnight
+            end, "ShouldWanderSleepTest",
 			Wander(self.inst, function() return self.inst.components.knownlocations:GetLocation("home") end, MAX_WANDER_DIST)),
 		StandStill(self.inst, function() return self.inst.sg:HasStateTag("idle") end, nil),
     }, .25)
 
     self.bt = BT(self.inst, root)
-
 end
 
 return FrogBrain

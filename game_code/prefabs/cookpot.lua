@@ -244,6 +244,7 @@ local function cookpot_common(inst)
     inst.AnimState:SetBank("cook_pot")
     inst.AnimState:SetBuild("cook_pot")
     inst.AnimState:PlayAnimation("idle_empty")
+    inst.scrapbook_anim = "idle_empty"
     inst.MiniMapEntity:SetIcon("cookpot.png")
 end
 
@@ -255,6 +256,7 @@ local function cookpot_archive(inst)
     inst.AnimState:SetBank("cook_pot")
     inst.AnimState:SetBuild("cookpot_archive")
     inst.AnimState:PlayAnimation("idle_empty")
+    inst.scrapbook_anim = "idle_empty"
     inst.MiniMapEntity:SetIcon("cookpot_archive.png")
 end
 
@@ -273,6 +275,7 @@ local function MakeCookPot(name, common_postinit, master_postinit, assets, prefa
         inst.entity:AddLight()
         inst.entity:AddNetwork()
 
+		inst:SetDeploySmartRadius(1) --recipe min_spacing/2
         MakeObstaclePhysics(inst, .5)
 
         inst.Light:Enable(false)
@@ -292,6 +295,8 @@ local function MakeCookPot(name, common_postinit, master_postinit, assets, prefa
         end
 
         MakeSnowCoveredPristine(inst)
+
+        inst.scrapbook_specialinfo = "CROCKPOT"
 
         inst.entity:SetPristine()
 

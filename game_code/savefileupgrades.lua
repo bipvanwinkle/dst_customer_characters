@@ -12,6 +12,19 @@ local function FlagForRetrofitting_Forest(savedata, flag_name)
     end
 
 end
+local function FlagForRetrofitting_Cave(savedata, flag_name)
+    if savedata ~= nil and savedata.map ~= nil and savedata.map.prefab == "cave" then
+        if savedata.map.persistdata == nil then
+            savedata.map.persistdata = {}
+        end
+
+        if savedata.map.persistdata.retrofitcavemap_anr == nil then
+            savedata.map.persistdata.retrofitcavemap_anr = {}
+        end
+        savedata.map.persistdata.retrofitcavemap_anr[flag_name] = true
+    end
+
+end
 
 local t = nil
 t = {
@@ -1234,6 +1247,58 @@ t = {
             version = 5.13, -- A Little Drama - new setpieces
             fn = function(savedata)
                 FlagForRetrofitting_Forest(savedata, "retrofit_alittledrama_content")
+            end,
+        },
+
+        -- 5.14 used up during beta.
+        {
+            version = 5.141, -- Daywalker - new content
+            fn = function(savedata)
+                FlagForRetrofitting_Forest(savedata, "retrofit_daywalker_content")
+                FlagForRetrofitting_Cave(savedata, "retrofit_daywalker_content")
+            end,
+        },
+
+        {
+            version = 5.142, -- Beard Turf fixup for consoles
+            fn = function(savedata)
+                if IsConsole() then
+                    -- NOTES(JBK): This only applies to consoles so do not mess up modded worlds.
+                    FlagForRetrofitting_Forest(savedata, "console_beard_turf_fix")
+                    FlagForRetrofitting_Cave(savedata, "console_beard_turf_fix")
+                end
+            end,
+        },
+        {
+            version = 5.143, -- Junk Yard - new content
+            fn = function(savedata)
+                FlagForRetrofitting_Forest(savedata, "retrofit_junkyard_content")
+            end,
+        },
+        {
+            version = 5.144, -- Junk Yard - remove fence_junk_pre_rotator instances
+            fn = function(savedata)
+                savedata.retrofit_junkyardv2_content = true
+            end,
+        },
+        {
+            version = 5.145, -- Junk Yard - Try to spawn a whole setpiece if any of the pieces are missing.
+            fn = function(savedata)
+                FlagForRetrofitting_Forest(savedata, "retrofit_junkyardv3_content")
+            end,
+        },
+        {
+            version = 5.146, -- rift_terraformer fix
+            fn = function(savedata)
+                FlagForRetrofitting_Forest(savedata, "remove_rift_terraformers_fix")
+            end,
+        },
+
+        -- 5.15 for Winona & Wurt beta
+        {
+            version = 5.151,
+            fn = function(savedata)
+                FlagForRetrofitting_Forest(savedata, "retrofit_otterdens")
             end,
         },
     },
