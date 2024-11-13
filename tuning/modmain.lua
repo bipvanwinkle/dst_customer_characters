@@ -8,6 +8,11 @@ local Vector3 = GLOBAL.Vector3
 local chester_slots = GetModConfigData("chester_slots")
 local icebox_slots = GetModConfigData("fridge_slots")
 local backpack_slots = GetModConfigData("backpack_slots")
+local circuit_slots = GetModConfigData("wx78_circuit_slots")
+
+--Modification of GLOBAL.TUNING
+
+GLOBAL.TUNING.WX78_MAXELECTRICCHARGE = circuit_slots
 
 -- Ensure networked slot syncing
 local function addItemSlotNetvarsInContainer(inst)

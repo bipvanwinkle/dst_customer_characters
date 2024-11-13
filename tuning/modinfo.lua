@@ -1,7 +1,7 @@
 name = "Bip's Custom DST Tuning"
-description = "Customizes the game for my personal enjoyment 1.14"
+description = "Customizes the game for my personal enjoyment 1.15"
 author = "Bipvanwinkle"
-version = "1.14"
+version = "1.15"
 api_version = 10
 dst_compatible = true
 all_clients_require_mod = true
@@ -60,5 +60,16 @@ configuration_options = {
 			{ description = "Very Very Long", data = 10 },
 		},
 		default = 1,
+	},
+	{
+		name = "wx78_circuit_slots",
+		label = "WX78 Circuit Slots",
+		options = {
+			{ description = "Default", data = 6 },
+			{ description = "8", data = 8 },
+			{ description = "10", data = 10 },
+			{ description = "12", data = 12 },
+		},
+		default = 6,
 	},
 }
