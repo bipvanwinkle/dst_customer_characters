@@ -1,7 +1,7 @@
 name = "Bip's Custom DST Tuning"
-description = "Customizes the game for my personal enjoyment 1.15"
+description = "Customizes the game for my personal enjoyment 1.17.5"
 author = "Bipvanwinkle"
-version = "1.15"
+version = "1.17.5"
 api_version = 10
 dst_compatible = true
 all_clients_require_mod = true
@@ -11,11 +11,11 @@ configuration_options = {
 		name = "fridge_spoil_rate",
 		label = "Fridge Spoilage Rate",
 		options = {
-			{ description = "Default", data = 1 },
-			{ description = "Slower", data = 0.5 },
-			{ description = "Much Slower", data = 0.25 },
+			{ description = "Default", data = 0.5 },
+			{ description = "Slower", data = 0.25 },
+			{ description = "Much Slower", data = 0.125 },
 		},
-		default = 1,
+		default = 0.5,
 	},
 	{
 		name = "fridge_slots",
@@ -28,6 +28,15 @@ configuration_options = {
 		default = 9,
 	},
 	{
+		name = "reverse_frozen_items",
+		label = "Fridge Reverses Frozen Spoilage",
+		options = {
+			{ description = "False", data = false },
+			{ description = "True", data = true },
+		},
+		default = true,
+	},
+	{
 		name = "chester_slots",
 		label = "Chester Slot Count",
 		options = {
@@ -36,6 +45,16 @@ configuration_options = {
 			{ description = "Extra Large (15)", data = 15 },
 		},
 		default = 9,
+	},
+	{
+		name = "chester_health_multiplier",
+		label = "Chester Health Multiplier",
+		options = {
+			{ description = "Default (1)", data = 1 },
+			{ description = "Double (2)", data = 2 },
+			{ description = "Triple (3)", data = 3 },
+		},
+		default = 1,
 	},
 	{
 		name = "backpack_slots",
