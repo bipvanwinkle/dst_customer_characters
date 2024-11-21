@@ -209,5 +209,111 @@ function containers.widgetsetup(container, prefab, data)
 	return result
 end
 
+local WX78_MAX_ABSORPTION_DUE_TO_GEARS = 0.9
+local WX78_ABSORPTION_PER_GEAR = 0.05
+local WX78_MAX_DAMAGE_AMP = 2.0
+local WX78_DAMAGE_AMP_PER_GEAR = 0.05
+
+-- Use gears to upgrade WX-78
+local function WX78PostInit(inst)
+	local old_on_eat = (inst.components.eater and inst.components.eater.oneatfn) or function()
+		return true
+	end
+
+	local function apply_damage_absorption(inst)
+		local max_absorption = WX78_MAX_ABSORPTION_DUE_TO_GEARS
+		local absorb_per_gear = WX78_ABSORPTION_PER_GEAR
+		local new_absorb = math.min(inst._gears_eaten * absorb_per_gear, max_absorption)
+
+		if inst.components.health ~= nil then
+			inst.components.health.externalabsorbmodifiers:SetModifier(inst, new_absorb, "wx_gear_eaten")
+		end
+	end
+
+	local function apply_damage_amp(inst)
+		local min_damage_amp = 1.0
+		local max_damage_amp = WX78_MAX_DAMAGE_AMP
+		local damage_amp_per_gear = WX78_DAMAGE_AMP_PER_GEAR
+		local new_damage_amp =
+			math.clamp(min_damage_amp + (inst._gears_eaten * damage_amp_per_gear), min_damage_amp, max_damage_amp)
+
+		if inst.components.combat ~= nil then
+			inst.components.combat.externaldamagemultipliers:SetModifier(inst, new_damage_amp, "wx_gear_eaten")
+		end
+	end
+
+	local function OnEat(inst, food)
+		old_on_eat(inst, food)
+
+		if food ~= nil and food.components.edible ~= nil then
+			if food.components.edible.foodtype == GLOBAL.FOODTYPE.GEARS then
+				apply_damage_absorption(inst)
+				apply_damage_amp(inst)
+			end
+		end
+	end
+
+	if inst.components.eater ~= nil then
+		inst.components.eater:SetOnEatFn(OnEat)
+	end
+
+	local old_on_load = inst.OnLoad or function()
+		return true
+	end
+	local function OnLoad(inst, data)
+		old_on_load(inst, data)
+
+		apply_damage_absorption(inst)
+		apply_damage_amp(inst)
+	end
+
+	inst.OnLoad = OnLoad
+end
+
+AddPrefabPostInit("wx78", WX78PostInit)
+
+-- Modify Pig King to always give a pigskin
+local function PigKingPostInit(inst)
+	local DEGREES = GLOBAL.DEGREES
+	local TheCamera = GLOBAL.TheCamera
+	local SpawnPrefab = GLOBAL.SpawnPrefab
+	local old_on_accept = (inst.components.trader and inst.components.trader.onaccept) or function()
+		return true
+	end
+
+	local function on_trade_for_pigskin(inst, item, giver)
+		local x, y, z = inst.Transform:GetWorldPosition()
+		y = 4.5
+
+		local angle
+		if giver ~= nil and giver:IsValid() then
+			angle = 180 - giver:GetAngleToPoint(x, 0, z)
+		else
+			local down = TheCamera:GetDownVec()
+			angle = math.atan2(down.z, down.x) / DEGREES
+			giver = nil
+		end
+		local pigskin = SpawnPrefab("pigskin")
+		pigskin.Transform:SetPosition(x, y, z)
+
+		local speed = math.random() * 4 + 2
+		angle = (angle + math.random() * 60 - 30) * DEGREES
+		pigskin.Physics:SetVel(speed * math.cos(angle), math.random() * 2 + 8, speed * math.sin(angle))
+	end
+
+	local function OnAccept(inst, giver, item)
+		old_on_accept(inst, giver, item)
+
+		inst.sg:GoToState("cointoss")
+		inst:DoTaskInTime(2 / 3, on_trade_for_pigskin, item, giver)
+	end
+
+	if inst.components.trader ~= nil then
+		inst.components.trader.onaccept = OnAccept
+	end
+end
+
+AddPrefabPostInit("pigking", PigKingPostInit)
+
 -- Initialize the modules
 initThermalStone(AddPrefabPostInit)
