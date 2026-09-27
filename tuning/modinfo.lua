@@ -1,7 +1,7 @@
 name = "Bip's Custom DST Tuning"
-description = "Customizes the game for my personal enjoyment 1.20.0"
+description = "Customizes the game for my personal enjoyment 1.21.0"
 author = "Bipvanwinkle"
-version = "1.20.0"
+version = "1.21.0"
 api_version = 10
 dst_compatible = true
 all_clients_require_mod = true
@@ -45,6 +45,15 @@ configuration_options = {
 			{ description = "Extra Large (15)", data = 15 },
 		},
 		default = 9,
+	},
+	{
+		name = "chest_slots",
+		label = "Chest Slot Count",
+		options = {
+			{ description = "Default (9)", data = 9 },
+			{ description = "Huge (25)", data = 25 },
+		},
+		default = 25,
 	},
 	{
 		name = "chester_health_multiplier",

@@ -9,6 +9,14 @@ local function generateSlotPositions(rows, cols, x_offset, y_offset, x_gap, y_ga
 	return slot_positions
 end
 
+-- Grid centered on the widget origin, which is where chest-type UI backgrounds are anchored
+local function generateCenteredSlotPositions(rows, cols, gap, Vector3)
+	local x_offset = -gap * (cols - 1) / 2
+	local y_offset = gap * (rows - 1) / 2
+	return generateSlotPositions(rows, cols, x_offset, y_offset, gap, -gap, Vector3)
+end
+
 return {
 	generateSlotPositions = generateSlotPositions,
+	generateCenteredSlotPositions = generateCenteredSlotPositions,
 }

@@ -4,10 +4,18 @@ local layout_helper = require("utils.layout_helper")
 local containers = GLOBAL.require("containers")
 local Vector3 = GLOBAL.Vector3
 
+-- Container UI backgrounds reused for the resized containers
+Assets = {
+	Asset("ANIM", "anim/ui_chester_shadow_3x4.zip"),
+	Asset("ANIM", "anim/ui_fish_box_5x4.zip"),
+	Asset("ANIM", "anim/ui_krampusbag_2x5.zip"),
+}
+
 local chester_slots = GetModConfigData("chester_slots")
 local chester_health_multiplier = GetModConfigData("chester_health_multiplier")
 local icebox_slots = GetModConfigData("fridge_slots")
 local backpack_slots = GetModConfigData("backpack_slots")
+local chest_slots = GetModConfigData("chest_slots")
 local circuit_slots = GetModConfigData("wx78_circuit_slots")
 local reverse_frozen_items = GetModConfigData("reverse_frozen_items")
 local fridge_spoil_rate = GetModConfigData("fridge_spoil_rate")
@@ -157,6 +165,9 @@ GLOBAL.TUNING.WX78_MAXELECTRICCHARGE = circuit_slots
 GLOBAL.TUNING.CHESTER_HEALTH = GLOBAL.TUNING.CHESTER_HEALTH * chester_health_multiplier
 GLOBAL.TUNING.PERISH_FRIDGE_MULT = fridge_spoil_rate
 
+-- Make sure enough networked slots exist for the largest configured container
+containers.MAXITEMSLOTS = math.max(containers.MAXITEMSLOTS, chester_slots, icebox_slots, backpack_slots, chest_slots)
+
 -- Ensure networked slot syncing
 local function addItemSlotNetvarsInContainer(inst)
 	if #inst._itemspool < containers.MAXITEMSLOTS then
@@ -178,36 +189,74 @@ AddPrefabPostInit("container_classified", addItemSlotNetvarsInContainer)
 local original_widgetsetup = containers.widgetsetup or function()
 	return true
 end
+-- The widget table is shared between prefabs (e.g. chester/hutch, treasurechest/pandoraschest),
+-- so copy it before applying overrides rather than mutating it in place
+local function overrideWidget(container, overrides)
+	local widget = {}
+	for k, v in pairs(container.widget) do
+		widget[k] = v
+	end
+	for k, v in pairs(overrides) do
+		widget[k] = v
+	end
+	container.widget = widget
+end
+
+-- Lay out a centered grid of slots over a background anim, stretching the
+-- background vertically when there are more (or fewer) rows than it was drawn for
+local function centeredGridWidget(rows, cols, anim, anim_rows)
+	return {
+		slotpos = layout_helper.generateCenteredSlotPositions(rows, cols, 75, Vector3),
+		animbank = anim,
+		animbuild = anim,
+		animbank_upgraded = anim,
+		animbuild_upgraded = anim,
+		bgscale = Vector3(1, rows / anim_rows, 1),
+	}
+end
+
 function containers.widgetsetup(container, prefab, data)
 	local tempPrefab = prefab or container.inst.prefab
 	local result = original_widgetsetup(container, prefab, data)
-	local updated = false
+	local overrides = nil
 
 	if tempPrefab == "chester" and chester_slots then
-		container.widget.slotpos =
-			layout_helper.generateSlotPositions(chester_slots / 3, 3, -162, 114, 75, -75, Vector3)
-		container.widget.animbank = "ui_chester_shadow_3x4"
-		container.widget.animbuild = "ui_chester_shadow_3x4"
-		updated = true
+		overrides = centeredGridWidget(chester_slots / 3, 3, "ui_chester_shadow_3x4", 4)
 	elseif tempPrefab == "icebox" and icebox_slots then
-		container.widget.slotpos = layout_helper.generateSlotPositions(icebox_slots / 3, 3, -162, 114, 75, -75, Vector3)
-		container.widget.animbank = "ui_chester_shadow_3x4"
-		container.widget.animbuild = "ui_chester_shadow_3x4"
-		updated = true
+		overrides = centeredGridWidget(icebox_slots / 3, 3, "ui_chester_shadow_3x4", 4)
+	elseif tempPrefab == "treasurechest" and chest_slots and chest_slots > 9 then
+		overrides = centeredGridWidget(chest_slots / 5, 5, "ui_fish_box_5x4", 4)
+		overrides.pos = Vector3(0, 220, 0)
 	elseif tempPrefab == "backpack" and backpack_slots then
-		container.widget.slotpos =
-			layout_helper.generateSlotPositions(backpack_slots / 2, 2, -162, 115, 75, -75, Vector3)
-		container.widget.animbank = "ui_krampusbag_2x5"
-		container.widget.animbuild = "ui_krampusbag_2x5"
-		updated = true
+		overrides = {
+			slotpos = layout_helper.generateSlotPositions(backpack_slots / 2, 2, -162, 115, 75, -75, Vector3),
+			animbank = "ui_krampusbag_2x5",
+			animbuild = "ui_krampusbag_2x5",
+		}
 	end
 
-	if updated then
+	if overrides ~= nil then
+		overrideWidget(container, overrides)
 		container:SetNumSlots(#container.widget.slotpos)
 	end
 
 	return result
 end
+
+-- Apply the optional background stretch from centeredGridWidget when a container UI opens
+AddClassPostConstruct("widgets/containerwidget", function(self)
+	local old_open = self.Open
+	function self:Open(container, doer)
+		old_open(self, container, doer)
+		local widget = container.replica.container:GetWidget()
+		local bgscale = widget ~= nil and widget.bgscale or nil
+		if bgscale ~= nil then
+			self.bganim:SetScale(bgscale.x, bgscale.y, bgscale.z)
+		else
+			self.bganim:SetScale(1, 1, 1)
+		end
+	end
+end)
 
 local WX78_MAX_ABSORPTION_DUE_TO_GEARS = 0.9
 local WX78_ABSORPTION_PER_GEAR = 0.05
