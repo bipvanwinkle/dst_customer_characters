@@ -14,7 +14,7 @@ local fridge_spoil_rate = GetModConfigData("fridge_spoil_rate")
 
 --Changes to Perishables to make it so that frozen items
 --reverse their perish rate when they are in a fridge
-local function Update(inst, dt)
+local function UpdatePerishable(inst, dt)
 	local FRAMES = GLOBAL.FRAMES or (1 / 30)
 	local TUNING = GLOBAL.TUNING
 	local TheWorld = GLOBAL.TheWorld
@@ -134,13 +134,13 @@ local function PerishablePostInit(self)
 
 		local dt = 10 + math.random() * FRAMES * 8
 		self.start_dt = math.random() * 2
-		self.updatetask = self.inst:DoPeriodicTask(dt, Update, self.start_dt, dt)
+		self.updatetask = self.inst:DoPeriodicTask(dt, UpdatePerishable, self.start_dt, dt)
 	end
 
 	-- Override LongUpdate
 	function self:LongUpdate(dt)
 		if self.updatetask ~= nil then
-			Update(self.inst, dt or 0)
+			UpdatePerishable(self.inst, dt or 0)
 		end
 	end
 end
