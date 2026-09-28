@@ -5,6 +5,9 @@ version = "1.22.0"
 api_version = 10
 dst_compatible = true
 all_clients_require_mod = true
+-- The workshop mod.manifest only lists files from the last upload, so files added by
+-- `make deploy-tuning` between uploads would be invisible to require() with it enabled
+forcemanifest = false
 
 configuration_options = {
 	{
