@@ -1,7 +1,7 @@
 name = "Bip's Custom DST Tuning"
-description = "Customizes the game for my personal enjoyment 1.21.0"
+description = "Customizes the game for my personal enjoyment 1.22.0"
 author = "Bipvanwinkle"
-version = "1.21.0"
+version = "1.22.0"
 api_version = 10
 dst_compatible = true
 all_clients_require_mod = true
@@ -99,5 +99,15 @@ configuration_options = {
 			{ description = "12", data = 12 },
 		},
 		default = 6,
+	},
+	{
+		name = "wx78_gear_indicator",
+		label = "WX78 Gear Indicator",
+		hover = "Shows how many gears WX-78 has eaten below the status meters",
+		options = {
+			{ description = "On", data = true },
+			{ description = "Off", data = false },
+		},
+		default = true,
 	},
 }

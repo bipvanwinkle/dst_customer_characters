@@ -258,37 +258,38 @@ AddClassPostConstruct("widgets/containerwidget", function(self)
 	end
 end)
 
+-- Both gear upgrades reach their maximum at WX78_MAX_GEARS gears eaten
+local WX78_MAX_GEARS = 18
 local WX78_MAX_ABSORPTION_DUE_TO_GEARS = 0.9
-local WX78_ABSORPTION_PER_GEAR = 0.05
 local WX78_MAX_DAMAGE_AMP = 2.0
-local WX78_DAMAGE_AMP_PER_GEAR = 0.05
 
 -- Use gears to upgrade WX-78
 local function WX78PostInit(inst)
+	-- Synced to clients for the gear indicator; declared on server and client alike
+	inst._gears_eaten_net = GLOBAL.net_smallbyte(inst.GUID, "wx78._gears_eaten_net", "wx78_gearsdirty")
+
+	if not GLOBAL.TheWorld.ismastersim then
+		return
+	end
+
 	local old_on_eat = (inst.components.eater and inst.components.eater.oneatfn) or function()
 		return true
 	end
 
-	local function apply_damage_absorption(inst)
-		local max_absorption = WX78_MAX_ABSORPTION_DUE_TO_GEARS
-		local absorb_per_gear = WX78_ABSORPTION_PER_GEAR
-		local new_absorb = math.min(inst._gears_eaten * absorb_per_gear, max_absorption)
+	local function apply_gear_upgrades(inst)
+		local gears = math.min(inst._gears_eaten, WX78_MAX_GEARS)
 
 		if inst.components.health ~= nil then
+			local new_absorb = gears / WX78_MAX_GEARS * WX78_MAX_ABSORPTION_DUE_TO_GEARS
 			inst.components.health.externalabsorbmodifiers:SetModifier(inst, new_absorb, "wx_gear_eaten")
 		end
-	end
-
-	local function apply_damage_amp(inst)
-		local min_damage_amp = 1.0
-		local max_damage_amp = WX78_MAX_DAMAGE_AMP
-		local damage_amp_per_gear = WX78_DAMAGE_AMP_PER_GEAR
-		local new_damage_amp =
-			math.clamp(min_damage_amp + (inst._gears_eaten * damage_amp_per_gear), min_damage_amp, max_damage_amp)
 
 		if inst.components.combat ~= nil then
+			local new_damage_amp = 1 + gears / WX78_MAX_GEARS * (WX78_MAX_DAMAGE_AMP - 1)
 			inst.components.combat.externaldamagemultipliers:SetModifier(inst, new_damage_amp, "wx_gear_eaten")
 		end
+
+		inst._gears_eaten_net:set(gears)
 	end
 
 	local function OnEat(inst, food)
@@ -296,8 +297,7 @@ local function WX78PostInit(inst)
 
 		if food ~= nil and food.components.edible ~= nil then
 			if food.components.edible.foodtype == GLOBAL.FOODTYPE.GEARS then
-				apply_damage_absorption(inst)
-				apply_damage_amp(inst)
+				apply_gear_upgrades(inst)
 			end
 		end
 	end
@@ -308,15 +308,8 @@ local function WX78PostInit(inst)
 
 	-- The base game drops gears and zeroes _gears_eaten on death, so reset the upgrades to match.
 	-- Registered after the base game's listeners, so they run after the count is cleared.
-	local function OnGearsReset(inst)
-		apply_damage_absorption(inst)
-		apply_damage_amp(inst)
-	end
-
-	if GLOBAL.TheWorld.ismastersim then
-		inst:ListenForEvent("death", OnGearsReset)
-		inst:ListenForEvent("ms_respawnedfromghost", OnGearsReset)
-	end
+	inst:ListenForEvent("death", apply_gear_upgrades)
+	inst:ListenForEvent("ms_respawnedfromghost", apply_gear_upgrades)
 
 	local old_on_load = inst.OnLoad or function()
 		return true
@@ -324,14 +317,41 @@ local function WX78PostInit(inst)
 	local function OnLoad(inst, data)
 		old_on_load(inst, data)
 
-		apply_damage_absorption(inst)
-		apply_damage_amp(inst)
+		apply_gear_upgrades(inst)
 	end
 
 	inst.OnLoad = OnLoad
 end
 
 AddPrefabPostInit("wx78", WX78PostInit)
+
+if GetModConfigData("wx78_gear_indicator") ~= false then
+	local WXGearBadge = require("widgets/wxgearbadge")
+
+	AddClassPostConstruct("widgets/statusdisplays", function(self)
+		if self.owner == nil or self.owner.prefab ~= "wx78" then
+			return
+		end
+
+		self.wxgearbadge = self:AddChild(WXGearBadge(self.owner, WX78_MAX_GEARS))
+
+		-- Combined Status adds its extra rows in its own post-construct, so place the badge once
+		-- every mod has had a chance to build the status display
+		self.inst:DoTaskInTime(0, function()
+			self.wxgearbadge:PlaceBelowExtraRows(self)
+		end)
+
+		local old_set_ghost_mode = self.SetGhostMode
+		function self:SetGhostMode(ghostmode, ...)
+			old_set_ghost_mode(self, ghostmode, ...)
+			if ghostmode then
+				self.wxgearbadge:Hide()
+			else
+				self.wxgearbadge:Show()
+			end
+		end
+	end)
+end
 
 -- Gears no longer restore stats when eaten; their value comes from the WX-78 upgrades
 local function GearsPostInit(inst)
