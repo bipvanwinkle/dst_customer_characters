@@ -18,15 +18,6 @@ local WXGearBadge = Class(Widget, function(self, owner, max_gears)
 	self.max_gears = max_gears
 	self:SetClickable(false)
 
-	self.badge = self:AddChild(Widget("badge"))
-	self.badge:SetPosition(41, -35.5)
-	self.badge:SetScale(0.35 * 0.8)
-	self.badge:AddChild(Image(AVATAR_ATLAS, "avatar_bg.tex"))
-	local gear = self.badge:AddChild(Image(GetInventoryItemAtlas("gears.tex"), "gears.tex"))
-	gear:SetScale(0.6)
-	local frame = self.badge:AddChild(Image(AVATAR_ATLAS, "avatar_frame_white.tex"))
-	frame:SetTint(unpack(FRAME_TINT))
-
 	self.counter = self:AddChild(Widget("counter"))
 	self.counter:SetPosition(ROW_X, 0)
 	self.counter:SetScale(0.9)
@@ -41,6 +32,16 @@ local WXGearBadge = Class(Widget, function(self, owner, max_gears)
 	self.num:SetHAlign(ANCHOR_MIDDLE)
 	self.num:SetPosition(10, -40.5)
 	self.num:SetScale(0.9, 0.7, 1)
+
+	-- Added after the counter so the badge draws on top of the number backing
+	self.badge = self:AddChild(Widget("badge"))
+	self.badge:SetPosition(41, -35.5)
+	self.badge:SetScale(0.35 * 0.8)
+	self.badge:AddChild(Image(AVATAR_ATLAS, "avatar_bg.tex"))
+	local gear = self.badge:AddChild(Image(GetInventoryItemAtlas("gears.tex"), "gears.tex"))
+	gear:SetScale(0.6)
+	local frame = self.badge:AddChild(Image(AVATAR_ATLAS, "avatar_frame_white.tex"))
+	frame:SetTint(unpack(FRAME_TINT))
 
 	self.inst:ListenForEvent("wx78_gearsdirty", function()
 		self:Refresh()
