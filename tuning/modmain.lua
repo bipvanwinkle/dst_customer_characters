@@ -306,6 +306,18 @@ local function WX78PostInit(inst)
 		inst.components.eater:SetOnEatFn(OnEat)
 	end
 
+	-- The base game drops gears and zeroes _gears_eaten on death, so reset the upgrades to match.
+	-- Registered after the base game's listeners, so they run after the count is cleared.
+	local function OnGearsReset(inst)
+		apply_damage_absorption(inst)
+		apply_damage_amp(inst)
+	end
+
+	if GLOBAL.TheWorld.ismastersim then
+		inst:ListenForEvent("death", OnGearsReset)
+		inst:ListenForEvent("ms_respawnedfromghost", OnGearsReset)
+	end
+
 	local old_on_load = inst.OnLoad or function()
 		return true
 	end
@@ -320,6 +332,17 @@ local function WX78PostInit(inst)
 end
 
 AddPrefabPostInit("wx78", WX78PostInit)
+
+-- Gears no longer restore stats when eaten; their value comes from the WX-78 upgrades
+local function GearsPostInit(inst)
+	if inst.components.edible ~= nil then
+		inst.components.edible.healthvalue = 0
+		inst.components.edible.hungervalue = 0
+		inst.components.edible.sanityvalue = 0
+	end
+end
+
+AddPrefabPostInit("gears", GearsPostInit)
 
 -- Modify Pig King to always give a pigskin
 local function PigKingPostInit(inst)
