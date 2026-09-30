@@ -1,7 +1,7 @@
 name = "Bip's Custom DST Tuning"
-description = "Customizes the game for my personal enjoyment 1.22.0"
+description = "Customizes the game for my personal enjoyment 1.23.0"
 author = "Bipvanwinkle"
-version = "1.22.0"
+version = "1.23.0"
 api_version = 10
 dst_compatible = true
 all_clients_require_mod = true
@@ -112,5 +112,18 @@ configuration_options = {
 			{ description = "Off", data = false },
 		},
 		default = true,
+	},
+	{
+		name = "beefalo_riding_insulation",
+		label = "Beefalo Riding Warmth",
+		hover = "Winter insulation while riding a beefalo; a shaved beefalo gives half",
+		options = {
+			{ description = "Off", data = 0 },
+			{ description = "Tiny (30)", data = 30 },
+			{ description = "Small (60)", data = 60 },
+			{ description = "Medium (120)", data = 120 },
+			{ description = "Large (240)", data = 240 },
+		},
+		default = 60,
 	},
 }

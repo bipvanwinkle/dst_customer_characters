@@ -19,6 +19,7 @@ local chest_slots = GetModConfigData("chest_slots")
 local circuit_slots = GetModConfigData("wx78_circuit_slots")
 local reverse_frozen_items = GetModConfigData("reverse_frozen_items")
 local fridge_spoil_rate = GetModConfigData("fridge_spoil_rate")
+local beefalo_riding_insulation = GetModConfigData("beefalo_riding_insulation") or 0
 
 --Changes to Perishables to make it so that frozen items
 --reverse their perish rate when they are in a fridge
@@ -406,6 +407,40 @@ local function PigKingPostInit(inst)
 end
 
 AddPrefabPostInit("pigking", PigKingPostInit)
+
+-- Riding a beefalo keeps the rider warm; a shaved beefalo gives half as much
+if beefalo_riding_insulation > 0 then
+	AddComponentPostInit("temperature", function(self)
+		local old_GetInsulation = self.GetInsulation
+		function self:GetInsulation()
+			local winter, summer = old_GetInsulation(self)
+			local rider = self.inst.components.rider
+			local mount = rider ~= nil and rider:GetMount() or nil
+			if mount ~= nil and mount:HasTag("beefalo") then
+				local shaved = mount.components.beard ~= nil and mount.components.beard.bits == 0
+				winter = winter + (shaved and beefalo_riding_insulation / 2 or beefalo_riding_insulation)
+			end
+			return winter, summer
+		end
+	end)
+end
+
+-- Recipes from other mods that use the deprecated AddRecipe only show up under the Mods crafting filter.
+-- Also list them under the filter their old recipe tab pointed at. Deferred until every mod has loaded,
+-- and skipped for any recipe that doesn't exist, so this is a no-op when those mods aren't enabled.
+local EXTRA_RECIPE_FILTERS = {
+	armor_stone = "ARMOUR", -- More Armor (workshop-1153998909)
+	armor_bone = "ARMOUR", -- More Armor (workshop-1153998909)
+	armor_repair_kit = "TOOLS", -- Armor Repair Kit (workshop-1155672829)
+}
+
+AddSimPostInit(function()
+	for recipe_name, filter_name in pairs(EXTRA_RECIPE_FILTERS) do
+		if GLOBAL.AllRecipes[recipe_name] ~= nil then
+			AddRecipeToFilter(recipe_name, filter_name)
+		end
+	end
+end)
 
 -- Initialize the modules
 initThermalStone(AddPrefabPostInit)
