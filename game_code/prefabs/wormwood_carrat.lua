@@ -129,6 +129,7 @@ local function fn()
     inst:AddComponent("drownable")
 
     inst:SetStateGraph("SGwormwood_carrat")
+    inst.sg.mem.burn_on_electrocute = true
     inst:SetBrain(brain)
 
     local health = inst:AddComponent("health")
@@ -145,9 +146,10 @@ local function fn()
     -- because it looks bad paired with the burning of the planted prefab.
     local burnable = inst:AddComponent("burnable")
     burnable:SetFXLevel(2)
-    burnable:SetBurnTime(10)
     burnable.canlight = false
     burnable:AddBurnFX("fire", Vector3(0, 0, 0))
+    burnable:SetBurnTime(10 * TUNING.PLANTMOB_BURNTIME_MULT)
+    health.fire_damage_scale = TUNING.PLANTMOB_FIRE_DAMAGE_SCALE
 
     local propagator = MakeSmallPropagator(inst)
     propagator.acceptsheat = false

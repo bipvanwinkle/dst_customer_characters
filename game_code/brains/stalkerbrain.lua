@@ -187,7 +187,33 @@ end
 function StalkerBrain:OnStart()
     local root
 
-    if self.inst.atriumstalker then
+    if self.inst.isnpc then
+        root = PriorityNode({
+            WhileNode(
+		    	function()
+		    		return not self.inst.sg:HasStateTag("talking")
+		    	end,
+		    	"<busy state guard>",
+		    	PriorityNode({
+                    -- WhileNode(
+                    --     function()
+                    --         local t = GetTime()
+                    --         if t > self.skullachetime then
+                    --             self.skullachetime = t + SKULLACHE_CD
+                    --             return true
+                    --         end
+                    --         return false
+                    --     end,
+                    --     "SkullAche",
+                    --     ActionNode(function() self.inst:PushEvent("skullache") end)),
+                    -- SequenceNode{
+                    --     FindClosest(self.inst, SEE_LURE_DIST, SAFE_LURE_DIST, { "shadowlure" }),
+                    --     FaceEntity(self.inst, GetShadowLure, KeepShadowLure),
+                    -- },
+                    Wander(self.inst),
+                }, .5)),
+            }, .5)
+    elseif self.inst.atriumstalker then
         root = PriorityNode({
             WhileNode(function() return not self.inst:IsNearAtrium() end, "LostAtrium",
                 ActionNode(function() self.inst:OnLostAtrium() end)),
@@ -213,7 +239,11 @@ function StalkerBrain:OnStart()
                     FaceEntity(self.inst, GetIdleStargate, KeepIdleStargate),
                     SequenceNode{
                         WaitNode(IDLE_GATE_TIME),
-                        ActionNode(function() self.inst:OnLostAtrium() end),
+                        FailIfSuccessDecorator(ActionNode(function()
+                            if (self.inst._lastplayerhittime or 0) + IDLE_GATE_TIME < GetTime() then
+                                self.inst:OnLostAtrium()
+                            end
+                        end)),
                     },
                 },
             },

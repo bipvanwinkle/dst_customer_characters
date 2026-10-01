@@ -50,12 +50,16 @@ local function MakeDummy(name, common_postinit, master_postinit)
 			return inst
 		end
 
+        MakeSnowCovered(inst)
+
 		inst:AddComponent("bloomer")
 		inst:AddComponent("colouradder")
 
 		inst:AddComponent("inspectable")
 
 		inst:AddComponent("combat")
+		inst.components.combat.hiteffectsymbol = "ww_torso"
+
 		inst:AddComponent("debuffable")
 		inst.components.debuffable:SetFollowSymbol("ww_head", 0, -250, 0)
 
@@ -67,6 +71,9 @@ local function MakeDummy(name, common_postinit, master_postinit)
 		if TheNet:GetServerGameMode() == "lavaarena" then
 			TheWorld:PushEvent("ms_register_for_damage_tracking", { inst = inst })
 		end
+
+		MakeMediumFreezableCharacter(inst, "ww_torso")
+		inst.components.freezable:SetResistance(10)
 
 		if master_postinit ~= nil then
 			master_postinit(inst)

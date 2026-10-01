@@ -413,13 +413,8 @@ end
 
 --------------------------------------------------------------------------
 
-local BATTERY_COST = { fuel = TUNING.WINONA_BATTERY_LOW_MAX_FUEL_TIME * 0.9, shard = 1 }
-local function CanBeUsedAsBattery(inst, user)
-	if inst._shard_level > 0 then
-		if not inst:IsOverloaded() then
-			return true
-		end
-	elseif inst.components.fueled then
+local function CalcActualFuel(inst, user)
+	if inst.components.fueled then
 		local efficiency_mult
 		if not (user and user:HasTag("handyperson")) and IsEngineerOnline(inst) then
 			efficiency_mult = CalcEfficiencyMult(inst)
@@ -432,21 +427,63 @@ local function CanBeUsedAsBattery(inst, user)
 				) or 0
 			efficiency_mult = CalcEfficiencyMult(inst, efficiency)
 		end
-		if inst.components.fueled.currentfuel >= BATTERY_COST.fuel * efficiency_mult then
+
+		local actual_fuel = inst.components.fueled.currentfuel
+
+		return actual_fuel, efficiency_mult
+	end
+end
+
+local function CanBeUsedAsBattery(inst, user, mult)
+	if inst._shard_level > 0 then
+		if not inst:IsOverloaded() then
 			return true
+		end
+	else
+		local actual_fuel, efficiency_mult = CalcActualFuel(inst, user)
+		if actual_fuel then
+			local fuel_cost = TUNING.WINONA_WXBATTERY_COST.fuel
+			if mult then
+				if actual_fuel >= fuel_cost * mult * efficiency_mult then
+					return true
+				end
+			else
+				local fuelperbar = TUNING.WINONA_BATTERY_HIGH_MAX_FUEL_TIME / NUM_LEVELS
+				local numbars = math.floor(fuel_cost * efficiency_mult / fuelperbar + 0.5)
+				--Allow one more charge if we have at least this much fuel remaining, because
+				--visually, the number of bars remaining will look like it has enough charge.
+				--NOTE: (>= 1 * fuelperbar) --> shows two bars
+				--      (> 0 * fuelperbar) --> shows one bar
+				fuel_cost = math.max(0, numbars - 1) * fuelperbar
+				if actual_fuel > 0 and actual_fuel >= fuel_cost * efficiency_mult then
+					return true
+				end
+			end
 		end
 	end
 	return false, "NOT_ENOUGH_CHARGE"
 end
 
-local function UseAsBattery(inst, user)
+local function UseAsBattery(inst, user, mult)
 	if not (user and user:HasTag("handyperson")) and IsEngineerOnline(inst) then
 		--original winona still online, don't de-level
 	elseif ConfigureSkillTreeUpgrades(inst, user) then
 		ApplyEfficiencyBonus(inst)
 		UpdateCircuitPower(inst)
 	end
-	inst:ConsumeBatteryAmount(BATTERY_COST, 1, user)
+	local cost = TUNING.WINONA_WXBATTERY_COST
+	if mult and mult ~= 1 then
+		cost = { fuel = cost.fuel * mult, shard = cost.shard * mult }
+	end
+	inst:ConsumeBatteryAmount(cost, 1, user)
+end
+
+local function ResolvePartialChargeMult(inst, user, mult)
+	if inst._shard_level > 0 then
+		return mult
+	end
+	local actual_fuel, efficiency_mult = CalcActualFuel(inst, user)
+	return actual_fuel and math.min(mult, actual_fuel / (TUNING.WINONA_WXBATTERY_COST.fuel * efficiency_mult)) or mult
 end
 
 --------------------------------------------------------------------------
@@ -1125,7 +1162,7 @@ local function ItemTradeTest(inst, item, doer)
 			return true
 		end
 		return false, "NOGENERATORSKILL"
-    elseif string.sub(item.prefab, -3) ~= "gem" then
+    elseif string.sub(item.prefab, -3) ~= "gem" or not item:HasTag("gem") then
         return false, "NOTGEM"
     elseif string.sub(item.prefab, -11, -4) == "precious" then
         return false, "WRONGGEM"
@@ -1199,7 +1236,7 @@ end
 
 local function OnUsedIndirectly(inst, doer)
 	if doer and doer.userid == inst._engineerid then
-		if doer:HasTag("engineerid") then
+		if doer:HasTag("handyperson") then
 			--skip if this is already mine and I'm still an engineer (didn't swap chars)
 			return
 		end
@@ -1316,8 +1353,9 @@ local function fn()
 	inst.components.circuitnode.rangeincludesfootprint = true
 
     inst:AddComponent("battery")
-    inst.components.battery.canbeused = CanBeUsedAsBattery
-    inst.components.battery.onused = UseAsBattery
+	inst.components.battery:SetCanBeUsedFn(CanBeUsedAsBattery)
+	inst.components.battery:SetOnUsedFn(UseAsBattery)
+	inst.components.battery:SetResolvePartialChargeMultFn(ResolvePartialChargeMult)
 
     inst:ListenForEvent("onbuilt", OnBuilt)
     inst:ListenForEvent("ondeconstructstructure", DropGems)

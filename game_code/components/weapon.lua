@@ -21,6 +21,7 @@ local Weapon = Class(function(self, inst)
     --self.overridestimulifn = nil
     --self.electric_damage_mult = nil
     --self.electric_wet_damage_mult = nil
+    --self.tough = false
 
     self.attackwearmultipliers = SourceModifierList(self.inst)
 
@@ -105,6 +106,7 @@ function Weapon:OnAttack(attacker, target, projectile)
     if self.onattack ~= nil then
         self.onattack(self.inst, attacker, target)
     end
+    self.inst:PushEvent("weapononattack", { attacker = attacker, target = target })
 
 	if self.inst.components.finiteuses ~= nil and not self.inst.components.finiteuses:IgnoresCombatDurabilityLoss()
 		and not (projectile ~= nil and projectile.components.projectile ~= nil and projectile.components.projectile:IsBounced())
@@ -151,6 +153,14 @@ function Weapon:LaunchProjectile(attacker, target)
             self.onprojectilelaunched(self.inst, attacker, target, proj)
         end
     end
+end
+
+function Weapon:EnableToughFight(tough)
+	self.tough = tough ~= false
+end
+
+function Weapon:CanDoToughFight()
+	return self.tough == true
 end
 
 return Weapon

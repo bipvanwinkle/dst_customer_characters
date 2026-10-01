@@ -26,6 +26,7 @@ local prefabs =
 	"winter_ornament_boss_malbatross",
 	"chesspiece_malbatross_sketch",
 	"premiumwateringcan",
+    "malbatrosscorpse",
 }
 
 --------------------------------------------------------------------------
@@ -140,7 +141,7 @@ local function OnAttacked(inst, data)
     end
 
     for i=1,4 do
-        if math.random() < 0.05 then
+        if TryLuckRoll(data.attacker, TUNING.MALBATROSS_SPAWNFEATHER_ONATTACKED_CHANCE, LuckFormulas.LootDropperChance) then
             inst.spawnfeather(inst,0.4)
         end
     end

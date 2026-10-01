@@ -33,6 +33,10 @@ local function ontakingfiredamagelow(self, takingfiredamagelow)
     self.inst.replica.health:SetIsTakingFireDamageLow(takingfiredamagelow == true)
 end
 
+local function onlunarburnflags(self, lunarburnflags)
+	self.inst.replica.health:SetLunarBurnFlags(lunarburnflags or 0)
+end
+
 local function onpenalty(self, penalty)
     self.inst.replica.health:SetPenalty(penalty)
 end
@@ -70,6 +74,9 @@ local Health = Class(function(self, inst)
     self.takingfiredamage = false
     self.takingfiredamagetime = 0
     --self.takingfiredamagelow = nil
+	--self.lunarburns = nil
+	--self.lunarburnflags = nil
+	--self.lastlunarburnpulsetick = nil
     self.fire_damage_scale = 1
     self.externalfiredamagemultipliers = SourceModifierList(inst)
     self.fire_timestart = 1
@@ -83,6 +90,7 @@ local Health = Class(function(self, inst)
     self.playerabsorb = 0 -- DEPRECATED, please use externalabsorbmodifiers instead
 
     self.externalabsorbmodifiers = SourceModifierList(inst, 0, SourceModifierList.additive)
+    self.externalreductionmodifiers = SourceModifierList(inst, 0, SourceModifierList.additive)    
 
     self.destroytime = nil
     self.canmurder = true
@@ -98,6 +106,7 @@ nil,
     currenthealth = oncurrenthealth,
     takingfiredamage = ontakingfiredamage,
     takingfiredamagelow = ontakingfiredamagelow,
+	lunarburnflags = onlunarburnflags,
     penalty = onpenalty,
     canmurder = oncanmurder,
     canheal = oncanheal,
@@ -112,6 +121,19 @@ function Health:OnRemoveFromEntity()
             self:RemoveRegenSource(source)
         end
     end
+
+	if self.lunarburns then
+		for source in pairs(self.lunarburns) do
+			if EntityScript.is_instance(source) then
+				self.inst:RemoveEventCallback("onremove", self._onremovelunarburn, source)
+			end
+		end
+		self.lunarburns = nil
+		self.lunarburnflags = nil
+		self.lastlunarburnpulsetick = nil
+		self._onremovelunarburn = nil
+		self.inst:PushEvent("stoplunarburn")
+	end
 
     onpercent(self)
 end
@@ -228,6 +250,69 @@ function Health:OnUpdate(dt)
         self.inst:PushEvent("stopfiredamage")
         ProfileStatsAdd("fireout")
     end
+end
+
+function Health:GetLunarBurnFlags()
+	return self.lunarburnflags or 0
+end
+
+function Health:CalcLunarBurnFlags()
+	local flags = 0
+	for k, v in pairs(self.lunarburns) do
+		flags = bit.bor(flags, v)
+	end
+	return flags
+end
+
+function Health:RegisterLunarBurnSource(source, flags)
+	if self.lunarburns == nil then
+		self._onremovelunarburn = function(src) self:UnregisterLunarBurnSource(src) end
+		self.lunarburns = { [source] = flags }
+		self.lunarburnflags = flags
+		if EntityScript.is_instance(source) then
+			self.inst:ListenForEvent("onremove", self._onremovelunarburn, source)
+		end
+		if flags ~= 0 then
+			self.inst:PushEvent("startlunarburn", flags)
+		end
+	elseif self.lunarburns[source] ~= flags then
+		if self.lunarburns[source] == nil and EntityScript.is_instance(source) then
+			self.inst:ListenForEvent("onremove", self._onremovelunarburn, source)
+		end
+		self.lunarburns[source] = flags
+		flags = self:CalcLunarBurnFlags()
+		if flags ~= self.lunarburnflags then
+			--assert(flags ~= 0)
+			self.lunarburnflags = flags
+			self.inst:PushEvent("startlunarburn", flags)
+		end
+	end
+end
+
+function Health:UnregisterLunarBurnSource(source)
+	if self.lunarburns and self.lunarburns[source] then
+		if EntityScript.is_instance(source) then
+			self.inst:RemoveEventCallback("onremove", self._onremovelunarburn, source)
+		end
+		self.lunarburns[source] = nil
+		if next(self.lunarburns) == nil then
+			self.lunarburns = nil
+			self.lunarburnflags = nil
+			self.lastlunarburnpulsetick = nil
+			self._onremovelunarburn = nil
+			self.inst:PushEvent("stoplunarburn")
+		else
+			local flags = self:CalcLunarBurnFlags()
+			if flags ~= self.lunarburnflags then
+				self.lunarburnflags = flags
+				if flags ~= 0 then
+					self.inst:PushEvent("startlunarburn", flags)
+				else
+					self.inst:PushEvent("stoplunarburn")
+				end
+			end
+		end
+	end
 end
 
 local function DoRegen(inst, self)
@@ -449,6 +534,15 @@ function Health:Kill()
     end
 end
 
+function Health:ForceKill() -- To bypass invincible
+    if self.currenthealth > 0 then
+        --V2C: didn't want to change external interface of DoDelta for this one internal use case
+		self._ignore_maxdamagetakenperhit = true
+        self:DoDelta(-self.currenthealth, nil, nil, true, nil, true)
+		self._ignore_maxdamagetakenperhit = nil
+    end
+end
+
 function Health:IsDead()
     return self.currenthealth <= 0
 end
@@ -458,10 +552,22 @@ function Health:SetPercent(percent, overtime, cause)
     self:DoDelta(0, overtime, cause, true, nil, true)
 end
 
+function Health:CanFadeOut()
+    -- Intentional lack of IsValid().
+    return not self.nofadeout and not self.is_corpsing
+end
+
+local function OnCorpsingEntitySleep(inst) -- Go instantly to corpse state
+    inst.sg:GoToState("corpse")
+    inst:PushEventImmediate("forcecorpsereplace")
+end
+
 function Health:SetVal(val, cause, afflicter)
     local old_health = self.currenthealth
     local max_health = self:GetMaxWithPenalty()
     local min_health = math.min(self.minhealth or 0, max_health)
+
+    self.inst:PushEvent("pre_health_setval", {val=val, old_health=old_health})
 
     if val > max_health then
         val = max_health
@@ -478,8 +584,11 @@ function Health:SetVal(val, cause, afflicter)
         -- NOTES(JBK): Make sure to keep the events fired up to date with the explosive component.
         --Push world event first, because the entity event may invalidate itself
         --i.e. items that use .nofadeout and manually :Remove() on "death" event
-        TheWorld:PushEvent("entity_death", { inst = self.inst, cause = cause, afflicter = afflicter })
-        self.inst:PushEvent("death", { cause = cause, afflicter = afflicter })
+        self.causeofdeath = afflicter or nil
+        local is_corpsing = CanEntityBecomeCorpse(self.inst)
+        TheWorld:PushEvent("entity_death", { inst = self.inst, cause = cause, afflicter = afflicter, corpsing = is_corpsing })
+        self.inst:PushEvent("death", { cause = cause, afflicter = afflicter, corpsing = is_corpsing })
+        self.is_corpsing = is_corpsing
 
 		--Here, check if killing player or monster
         local notify_type = (self.inst.isplayer and "TotalPlayersKilled") or "TotalEnemiesKilled"
@@ -487,10 +596,16 @@ function Health:SetVal(val, cause, afflicter)
 
         --V2C: If "death" handler removes ourself, then the prefab should explicitly set nofadeout = true.
         --     Intentionally NOT using IsValid() here to hide those bugs.
-        if not self.nofadeout then
+        if self:CanFadeOut() then
             self.inst:AddTag("NOCLICK")
             self.inst.persists = false
             self.inst.erode_task = self.inst:DoTaskInTime(self.destroytime or 2, ErodeAway)
+        elseif self.is_corpsing then
+            if self.inst:IsAsleep() then
+                OnCorpsingEntitySleep(self.inst)
+            else
+                self.inst:ListenForEvent("entitysleep", OnCorpsingEntitySleep)
+            end
         end
     end
 end
@@ -509,8 +624,9 @@ function Health:DoDelta(amount, overtime, cause, ignore_invincible, afflicter, i
         return 0
     elseif not ignore_invincible and (self:IsInvincible() or self.inst.is_teleporting) then
         return 0
-    elseif amount < 0 and not ignore_absorb then
+    elseif amount < 0 and not ignore_absorb then        
         amount = amount * math.clamp(1 - (self.playerabsorb ~= 0 and afflicter ~= nil and afflicter:HasTag("player") and self.playerabsorb + self.absorb or self.absorb), 0, 1) * math.max(1 - self.externalabsorbmodifiers:Get(), 0)
+        amount = afflicter ~= nil and math.min(0, amount + self.externalreductionmodifiers:Get()) or amount
     end
 
     if self.deltamodifierfn ~= nil then

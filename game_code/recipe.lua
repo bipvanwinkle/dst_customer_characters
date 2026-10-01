@@ -101,8 +101,9 @@ Recipe = Class(function(self, name, ingredients, tab, level, placer_or_more_data
     self.nameoverride  = more_data.nameoverride -- Override the name string in the crafting menu.
 	self.description   = more_data.description -- override the description string in the crafting menu
 
-    self.imagefn       = type(image) == "function" and image or nil
-    self.image         = self.imagefn == nil and image or (self.product .. ".tex")
+	self.layeredimagefn = more_data.layeredimagefn
+	self.imagefn = type(image) == "function" and image or nil
+	self.image = self.imagefn == nil and image or (self.product..".tex")
     self.atlas         = (atlas and resolvefilepath(atlas))-- or resolvefilepath(GetInventoryItemAtlas(self.image))
 	self.fxover        = more_data.fxover
 
@@ -117,29 +118,58 @@ Recipe = Class(function(self, name, ingredients, tab, level, placer_or_more_data
 
     
     self.testfn        = testfn					-- custom placer test function if default test isn't enough
+    self.overridecandeployrecipeatpointfn = more_data.overridecandeployrecipeatpointfn -- For overriding CanDeployRecipeAtPoint's default IsDeployPointClear handling.
 	self.canbuild      = more_data.canbuild		-- custom test function to see if we should be allowed to craft this recipe, return a build action fail message if false
 
-    self.nounlock      = nounlock or false
+    if more_data.unlocks_from_skin then -- Boolean flag to enum value based on recipe context.
+        if level == TECH.LOST then
+            self.unlocks_from_skin = SKINUNLOCKS.ALWAYS
+        else
+            self.unlocks_from_skin = SKINUNLOCKS.CRAFTINGSTATION
+        end
+    end
+    self.nounlock      = self.unlocks_from_skin or nounlock or false
 
     self.numtogive     = numtogive or 1
+	self.override_numtogive_fn = more_data.override_numtogive_fn
 
     self.builder_tag   = builder_tag or nil
     self.builder_skill = more_data.builder_skill or nil
+	self.no_builder_tag		= more_data.no_builder_tag
+	self.no_builder_skill	= more_data.no_builder_skill
+	self.forward_ingredients = more_data.forward_ingredients --skill trees may swap out some basic ingredient recipes; this will let crafting know which alternate recipes to forward to
 	self.sg_state      = more_data.sg_state or more_data.buildingstate or nil -- overrides the SG state to use when crafting the item (buildingstate is the old variable name)
 
     self.build_mode    = build_mode or BUILDMODE.LAND
     self.build_distance= build_distance or 1
 
     self.no_deconstruction = more_data.no_deconstruction -- function or bool
+    self.decon_ignores_finiteuses = more_data.decon_ignores_finiteuses -- function or bool
     self.require_special_event = more_data.require_special_event
+	self.always_allow_buffered_placer = more_data.always_allow_buffered_placer or nil -- skip KnowsRecipe check if buffered; useful for placing buildings out of crafting stations
 
 	self.dropitem      = more_data.dropitem
 
 	self.actionstr     = more_data.actionstr
+    self.recipedisplaynamefn = more_data.recipedisplaynamefn
 	self.hint_msg      = more_data.hint_msg
+	self.force_hint    = more_data.force_hint -- show locked recipe (i.e. missing +1 tech level) even if we are "nounlock"
 
 	self.manufactured = more_data.manufactured -- if true, then it is up to the crafting station to handle creating the item, not the builder component
     self.station_tag  = more_data.station_tag -- If set to a tag this will only show up in CRAFTING_FILTERS.CRAFTING_STATION when the prototyper machine has this tag.
+
+    self.limitedamount = more_data.limitedamount
+    if self.limitedamount then
+        if TheSim then -- updateprefabs guard
+            DeclareLimitedCraftingRecipe(self.name)
+        end
+    end
+    self.getlimitedrecipecount = more_data.getlimitedrecipecount -- NOTES(JBK): Only use this for recipes the client and server both know the limit to outside of crafting stations.
+    if self.getlimitedrecipecount then
+        if TheSim then -- updateprefabs guard
+            table.insert(EXTERNALLY_HANDLED_LIMITED_RECIPES, self.name)
+        end
+    end
 
 	self.is_deconstruction_recipe = tab == nil
 

@@ -5,6 +5,10 @@ local assets =
     Asset("SOUND", "sound/common.fsb"),
 }
 
+local prefabs = {
+    "globalmapiconseeable",
+}
+
 local function GetStatus(inst)
     return inst.sg.currentstate.name ~= "idle" and "OPEN" or nil
 end
@@ -102,7 +106,7 @@ end
 
 local function CreateHiddenGlobalIcon(inst)
     inst.hiddenglobalicon = SpawnPrefab("globalmapiconseeable")
-    inst.hiddenglobalicon.MiniMapEntity:SetPriority(50) -- NOTES(JBK): This could be put to a constant for map actions that should go over everything as a reserved flag.
+    inst.hiddenglobalicon.MiniMapEntity:SetPriority(MINIMAP_DECORATION_PRIORITY)
     inst.hiddenglobalicon.MiniMapEntity:SetRestriction("wormholetracker")
     inst.hiddenglobalicon:AddTag("wormholetrackericon")
     inst.hiddenglobalicon:TrackEntity(inst)
@@ -127,8 +131,9 @@ local function fn()
     inst.AnimState:SetBank("teleporter_worm")
     inst.AnimState:SetBuild("teleporter_worm_build")
     inst.AnimState:PlayAnimation("idle_loop", true)
-    inst.AnimState:SetLayer(LAYER_BACKGROUND)
-    inst.AnimState:SetSortOrder(3)
+	--V2C: layering now changes when opening/closing in stategraph
+	--inst.AnimState:SetLayer(LAYER_BACKGROUND)
+	--inst.AnimState:SetSortOrder(3)
 
     --trader, alltrader (from trader component) added to pristine state for optimization
     inst:AddTag("trader")

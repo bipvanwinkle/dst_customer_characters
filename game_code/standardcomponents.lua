@@ -1,4 +1,5 @@
 local WAXED_PLANTS = require "prefabs/waxed_plant_common"
+local easing = require "easing"
 
 local DEBUG_MODE = BRANCH == "dev"
 
@@ -72,12 +73,16 @@ function DefaultBurntStructureFn(inst)
         inst.components.childspawner:StopSpawning()
         inst:RemoveComponent("childspawner")
     end
+    if inst.components.dryingrack then -- New drying rack component (before container removal because we need it!)
+        inst.components.dryingrack:OnBurnt()
+        inst:RemoveComponent("dryingrack")
+    end
     if inst.components.container then
         inst.components.container:DropEverything()
         inst.components.container:Close()
         inst:RemoveComponent("container")
     end
-    if inst.components.dryer then
+    if inst.components.dryer then --Old drying rack component
         inst.components.dryer:StopDrying("fire")
         inst:RemoveComponent("dryer")
     end
@@ -242,7 +247,7 @@ function MakeSmallBurnableCharacter(inst, sym, offset)
     burnable:SetFXLevel(1)
     burnable:SetBurnTime(6)
     burnable.canlight = false
-    burnable:AddBurnFX(burnfx.character, offset or Vector3(0, 0, 1), sym)
+	burnable:AddBurnFX(burnfx.character, offset or (sym and Vector3(0, 0, 0.1) or Vector3(0, 0.1, 0)), sym)
 
     local propagator = MakeSmallPropagator(inst)
     propagator.acceptsheat = false
@@ -255,7 +260,7 @@ function MakeMediumBurnableCharacter(inst, sym, offset)
     burnable:SetFXLevel(2)
     burnable.canlight = false
     burnable:SetBurnTime(8)
-    burnable:AddBurnFX(burnfx.character, offset or Vector3(0, 0, 1), sym)
+	burnable:AddBurnFX(burnfx.character, offset or (sym and Vector3(0, 0, 0.1) or Vector3(0, 0.1, 0)), sym)
 
     local propagator = MakeSmallPropagator(inst)
     propagator.acceptsheat = false
@@ -268,7 +273,7 @@ function MakeLargeBurnableCharacter(inst, sym, offset, scale)
     burnable:SetFXLevel(3)
     burnable.canlight = false
     burnable:SetBurnTime(10)
-    burnable:AddBurnFX(burnfx.character, offset or Vector3(0, 0, 1), sym, nil, scale)
+	burnable:AddBurnFX(burnfx.character, offset or (sym and Vector3(0, 0, 0.1) or Vector3(0, 0.1, 0)), sym, nil, scale)
 
     local propagator = MakeLargePropagator(inst)
     propagator.acceptsheat = false
@@ -280,7 +285,7 @@ function MakeSmallBurnableCorpse(inst, time, sym, offset, scale)
 	local burnable = inst:AddComponent("burnable")
 	burnable:SetFXLevel(1)
 	burnable:SetBurnTime(time or 6)
-	burnable:AddBurnFX(burnfx.character, offset or Vector3(0, 0, 1), sym, nil, scale)
+	burnable:AddBurnFX(burnfx.character, offset or (sym and Vector3(0, 0, 0.1) or Vector3(0, 0.1, 0)), sym, nil, scale)
 	burnable:SetOnExtinguishFn(DefaultExtinguishCorpseFn)
 	burnable:SetOnBurntFn(DefaultBurntCorpseFn)
 
@@ -293,7 +298,7 @@ function MakeMediumBurnableCorpse(inst, time, sym, offset, scale)
 	local burnable = inst:AddComponent("burnable")
 	burnable:SetFXLevel(2)
 	burnable:SetBurnTime(time or 8)
-	burnable:AddBurnFX(burnfx.character, offset or Vector3(0, 0, 1), sym, nil, scale)
+	burnable:AddBurnFX(burnfx.character, offset or (sym and Vector3(0, 0, 0.1) or Vector3(0, 0.1, 0)), sym, nil, scale)
 	burnable:SetOnExtinguishFn(DefaultExtinguishCorpseFn)
 	burnable:SetOnBurntFn(DefaultBurntCorpseFn)
 
@@ -306,7 +311,7 @@ function MakeLargeBurnableCorpse(inst, time, sym, offset, scale)
 	local burnable = inst:AddComponent("burnable")
 	burnable:SetFXLevel(3)
 	burnable:SetBurnTime(time or 10)
-	burnable:AddBurnFX(burnfx.character, offset or Vector3(0, 0, 1), sym, nil, scale)
+	burnable:AddBurnFX(burnfx.character, offset or (sym and Vector3(0, 0, 0.1) or Vector3(0, 0.1, 0)), sym, nil, scale)
 	burnable:SetOnExtinguishFn(DefaultExtinguishCorpseFn)
 	burnable:SetOnBurntFn(DefaultBurntCorpseFn)
 
@@ -372,10 +377,11 @@ function MakeInventoryPhysics(inst, mass, rad)
 	phys:SetDamping(0)
 	phys:SetRestitution(.5)
 	phys:SetCollisionGroup(COLLISION.ITEMS)
-	phys:ClearCollisionMask()
-	phys:CollidesWith(COLLISION.WORLD)
-	phys:CollidesWith(COLLISION.OBSTACLES)
-	phys:CollidesWith(COLLISION.SMALLOBSTACLES)
+	phys:SetCollisionMask(
+		COLLISION.WORLD,
+		COLLISION.OBSTACLES,
+		COLLISION.SMALLOBSTACLES
+	)
 	phys:SetSphere(rad)
     return phys
 end
@@ -389,8 +395,7 @@ function MakeProjectilePhysics(inst, mass, rad)
 	phys:SetDamping(0)
 	phys:SetRestitution(.5)
 	phys:SetCollisionGroup(COLLISION.ITEMS)
-	phys:ClearCollisionMask()
-	phys:CollidesWith(COLLISION.GROUND)
+	phys:SetCollisionMask(COLLISION.GROUND)
 	phys:SetSphere(rad)
     return phys
 end
@@ -401,12 +406,13 @@ function MakeCharacterPhysics(inst, mass, rad)
     phys:SetFriction(0)
     phys:SetDamping(5)
     phys:SetCollisionGroup(COLLISION.CHARACTERS)
-    phys:ClearCollisionMask()
-    phys:CollidesWith(COLLISION.WORLD)
-    phys:CollidesWith(COLLISION.OBSTACLES)
-    phys:CollidesWith(COLLISION.SMALLOBSTACLES)
-    phys:CollidesWith(COLLISION.CHARACTERS)
-    phys:CollidesWith(COLLISION.GIANTS)
+	phys:SetCollisionMask(
+		COLLISION.WORLD,
+		COLLISION.OBSTACLES,
+		COLLISION.SMALLOBSTACLES,
+		COLLISION.CHARACTERS,
+		COLLISION.GIANTS
+	)
     phys:SetCapsule(rad, 1)
     return phys
 end
@@ -417,9 +423,10 @@ function MakeFlyingCharacterPhysics(inst, mass, rad)
     phys:SetFriction(0)
     phys:SetDamping(5)
     phys:SetCollisionGroup(COLLISION.FLYERS)
-    phys:ClearCollisionMask()
-    phys:CollidesWith((TheWorld:CanFlyingCrossBarriers() and COLLISION.GROUND) or COLLISION.WORLD)
-    phys:CollidesWith(COLLISION.FLYERS)
+	phys:SetCollisionMask(
+		TheWorld:CanFlyingCrossBarriers() and COLLISION.GROUND or COLLISION.WORLD,
+		COLLISION.FLYERS
+	)
     phys:SetCapsule(rad, 1)
     return phys
 end
@@ -430,8 +437,7 @@ function MakeTinyFlyingCharacterPhysics(inst, mass, rad)
     phys:SetFriction(0)
     phys:SetDamping(5)
     phys:SetCollisionGroup(COLLISION.FLYERS)
-    phys:ClearCollisionMask()
-    phys:CollidesWith((TheWorld:CanFlyingCrossBarriers() and COLLISION.GROUND) or COLLISION.WORLD)
+	phys:SetCollisionMask(TheWorld:CanFlyingCrossBarriers() and COLLISION.GROUND or COLLISION.WORLD)
     phys:SetCapsule(rad, 1)
     return phys
 end
@@ -442,11 +448,12 @@ function MakeGiantCharacterPhysics(inst, mass, rad)
     phys:SetFriction(0)
     phys:SetDamping(5)
     phys:SetCollisionGroup(COLLISION.GIANTS)
-    phys:ClearCollisionMask()
-    phys:CollidesWith(COLLISION.WORLD)
-    phys:CollidesWith(COLLISION.OBSTACLES)
-    phys:CollidesWith(COLLISION.CHARACTERS)
-    phys:CollidesWith(COLLISION.GIANTS)
+	phys:SetCollisionMask(
+		COLLISION.WORLD,
+		COLLISION.OBSTACLES,
+		COLLISION.CHARACTERS,
+		COLLISION.GIANTS
+	)
     phys:SetCapsule(rad, 1)
     return phys
 end
@@ -457,11 +464,12 @@ function MakeFlyingGiantCharacterPhysics(inst, mass, rad)
     phys:SetFriction(0)
     phys:SetDamping(5)
     phys:SetCollisionGroup(COLLISION.GIANTS)
-    phys:ClearCollisionMask()
-    phys:CollidesWith((TheWorld:CanFlyingCrossBarriers() and COLLISION.GROUND) or COLLISION.WORLD)
-    --phys:CollidesWith(COLLISION.OBSTACLES)
-    phys:CollidesWith(COLLISION.CHARACTERS)
-    phys:CollidesWith(COLLISION.GIANTS)
+	phys:SetCollisionMask(
+		TheWorld:CanFlyingCrossBarriers() and COLLISION.GROUND or COLLISION.WORLD,
+		--COLLISION.OBSTACLES,
+		COLLISION.CHARACTERS,
+		COLLISION.GIANTS
+	)
     phys:SetCapsule(rad, 1)
     return phys
 end
@@ -472,11 +480,12 @@ function MakeGhostPhysics(inst, mass, rad)
     phys:SetFriction(0)
     phys:SetDamping(5)
     phys:SetCollisionGroup(COLLISION.CHARACTERS)
-    phys:ClearCollisionMask()
-    phys:CollidesWith((TheWorld:CanFlyingCrossBarriers() and COLLISION.GROUND) or COLLISION.WORLD)
-    --phys:CollidesWith(COLLISION.OBSTACLES)
-    phys:CollidesWith(COLLISION.CHARACTERS)
-    phys:CollidesWith(COLLISION.GIANTS)
+	phys:SetCollisionMask(
+		TheWorld:CanFlyingCrossBarriers() and COLLISION.GROUND or COLLISION.WORLD,
+		--COLLISION.OBSTACLES,
+		COLLISION.CHARACTERS,
+		COLLISION.GIANTS
+	)
     phys:SetCapsule(rad, 1)
     return phys
 end
@@ -487,8 +496,7 @@ function MakeTinyGhostPhysics(inst, mass, rad)
     phys:SetFriction(0)
     phys:SetDamping(5)
     phys:SetCollisionGroup(COLLISION.CHARACTERS)
-    phys:ClearCollisionMask()
-    phys:CollidesWith((TheWorld:CanFlyingCrossBarriers() and COLLISION.GROUND) or COLLISION.WORLD)
+    phys:SetCollisionMask(TheWorld:CanFlyingCrossBarriers() and COLLISION.GROUND or COLLISION.WORLD)
     phys:SetCapsule(rad, 1)
     return phys
 end
@@ -496,11 +504,30 @@ end
 function ChangeToGhostPhysics(inst)
     local phys = inst.Physics
     phys:SetCollisionGroup(COLLISION.CHARACTERS)
-    phys:ClearCollisionMask()
-    phys:CollidesWith((TheWorld:CanFlyingCrossBarriers() and COLLISION.GROUND) or COLLISION.WORLD)
-    --phys:CollidesWith(COLLISION.OBSTACLES)
-    phys:CollidesWith(COLLISION.CHARACTERS)
-    phys:CollidesWith(COLLISION.GIANTS)
+	phys:SetCollisionMask(
+		TheWorld:CanFlyingCrossBarriers() and COLLISION.GROUND or COLLISION.WORLD,
+		--COLLISION.OBSTACLES,
+		COLLISION.CHARACTERS,
+		COLLISION.GIANTS
+	)
+    return phys
+end
+
+function ChangeToFlyingCharacterPhysics(inst, mass, rad)
+    local phys = inst.Physics
+    if mass then
+        phys:SetMass(mass)
+        phys:SetFriction(0)
+        phys:SetDamping(5)
+    end
+    phys:SetCollisionGroup(COLLISION.FLYERS)
+	phys:SetCollisionMask(
+		TheWorld:CanFlyingCrossBarriers() and COLLISION.GROUND or COLLISION.WORLD,
+		COLLISION.FLYERS
+	)
+    if rad then
+        phys:SetCapsule(rad, 1)
+    end
     return phys
 end
 
@@ -512,7 +539,13 @@ function ChangeToCharacterPhysics(inst, mass, rad)
         phys:SetDamping(5)
     end
     phys:SetCollisionGroup(COLLISION.CHARACTERS)
-	phys:SetCollisionMask(COLLISION.WORLD, COLLISION.OBSTACLES, COLLISION.SMALLOBSTACLES, COLLISION.CHARACTERS, COLLISION.GIANTS)
+	phys:SetCollisionMask(
+		COLLISION.WORLD,
+		COLLISION.OBSTACLES,
+		COLLISION.SMALLOBSTACLES,
+		COLLISION.CHARACTERS,
+		COLLISION.GIANTS
+	)
     if rad then
         phys:SetCapsule(rad, 1)
     end
@@ -527,11 +560,12 @@ function ChangeToGiantCharacterPhysics(inst, mass, rad)
 		phys:SetDamping(5)
 	end
 	phys:SetCollisionGroup(COLLISION.GIANTS)
-	phys:ClearCollisionMask()
-	phys:CollidesWith(COLLISION.WORLD)
-	phys:CollidesWith(COLLISION.OBSTACLES)
-	phys:CollidesWith(COLLISION.CHARACTERS)
-	phys:CollidesWith(COLLISION.GIANTS)
+	phys:SetCollisionMask(
+		COLLISION.WORLD,
+		COLLISION.OBSTACLES,
+		COLLISION.CHARACTERS,
+		COLLISION.GIANTS
+	)
 	if rad then
 		phys:SetCapsule(rad, 1)
 	end
@@ -540,12 +574,13 @@ end
 function ChangeToObstaclePhysics(inst, rad, height)
     local phys = inst.Physics
     phys:SetCollisionGroup(COLLISION.OBSTACLES)
-    phys:ClearCollisionMask()
     phys:SetMass(0)
-    --phys:CollidesWith(COLLISION.GROUND)
-    phys:CollidesWith(COLLISION.ITEMS)
-    phys:CollidesWith(COLLISION.CHARACTERS)
-    phys:CollidesWith(COLLISION.GIANTS)
+	phys:SetCollisionMask(
+		--COLLISION.GROUND,
+		COLLISION.ITEMS,
+		COLLISION.CHARACTERS,
+		COLLISION.GIANTS
+	)
     if rad then
         phys:SetCapsule(rad, height or 2)
     end
@@ -553,8 +588,16 @@ function ChangeToObstaclePhysics(inst, rad, height)
 end
 
 function ChangeToWaterObstaclePhysics(inst)
-    local phys = ChangeToObstaclePhysics(inst)
-    phys:CollidesWith(COLLISION.OBSTACLES)
+	local phys = inst.Physics
+	phys:SetCollisionGroup(COLLISION.OBSTACLES)
+	phys:SetMass(0)
+	phys:SetCollisionMask(
+		--COLLISION.GROUND,
+		COLLISION.ITEMS,
+		COLLISION.CHARACTERS,
+		COLLISION.GIANTS,
+		COLLISION.OBSTACLES
+	)
     return phys
 end
 
@@ -567,21 +610,40 @@ function ChangeToInventoryItemPhysics(inst, mass, rad)
         phys:SetRestitution(.5)
     end    
     phys:SetCollisionGroup(COLLISION.ITEMS)
-    phys:SetCollisionMask(COLLISION.WORLD, COLLISION.OBSTACLES, COLLISION.SMALLOBSTACLES)
+	phys:SetCollisionMask(
+		COLLISION.WORLD,
+		COLLISION.OBSTACLES,
+		COLLISION.SMALLOBSTACLES
+	)
     if rad then
         phys:SetSphere(rad, 1)
     end    
     return phys
 end
 
+--
+--NOTE(Omar): HACK!!!
+-- Obstacles don't collide with ground, which our field is, and we have some obstacle shockables (imprisoned daywalker, brightshade, seaweed)
+-- And there is no all encompassing collision group for every shockable...
+-- And changing `MakeObstaclePhysics` for all to collide with ground would probably be silly
+-- SO, let's jsut make those specific obstacles collide with ground
+function MakeCollidesWithElectricField(inst)
+    inst.Physics:CollidesWith(COLLISION.GROUND)
+end
+
+function ClearCollidesWithElectricField(inst)
+    inst.Physics:ClearCollidesWith(COLLISION.GROUND)
+end
+
 -- USED FOR THE DEPTH WORM
 function ChangeToInventoryPhysics(inst)
     local phys = inst.Physics
     phys:SetCollisionGroup(COLLISION.OBSTACLES)
-    phys:ClearCollisionMask()
-    phys:CollidesWith(COLLISION.WORLD)
-    phys:CollidesWith(COLLISION.OBSTACLES)
-    phys:CollidesWith(COLLISION.SMALLOBSTACLES)
+	phys:SetCollisionMask(
+		COLLISION.WORLD,
+		COLLISION.OBSTACLES,
+		COLLISION.SMALLOBSTACLES
+	)
     return phys
 end
 
@@ -590,10 +652,11 @@ function MakeObstaclePhysics(inst, rad, height)
     local phys = inst.entity:AddPhysics()
     phys:SetMass(0) --Bullet wants 0 mass for static objects
     phys:SetCollisionGroup(COLLISION.OBSTACLES)
-    phys:ClearCollisionMask()
-    phys:CollidesWith(COLLISION.ITEMS)
-    phys:CollidesWith(COLLISION.CHARACTERS)
-    phys:CollidesWith(COLLISION.GIANTS)
+	phys:SetCollisionMask(
+		COLLISION.ITEMS,
+		COLLISION.CHARACTERS,
+		COLLISION.GIANTS
+	)
     phys:SetCapsule(rad, height or 2)
     return phys
 end
@@ -603,11 +666,12 @@ function MakeWaterObstaclePhysics(inst, rad, height, restitution)
     local phys = inst.entity:AddPhysics()
     phys:SetMass(0) --Bullet wants 0 mass for static objects
     phys:SetCollisionGroup(COLLISION.OBSTACLES)
-    phys:ClearCollisionMask()
-    phys:CollidesWith(COLLISION.ITEMS)
-    phys:CollidesWith(COLLISION.CHARACTERS)
-    phys:CollidesWith(COLLISION.GIANTS)
-    phys:CollidesWith(COLLISION.OBSTACLES)
+	phys:SetCollisionMask(
+		COLLISION.ITEMS,
+		COLLISION.CHARACTERS,
+		COLLISION.GIANTS,
+		COLLISION.OBSTACLES
+	)
     phys:SetCapsule(rad, height)
 
     inst:AddComponent("waterphysics")
@@ -621,9 +685,10 @@ function MakeSmallObstaclePhysics(inst, rad, height)
     local phys = inst.entity:AddPhysics()
     phys:SetMass(0) --Bullet wants 0 mass for static objects
     phys:SetCollisionGroup(COLLISION.SMALLOBSTACLES)
-    phys:ClearCollisionMask()
-    phys:CollidesWith(COLLISION.ITEMS)
-    phys:CollidesWith(COLLISION.CHARACTERS)
+	phys:SetCollisionMask(
+		COLLISION.ITEMS,
+		COLLISION.CHARACTERS
+	)
     phys:SetCapsule(rad, height or 2)
     return phys
 end
@@ -640,10 +705,11 @@ function MakeHeavyObstaclePhysics(inst, rad, height)
     --obstacle physics
     phys:SetMass(0)
     phys:SetCollisionGroup(COLLISION.OBSTACLES)
-    phys:ClearCollisionMask()
-    phys:CollidesWith(COLLISION.ITEMS)
-    phys:CollidesWith(COLLISION.CHARACTERS)
-    phys:CollidesWith(COLLISION.GIANTS)
+	phys:SetCollisionMask(
+		COLLISION.ITEMS,
+		COLLISION.CHARACTERS,
+		COLLISION.GIANTS
+	)
     phys:SetCapsule(rad, height or 2)
     return phys
 end
@@ -660,9 +726,10 @@ function MakeSmallHeavyObstaclePhysics(inst, rad, height)
     --obstacle physics
     phys:SetMass(0)
     phys:SetCollisionGroup(COLLISION.SMALLOBSTACLES)
-    phys:ClearCollisionMask()
-    phys:CollidesWith(COLLISION.ITEMS)
-    phys:CollidesWith(COLLISION.CHARACTERS)
+	phys:SetCollisionMask(
+		COLLISION.ITEMS,
+		COLLISION.CHARACTERS
+	)
     phys:SetCapsule(rad, height or 2)
     return phys
 end
@@ -672,11 +739,71 @@ function MakePondPhysics(inst, rad, height)
 	local phys = inst.entity:AddPhysics()
 	phys:SetMass(0) --Bullet wants 0 mass for static objects
 	phys:SetCollisionGroup(COLLISION.OBSTACLES)
-	phys:ClearCollisionMask()
-	phys:CollidesWith(COLLISION.ITEMS)
-	phys:CollidesWith(COLLISION.CHARACTERS)
-	phys:CollidesWith(COLLISION.GIANTS)
+	phys:SetCollisionMask(
+		COLLISION.ITEMS,
+		COLLISION.CHARACTERS,
+		COLLISION.GIANTS
+	)
 	phys:SetCapsule(rad, height or 2)
+	return phys
+end
+
+function MakeGolfBallPhysics(inst, rad)
+	local phys = inst.entity:AddPhysics()
+	phys:SetMass(1)
+	phys:SetFriction(0.06)
+	phys:SetDamping(0)
+	phys:SetRestitution(0.9)
+	phys:SetCollisionGroup(COLLISION.ITEMS)
+	phys:SetCollisionMask(COLLISION.WORLD)
+	phys:SetSphere(rad or 0.2)
+	return phys
+end
+
+local function GolfObstacle_OnEntityWake(inst)
+	inst:RemoveEventCallback("entitywake", GolfObstacle_OnEntityWake)
+
+	local fx = CreateEntity()
+
+	fx:AddTag("CLASSIFIED")
+	--[[Non-networked entity]]
+	fx.entity:SetCanSleep(TheWorld.ismastersim)
+	fx.persists = false
+
+	fx.entity:AddTransform()
+	fx.entity:AddPhysics()
+	fx.Physics:SetMass(0)
+	fx.Physics:SetFriction(0.1)
+	fx.Physics:SetDamping(0)
+	fx.Physics:SetRestitution(0.85)
+	fx.Physics:SetCollisionGroup(COLLISION.BOAT_LIMITS)
+	fx.Physics:SetCollisionMask(COLLISION.ITEMS)
+
+	local r = inst.Physics:GetRadius()
+	local r1 = inst._golfradoverride or r
+	local ht
+	if r1 < r then
+		ht = r + math.sqrt(r * r - r1 * r1)
+	else
+		ht = r
+	end
+	fx.Physics:SetCylinder(r1, ht)
+	inst._golfradoverride = nil
+
+	fx.Transform:SetPosition(inst.Transform:GetWorldPosition())
+	fx:ListenForEvent("onremove", function() fx:Remove() end, inst)
+end
+
+function MakeGolfObstaclePhysics(inst, rad, golfradoverride)
+	local phys = inst.entity:AddPhysics()
+	phys:SetMass(0)
+	phys:SetCollisionGroup(COLLISION.SMALLOBSTACLES)
+	phys:SetCollisionMask(COLLISION.ITEMS)
+	phys:SetSphere(rad or 0.2)
+
+	inst._golfradoverride = golfradoverride
+	inst:ListenForEvent("entitywake", GolfObstacle_OnEntityWake)
+
 	return phys
 end
 
@@ -685,9 +812,10 @@ function RemovePhysicsColliders(inst)
     if not physics then
         return
     end
-    physics:ClearCollisionMask()
     if physics:GetMass() > 0 then
-        physics:CollidesWith(COLLISION.GROUND)
+		physics:SetCollisionMask(COLLISION.GROUND)
+	else
+		physics:ClearCollisionMask()
     end
 end
 
@@ -721,6 +849,74 @@ function MakeSnowCovered(inst)
     else
         inst.AnimState:Hide("snow")
     end
+    if TheWorld.ismastersim and inst.Network then
+        MakeLunarHailBuildup(inst)
+    end
+end
+
+function UpdateLunarHailBuildup(inst)
+    inst.updatelunarhailbuilduptask = nil
+
+    local issnowcovered = TheWorld.state.issnowcovered
+    local isbuildupworkable = inst.components.lunarhailbuildup and inst.components.lunarhailbuildup:IsBuildupWorkable()
+    local shouldshowsymbol = issnowcovered or isbuildupworkable
+
+    local snowsymbol
+    if isbuildupworkable then
+        if issnowcovered then
+            snowsymbol = "lunarhail_snow_buildup"
+        else
+            snowsymbol = "lunarhail_buildup"
+        end
+    else
+        snowsymbol = "snow"
+    end
+    inst.AnimState:OverrideSymbol("snow", "snow", snowsymbol)
+
+    if shouldshowsymbol then
+        inst.AnimState:Show("snow")
+    else
+        inst.AnimState:Hide("snow")
+    end
+end
+
+local function OnLunarHailBuildupWorkableStateChanged(inst, data)
+    UpdateLunarHailBuildup(inst)
+end
+
+function MakeLunarHailBuildup(inst) -- Integrated into MakeSnowCovered.
+    local lunarhailbuildup = inst:AddComponent("lunarhailbuildup")
+    inst:ListenForEvent("lunarhailbuildupworkablestatechanged", OnLunarHailBuildupWorkableStateChanged)
+    inst.updatelunarhailbuilduptask = inst:DoTaskInTime(0, UpdateLunarHailBuildup)
+end
+function RemoveLunarHailBuildup(inst)
+    inst:RemoveComponent("lunarhailbuildup")
+    inst:RemoveEventCallback("lunarhailbuildupworkablestatechanged", OnLunarHailBuildupWorkableStateChanged)
+    if inst.updatelunarhailbuilduptask then
+        inst.updatelunarhailbuilduptask:Cancel()
+        inst.updatelunarhailbuilduptask = nil
+    end
+end
+
+function SetLunarHailBuildupAmountSmall(inst)
+    if inst.components.lunarhailbuildup then
+        inst.components.lunarhailbuildup:SetTotalWorkAmount(TUNING.LUNARHAIL_BUILDUP_TOTAL_WORK_AMOUNT_SMALL)
+        inst.components.lunarhailbuildup:SetMoonGlassAmount(TUNING.LUNARHAIL_BUILDUP_MOONGLASS_AMOUNT_SMALL)
+    end
+end
+
+function SetLunarHailBuildupAmountMedium(inst)
+    if inst.components.lunarhailbuildup then
+        inst.components.lunarhailbuildup:SetTotalWorkAmount(TUNING.LUNARHAIL_BUILDUP_TOTAL_WORK_AMOUNT_MEDIUM)
+        inst.components.lunarhailbuildup:SetMoonGlassAmount(TUNING.LUNARHAIL_BUILDUP_MOONGLASS_AMOUNT_MEDIUM)
+    end
+end
+
+function SetLunarHailBuildupAmountLarge(inst)
+    if inst.components.lunarhailbuildup then
+        inst.components.lunarhailbuildup:SetTotalWorkAmount(TUNING.LUNARHAIL_BUILDUP_TOTAL_WORK_AMOUNT_LARGE)
+        inst.components.lunarhailbuildup:SetMoonGlassAmount(TUNING.LUNARHAIL_BUILDUP_MOONGLASS_AMOUNT_LARGE)
+    end
 end
 
 ----------------------------------------------------------------------------------------
@@ -730,7 +926,7 @@ local function oneat(inst)
     end
 end
 
-local function onperish(inst, donotremove)
+local function onperish(inst)
     local owner = inst.components.inventoryitem.owner
     if owner ~= nil then
 		local loots
@@ -766,13 +962,6 @@ local function onperish(inst, donotremove)
 				container:GiveItem(v)
 			end
 		end
-    else
-        if inst.components.lootdropper ~= nil then
-            inst.components.lootdropper:DropLoot()
-        end
-        if not donotremove then
-            inst:Remove()
-        end
     end
 end
 
@@ -804,21 +993,14 @@ function MakeSmallPerishableCreature(inst, starvetime, oninventory, ondropped)
     end)
 end
 
-function MakeSmallPerishableCreatureAlwaysPerishing(inst, starvetime, oninventory, ondropped, onperishpre)
+function MakeSmallPerishableCreatureAlwaysPerishing(inst, starvetime, oninventory, ondropped)
     MakeSmallPerishableCreaturePristine(inst)
 
     --We want to see the warnings for duplicating perishable
     inst:AddComponent("perishable")
     inst.components.perishable:SetPerishTime(starvetime)
     inst.components.perishable:StartPerishing()
-    inst.components.perishable:SetOnPerishFn(function(inst)
-        local donotremove = false
-        if onperishpre ~= nil then
-            donotremove = onperishpre(inst)
-        end
-        print("RH perish", donotremove)
-        onperish(inst, donotremove)
-    end)
+    inst.components.perishable:SetOnPerishFn(onperish)
 
     inst.components.inventoryitem:SetOnPutInInventoryFn(function(inst, owner)
         if oninventory ~= nil then
@@ -1463,14 +1645,27 @@ function ToggleOnCharacterCollisions(inst)
 end
 
 function ToggleOffAllObjectCollisions(inst)
-    if not (inst.sg.mem.isobstaclepassthrough and inst.sg.mem.ischaracterpassthrough) then
-        inst.sg.mem.isobstaclepassthrough = true
-        inst.sg.mem.ischaracterpassthrough = true
-		inst.Physics:ClearCollidesWith(COLLISION.CHARACTERS)
-		inst.Physics:ClearCollidesWith(COLLISION.OBSTACLES)
-		inst.Physics:ClearCollidesWith(COLLISION.SMALLOBSTACLES)
-		inst.Physics:ClearCollidesWith(COLLISION.GIANTS)
-    end
+	local oldmask = inst.Physics:GetCollisionMask()
+	local newmask = oldmask
+	if not inst.sg.mem.ischaracterpassthrough and bit.band(newmask, COLLISION.CHARACTERS) ~= 0 then
+		inst.sg.mem.ischaracterpassthrough = true
+		newmask = bit.bxor(newmask, COLLISION.CHARACTERS)
+	end
+	if not inst.sg.mem.isobstaclepassthrough then
+		local obstaclepassthroughmask = bit.band(newmask,
+			bit.bor(COLLISION.OBSTACLES,
+			bit.bor(COLLISION.SMALLOBSTACLES,
+					COLLISION.GIANTS))
+		)
+		if obstaclepassthroughmask ~= 0 then
+			newmask = bit.bxor(newmask, obstaclepassthroughmask)
+			inst.sg.mem.isobstaclepassthrough = true
+			inst.sg.mem.obstaclepassthroughmask = obstaclepassthroughmask
+		end
+	end
+	if newmask ~= oldmask then
+		inst.Physics:SetCollisionMask(newmask)
+	end
     if inst.sg.mem.physicstask ~= nil then
         inst.sg.mem.physicstask:Cancel()
         inst.sg.mem.physicstask = nil
@@ -1483,9 +1678,12 @@ end
 function ToggleOnAllObjectCollisionsAt(inst, x, z)
     if inst.sg.mem.isobstaclepassthrough then
         inst.sg.mem.isobstaclepassthrough = nil
-        inst.Physics:CollidesWith(COLLISION.OBSTACLES)
-        inst.Physics:CollidesWith(COLLISION.SMALLOBSTACLES)
-        inst.Physics:CollidesWith(COLLISION.GIANTS)
+		inst.Physics:CollidesWith(inst.sg.mem.obstaclepassthroughmask or
+			bit.bor(COLLISION.OBSTACLES,
+			bit.bor(COLLISION.SMALLOBSTACLES,
+					COLLISION.GIANTS))
+		)
+		inst.sg.mem.obstaclepassthroughmask = nil
     end
     inst.Physics:Teleport(x, 0, z)
     ToggleOnCharacterCollisions(inst)
@@ -1528,9 +1726,7 @@ local function OnUpdatePlacedObjectPhysicsRadius(inst, data)
 end
 
 function PreventCharacterCollisionsWithPlacedObjects(inst)
-    inst.Physics:ClearCollisionMask()
-    inst.Physics:CollidesWith(COLLISION.ITEMS)
-    inst.Physics:CollidesWith(COLLISION.GIANTS)
+	inst.Physics:ClearCollidesWith(COLLISION.CHARACTERS)
     if inst._physicstask ~= nil then
         inst._physicstask:Cancel()
     end
@@ -1693,4 +1889,247 @@ function MakeWaxablePlant(inst)
     local waxable = inst:AddComponent("waxable")
     waxable:SetWaxfn(WAXED_PLANTS.WaxPlant)
     waxable:SetNeedsSpray()
+end
+
+--------------------------------------------------------------------------
+
+local function GiveOrDropItem(item, inventory, pos)
+    if inventory ~= nil then
+        inventory:GiveItem(item, nil, pos)
+    else
+        item.Transform:SetPosition(pos:Get())
+        item.components.inventoryitem:OnDropped(true)
+    end
+end
+
+local function MaterialRecycler_OnBuilt(inst, builder) -- Give rewards after consuming ingredients for inventory organanization purposes.
+    if inst._recycle_materials_data == nil then
+        return
+    end
+
+    local pos = builder:GetPosition()
+
+    for reward, data in pairs(inst._recycle_materials_data) do
+        local prefab = SpawnPrefab(reward)
+
+        if prefab ~= nil then
+            if prefab.components.stackable ~= nil then
+                prefab.components.stackable:SetStackSize(data.number)
+
+                GiveOrDropItem(prefab, data.container, pos)
+            else
+                GiveOrDropItem(prefab, data.container, pos)
+
+                for i = 2, data.number do
+                    local addt_prefab = SpawnPrefab(reward)
+                    GiveOrDropItem(addt_prefab, data.container, pos)
+                end
+            end
+        end
+    end
+
+    inst._recycle_materials_data = nil
+end
+
+function MakeCraftingMaterialRecycler(inst, data)
+    assert(not (DEBUG_MODE and inst.onPreBuilt ~= nil))
+    assert(not (DEBUG_MODE and inst.OnBuiltFn ~= nil))
+    assert(not (DEBUG_MODE and inst._recycle_materials_data ~= nil))
+
+    local function OnPreBuilt(inst, builder, materials, recipe)
+        inst._recycle_materials_data = {}
+
+        for material, reward in pairs(data) do
+            if materials ~= nil and materials[material] ~= nil then
+                local total = 0
+                local container
+        
+                for item, amount in pairs(materials[material]) do
+                    total = total + amount
+
+                    if container == nil then
+                        container = item.components.inventoryitem:GetContainer() -- Also returns inventory component.
+                    end
+                end
+        
+                if total > 0 then
+                    inst._recycle_materials_data[reward] = {
+                        number = total,
+                        container = container,
+                    }
+                end
+            end
+        end
+
+        if not next(inst._recycle_materials_data) then
+            inst._recycle_materials_data = nil
+        end
+    end
+
+    inst.onPreBuilt = OnPreBuilt
+    inst.OnBuiltFn  = MaterialRecycler_OnBuilt
+end
+
+--------------------------------------------------------------------------
+
+function IsWithinHermitCrabArea(inst)
+	local hermitcrabmanager = TheWorld.components.hermitcrab_relocation_manager
+	local house = hermitcrabmanager and hermitcrabmanager:GetPearlsHouse()
+	return house ~= nil
+		and house.components.pearldecorationscore ~= nil
+		and house.components.pearldecorationscore:IsEntityWithin(inst)
+end
+
+function MakeHermitCrabAreaListener(inst, callbackfn)
+	if callbackfn == nil then
+		return
+	end
+
+	local updateonspawn
+    local function UpdateWithinStatus()
+		if updateonspawn then
+			inst:RemoveEventCallback("entitywake", UpdateWithinStatus)
+			inst:RemoveEventCallback("entitysleep", UpdateWithinStatus)
+			updateonspawn = nil
+		end
+		callbackfn(inst, IsWithinHermitCrabArea(inst))
+    end
+    inst:ListenForEvent("ms_updatepearldecorationscore_tiles", UpdateWithinStatus, TheWorld)
+    inst:ListenForEvent("pearldecorationscore_updatestatus", UpdateWithinStatus, TheWorld)
+	inst:ListenForEvent("onbuilt", UpdateWithinStatus)
+
+	if not POPULATING then
+		updateonspawn = true
+		inst:ListenForEvent("entitywake", UpdateWithinStatus)
+		inst:ListenForEvent("entitysleep", UpdateWithinStatus)
+	end
+end
+
+--------------------------------------------------------------------------
+
+local function fumarole_OnTemperatureDelta(inst, data)
+    if not inst:HasTag("broken") then -- because repair and this callback can happen at the same event push
+        return
+    end
+    local target_temp = inst.components.inventoryitemtemperature:GetTargetTemperature()
+	local target_delta = target_temp - inst.components.inventoryitem:GetTemperature()
+    if target_delta > TUNING.FUMAROLETOOL_HEATING_THRESHOLD and not inst._reheating then
+        inst.AnimState:PlayAnimation("broken_reheating_pre")
+        inst.AnimState:PushAnimation("broken_reheating_loop")
+        inst._reheating = true
+    elseif inst._reheating and target_delta <= TUNING.FUMAROLETOOL_HEATING_MINTHRESHOLD then
+        inst.AnimState:PlayAnimation("broken_reheating_pst")
+        inst.AnimState:PushAnimation("broken", false)
+        inst._reheating = nil
+    end
+end
+
+local function GetFumaroleHeatFn(inst)
+    return inst.components.inventoryitem:GetTemperature()
+end
+
+local function GetFumaroleToolStatus(inst)
+    local temprange = inst.components.fumaroletool:GetTempRange()
+    return (temprange == 2 and "LUKEWARM")
+        or (temprange == 3 and "WARM")
+        or (temprange == 4 and "HOT")
+end
+
+local function GetFumaroleDamageMultFn(inst, target)
+    local temprange = inst.components.fumaroletool:GetTempRange()
+    if target:HasTag("frozen") then
+        return TUNING.FUMAROLETOOL_FROZEN_DAMAGE_MULTS[temprange]
+    elseif target.components.freezable ~= nil then
+        if target.components.freezable:IsFrozen() then
+            return TUNING.FUMAROLETOOL_FROZEN_DAMAGE_MULTS[temprange]
+        elseif target.components.freezable.coldness > 0 then
+            local percent = target.components.freezable:GetFreezePercent()
+            return Lerp(1, TUNING.FUMAROLETOOL_FREEZING_DAMAGE_MULTS[temprange], percent)
+        end
+    end
+end
+
+local function fumarole_UpdateTemperatureModifier(inst)
+    local heaterpower = math.clamp(inst.components.inventoryitemtemperature and inst.components.inventoryitemtemperature.externalheaterpower or 0, 0, 1)
+    inst.components.inventoryitem:SetTemperatureModifier("fumaroletool_mod", easing.linear(heaterpower, TUNING.FUMAROLETOOL_TEMP_MODIFIER, math.abs(TUNING.FUMAROLETOOL_TEMP_MODIFIER), 1))
+end
+
+function MakeFumaroleToolPristine(inst)
+    inst:AddTag("heatrock")
+    --HASHEATER (from heater component) added to pristine state for optimization
+    inst:AddTag("HASHEATER")
+    --inventoryitemtemperature (from inventoryitem component) added to pristine state for optimization
+	inst:AddTag("inventoryitemtemperature")
+    inst:AddTag("show_broken_ui")
+end
+
+function MakeFumaroleTool(inst, heatonuse, onbroken, onrepaired, onupdatetemperature)
+    inst.components.inspectable.getstatus = GetFumaroleToolStatus
+    inst.components.inventoryitem:EnableTemperature(true)
+    inst.components.inventoryitem:SetTemperatureModifier("fumaroletool_mod", TUNING.FUMAROLETOOL_TEMP_MODIFIER)
+    inst.components.inventoryitem:SetMinTemperature(TUNING.FUMAROLETOOL_MINTEMP)
+    inst.components.inventoryitem:SetMaxTemperature(TUNING.FUMAROLETOOL_MAXTEMP)
+    inst.components.inventoryitemtemperature.inherentinsulation = TUNING.INSULATION_MED_LARGE
+    inst:ListenForEvent("temperaturedelta", fumarole_UpdateTemperatureModifier)
+    if inst.components.finiteuses ~= nil then
+        inst.components.finiteuses:ClearAllConsumptions()
+        inst.components.finiteuses:SetIgnoreCombatDurabilityLoss(true)
+    end
+
+	local function _onbroken(_, isloading)
+        if inst.components.equippable:IsEquipped() then
+		    local owner = inst.components.inventoryitem.owner
+		    if owner ~= nil and owner.components.inventory ~= nil then
+		    	local item = owner.components.inventory:Unequip(inst.components.equippable.equipslot)
+		    	if item ~= nil then
+		    		owner.components.inventory:GiveItem(item, nil, owner:GetPosition())
+		    	end
+		    	owner:PushEvent("toolbroke", { tool = inst })
+		    end
+        end
+
+        if onbroken ~= nil then
+			onbroken(inst)
+		end
+
+		inst.AnimState:PlayAnimation("broken")
+		inst.components.inspectable.nameoverride = "BROKEN_FUMAROLETOOLITEM"
+        inst:ListenForEvent("temperaturedelta", fumarole_OnTemperatureDelta)
+        if inst.components.floater:IsFloating() then
+            inst.components.floater:SwitchToDefaultAnim(true)
+        end
+
+        if not isloading then
+            if inst.components.finiteuses ~= nil then
+		    	inst.components.finiteuses:Use(1)
+		    end
+		end
+	end
+
+	local function _onrepaired(_)
+        if onrepaired ~= nil then
+			onrepaired(inst)
+		end
+        if not inst.components.inventoryitem:IsHeld() then
+	        inst.AnimState:PlayAnimation("repair")
+	        inst.AnimState:PushAnimation("idle_4")
+        end
+	    inst.components.inspectable.nameoverride = nil
+        inst._reheating = nil
+        inst:RemoveEventCallback("temperaturedelta", fumarole_OnTemperatureDelta)
+	end
+
+    local heater = inst:AddComponent("heater")
+    heater.heatfn = GetFumaroleHeatFn
+    heater.equippedheatfn = GetFumaroleHeatFn
+    heater.carriedheatfn = GetFumaroleHeatFn
+
+    local fumaroletool = inst:AddComponent("fumaroletool")
+    fumaroletool:SetOnBroken(_onbroken)
+    fumaroletool:SetOnRepaired(_onrepaired)
+    fumaroletool:SetHeatOnUse(heatonuse)
+    fumaroletool:SetOnUpdateTemperatureRange(onupdatetemperature)
+
+    local damagetypebonus = inst.components.damagetypebonus or inst:AddComponent("damagetypebonus")
+    damagetypebonus:AddBonusCallback(GetFumaroleDamageMultFn)
 end

@@ -140,6 +140,18 @@ CRAFTING_FILTERS.CHARACTER.recipes =
 	"ghostlyelixir_retaliation",
 	"ghostlyelixir_attack",
 	"ghostlyelixir_speed",
+	"ghostlyelixir_revive",
+	"ghostlyelixir_shadow",
+	"ghostlyelixir_lunar",
+	"graveurn",
+	"wendy_gravestone",
+	"wendy_resurrectiongrave",
+	"petals",
+	"petals_evil",
+	"elixir_container",
+	"ghostflowerhat",
+	"wendy_butterfly",
+	"wendy_moonbutterfly",
 
 	-- Woodie
 	"wereitem_goose",
@@ -170,9 +182,8 @@ CRAFTING_FILTERS.CHARACTER.recipes =
 	"wathgrithr_shield",
 
 	-- Walter
+	"woby_treat",
 	"slingshot",
-	"walterhat",
-	"portabletent_item",
 	"slingshotammo_rock",
 	"slingshotammo_gold",
 	"slingshotammo_marble",
@@ -180,6 +191,33 @@ CRAFTING_FILTERS.CHARACTER.recipes =
 	"slingshotammo_freeze",
 	"slingshotammo_slow",
 	"slingshotammo_thulecite",
+	"slingshotammo_stinger",
+	"slingshotammo_moonglass",
+	"slingshotammo_honey",
+	"slingshotammo_scrapfeather",
+	"slingshotammo_gunpowder",
+	"slingshotammo_dreadstone",
+	"slingshotammo_horrorfuel",
+	"slingshotammo_gelblob",
+	"slingshotammo_lunarplanthusk",
+	"slingshotammo_purebrilliance",
+	"slingshotammo_container",
+	"slingshotmodkit",
+	"slingshot_band_pigskin",
+	"slingshot_band_tentacle",
+	"slingshot_frame_bone",
+	"slingshot_frame_gems",
+	"slingshot_frame_wagpunk_0",
+	"slingshot_frame_wagpunk_1",
+	"slingshot_handle_silk",
+	"slingshot_handle_sticky",
+	"slingshot_handle_jelly",
+	"slingshot_handle_voidcloth",
+	"portabletent_item",
+	"portablefirepit_item",
+	"bandage_butterflywings",
+	"walterhat",
+    "walter_rope",
 
 	-- Wolfgang
 	"mighty_gym",
@@ -269,6 +307,11 @@ CRAFTING_FILTERS.CHARACTER.recipes =
 	"wormwood_fruitdragon",
 	"armor_lunarplant_husk",
 
+    -- Wortox
+    "wortox_reviver",
+    "wortox_souljar",
+    "wortox_nabbag",
+
 	-- Wanda
 	"pocketwatch_dismantler",
 	"pocketwatch_parts",
@@ -287,24 +330,45 @@ CRAFTING_FILTERS.CHARACTER.recipes =
 	"balloonvest",
 	"balloonhat",
 
-	-- WX78
+	-- WX-78
+
+    "wx78_moduleremover",
+    "wx78_scanner_item",
+    -- WX-78 skill tree
+    "wx78_backupbody",
+	"wx78_drone_scout",
+	"wx78_drone_delivery_item",
+	"wx78_drone_delivery_small_item",
+	"wx78_drone_zap_remote",
+	"wx78_gestalttrapper",
+    "wx78_shadowdrone_harvester",
+    "wx78_shadowdrone_debuffer",
+
 	"wx78module_maxhealth",
     "wx78module_maxhealth2",
+    "wx78module_maxhunger1",
+    "wx78module_maxhunger",
     "wx78module_maxsanity1",
 	"wx78module_maxsanity",
     "wx78module_bee",
+
+    "wx78module_radar",
     "wx78module_music",
-    "wx78module_maxhunger1",
-    "wx78module_maxhunger",
 	"wx78module_movespeed",
 	"wx78module_movespeed2",
 	"wx78module_heat",
     "wx78module_cold",
     "wx78module_taser",
-    "wx78module_nightvision",
     "wx78module_light",
-    "wx78_moduleremover",
-    "wx78_scanner_item",
+    "wx78module_light2",
+    "wx78module_nightvision",
+    "wx78module_stacksize",
+
+	"wx78module_digestion",
+	"wx78module_chess",
+	"wx78module_shielding",
+    "wx78module_screech",
+	"wx78module_spin",
 }
 
 CRAFTING_FILTERS.SPECIAL_EVENT.recipes =
@@ -325,7 +389,8 @@ CRAFTING_FILTERS.SPECIAL_EVENT.recipes =
 	"yot_catcoonshrine",
 	"yotr_rabbitshrine",
 	"yotd_dragonshrine",
-
+	"yots_snakeshrine",
+	"yoth_knightshrine",
 }
 
 CRAFTING_FILTERS.CRAFTING_STATION.recipes =
@@ -345,6 +410,8 @@ CRAFTING_FILTERS.CRAFTING_STATION.recipes =
 	"ruinshat",
 	"armorruins",
 	"ruins_bat",
+	"slingshotammo_thulecite",
+	"slingshot_frame_gems",
 	"eyeturret_item",
     "shadow_forge_kit",
 	"blueprint_craftingset_ruins_builder",
@@ -356,16 +423,17 @@ CRAFTING_FILTERS.CRAFTING_STATION.recipes =
 	----CELESTIAL----
 	"moonrockidol",
 	"multiplayer_portal_moonrock_constr_plans",
-	"lunar_forge_kit",
 	"moon_mushroomhat",
+	"bathbomb",
 
 	----MOON_ALTAR-----
 	"moonglassaxe",
 	"glasscutter",
+	"lunar_forge_kit",
 	"carpentry_blade_moonglass",
+	"slingshotammo_moonglass",
 	"turf_meteor",
 	"turf_fungus_moon",
-	"bathbomb",
 	"chesspiece_butterfly_sketch",
 	"chesspiece_moon_sketch",
 
@@ -378,6 +446,8 @@ CRAFTING_FILTERS.CRAFTING_STATION.recipes =
 	"pickaxe_lunarplant",
 	"shovel_lunarplant",
 	"lunarplant_kit",
+	"slingshotammo_lunarplanthusk",
+	"slingshotammo_purebrilliance",
 
 	"beargerfur_sack",
 	"deerclopseyeball_sentryward_kit",
@@ -390,6 +460,9 @@ CRAFTING_FILTERS.CRAFTING_STATION.recipes =
 	"voidcloth_scythe",
 	"voidcloth_boomerang",
 	"voidcloth_kit",
+	"slingshotammo_gelblob",
+	"slingshotammo_horrorfuel",
+	"slingshot_handle_voidcloth",
 	
 	"shadow_battleaxe",
 	"shadow_beef_bell",
@@ -418,11 +491,88 @@ CRAFTING_FILTERS.CRAFTING_STATION.recipes =
 	"hermitshop_supertacklecontainer",
 	"hermitshop_winter_ornament_boss_hermithouse",
 	"hermitshop_winter_ornament_boss_pearl",
+    --   Post crab king
+    "shellweaver",
+    --   Post eviction
+    "hermitcrab_relocation_kit",
+    --   Post relocation
+	"hermithouse_ornament",
+	"hermithotspring_constr",
+	"hermitcrab_teashop",
+	"meatrack_hermit_multi",
+	"hermitcrab_lightpost",
+
+	"hermitcrabtea_petals_1",
+  	"hermitcrabtea_petals_evil_1",
+  	"hermitcrabtea_foliage_1",
+  	"hermitcrabtea_succulent_picked_1",
+  	"hermitcrabtea_moon_tree_blossom_1",
+  	"hermitcrabtea_firenettles_1",
+  	"hermitcrabtea_tillweed_1",
+  	"hermitcrabtea_forgetmelots_1",
+
+	"hermitcrabtea_petals_2",
+  	"hermitcrabtea_petals_evil_2",
+  	"hermitcrabtea_foliage_2",
+  	"hermitcrabtea_succulent_picked_2",
+  	"hermitcrabtea_moon_tree_blossom_2",
+  	"hermitcrabtea_firenettles_2",
+  	"hermitcrabtea_tillweed_2",
+  	"hermitcrabtea_forgetmelots_2",
+
+	"hermitcrabtea_petals_3",
+  	"hermitcrabtea_petals_evil_3",
+  	"hermitcrabtea_foliage_3",
+  	"hermitcrabtea_succulent_picked_3",
+  	"hermitcrabtea_moon_tree_blossom_3",
+  	"hermitcrabtea_firenettles_3",
+  	"hermitcrabtea_tillweed_3",
+  	"hermitcrabtea_forgetmelots_3",
+
+    -- SHELLWEAVER
+    "shellweaver_messagebottleempty",
+    "shellweaver_icestaff2",
+    "shellweaver_icestaff3",
+    "shellweaver_nonslipgrit",
+    "shellweaver_nonslipgritboosted",
+    "shellweaver_desiccant",
+    "shellweaver_desiccantboosted",
+    "shellweaver_salty_doghat",
+    "shellweaver_hermitcrab_shell",
 
     -- Rabbit King
     "rabbitkingshop_armor_carrotlure",
     "rabbitkingshop_rabbitkinghorn",
     "rabbitkingshop_hat_rabbit",
+
+    -- Wandering Trader
+    "wanderingtradershop_gears",
+    "wanderingtradershop_cutgrass",
+    "wanderingtradershop_twigs",
+    "wanderingtradershop_flint",
+    "wanderingtradershop_cutreeds",
+    --  Uncommon
+    "wanderingtradershop_pigskin",
+    "wanderingtradershop_livinglog",
+    --  Rare
+    "wanderingtradershop_redgem",
+    "wanderingtradershop_bluegem",
+    --  Special
+    "wanderingtradershop_moonglass",
+
+    -- wagpunk_workstation
+    "wagpunk_workstation_blueprint_moonstorm_goggleshat",
+    "wagpunk_workstation_blueprint_moon_device_construction1",
+    "wagpunk_floor_kit",
+    "gestalt_cage",
+    "wagboss_robot_constructionsite_kit",
+    "wagboss_robot_creation_parts",
+    "wagpunk_workstation_moonstorm_static_catcher",
+    "wagpunk_workstation_security_pulse_cage",
+
+	-- vault_refiner_pedestal
+    "vault_orb_refined",
+	"vault_pillar_guard_constr_plans",
 
 	-- waxwelljournal
 	"shadowlumber_builder",
@@ -445,6 +595,9 @@ CRAFTING_FILTERS.CRAFTING_STATION.recipes =
 	"critter_glomling_builder",
 	"critter_lunarmothling_builder",
 	"critter_eyeofterror_builder",
+	-- skins for critterlab
+    "critter_bulbin_builder",
+    "critter_eets_builder",
 
 	-- Sculpting
 	"chesspiece_hornucopia_builder",
@@ -481,11 +634,18 @@ CRAFTING_FILTERS.CRAFTING_STATION.recipes =
 	"chesspiece_catcoon_builder",
 	"chesspiece_manrabbit_builder",
 	"chesspiece_daywalker_builder",
+	"chesspiece_daywalker2_builder",
 	"chesspiece_deerclops_mutated_builder",
 	"chesspiece_warg_mutated_builder",
 	"chesspiece_bearger_mutated_builder",
 	"chesspiece_yotd_builder",
 	"chesspiece_sharkboi_builder",
+	"chesspiece_wormboss_builder",
+	"chesspiece_yots_builder",
+	"chesspiece_wagboss_robot_builder",
+	"chesspiece_wagboss_lunar_builder",
+	"chesspiece_yoth_builder",
+	"chesspiece_vault_pillar_guard_builder",
 
 	-- wintersfeastoven
 	"wintercooking_berrysauce",
@@ -514,6 +674,15 @@ CRAFTING_FILTERS.CRAFTING_STATION.recipes =
 	"halloween_experiment_volatile",
 	"halloween_experiment_moon",
 	"halloween_experiment_root",
+
+	-- Year of the Clockwork Knight
+	"yoth_knightstick",
+	"yoth_chair_rocking_item",
+	"chesspiece_yoth_sketch",
+
+	-- Year of the Snake
+	-- "yots_lantern_post_item", -- This is available for all lunar new years, so its in the "Year of the X" section
+	"chesspiece_yots_sketch",
 
     -- Year of the Dragon
     "dragonboat_pack",
@@ -605,6 +774,8 @@ CRAFTING_FILTERS.CRAFTING_STATION.recipes =
 	"firecrackers",
 	"redlantern",
 	"miniboatlantern",
+	"floatinglantern",
+	"yots_lantern_post_item", -- marked with yots, but it is for all lunar years
 	"dragonheadhat",
 	"dragonbodyhat",
 	"dragontailhat",
@@ -618,6 +789,7 @@ CRAFTING_FILTERS.CRAFTING_STATION.recipes =
 	"carnival_vest_c",
 	"carnivaldecor_figure_kit",
 	"carnivaldecor_figure_kit_season2",
+	"carnivaldecor_figure_kit_season3",
 	"carnivalcannon_confetti_kit",
 	"carnivalcannon_sparkle_kit",
 	"carnivalcannon_streamer_kit",
@@ -627,6 +799,8 @@ CRAFTING_FILTERS.CRAFTING_STATION.recipes =
 	"carnivaldecor_eggride2_kit",
 	"carnivaldecor_eggride3_kit",
 	"carnivaldecor_eggride4_kit",
+	"carnivaldecor_eggride5_kit",
+	"carnivaldecor_eggride6_kit",
 	"carnivaldecor_lamp_kit",
 
 	--- summer carnival host
@@ -640,6 +814,40 @@ CRAFTING_FILTERS.CRAFTING_STATION.recipes =
 	"carnivalgame_shooting_kit",
 	"carnivalgame_wheelspin_kit",
 	"carnivalgame_puckdrop_kit",
+	"carnivalgame_golfgame_kit_easy",
+	"carnivalgame_golfgame_kit_medium",
+	"carnivalgame_golfgame_kit_hard",
+	"carnivalgame_golfgame_kit_diy",
+
+	--- summer carnival golf props dispenser
+    "carnivalgame_golf_shape_curve1x1",
+    "carnivalgame_golf_shape_curve1x2",
+    "carnivalgame_golf_shape_curve2x1",
+    "carnivalgame_golf_shape_curve2x2",
+    "carnivalgame_golf_shape_line1x1",
+    "carnivalgame_golf_shape_diagonal1x1",
+    "carnivalgame_golfprop_movingwall_red",
+    "carnivalgame_golfprop_movingwall_blue",
+	"carnivalgame_golfprop_smallspinner_cw",
+	"carnivalgame_golfprop_smallspinner_ccw",
+	"carnivalgame_golfprop_mediumspinner_cw",
+	"carnivalgame_golfprop_mediumspinner_ccw",
+	"carnivalgame_golfprop_wormhole",
+	"carnivalgame_golfprop_wormhole_limited",
+	"carnivalgame_golfprop_spring_nofaced",
+	"carnivalgame_golfprop_spring_nofaced_onetime",
+	"carnivalgame_golfprop_spring",
+	"carnivalgame_golfprop_spring_onetime",
+ 	"carnivalgame_golfprop_cutout1",
+ 	"carnivalgame_golfprop_cutout2",
+ 	"carnivalgame_golfprop_cutout3",
+ 	"carnivalgame_golfprop_cutout4",
+ 	"carnivalgame_golfprop_cutout5",
+ 	"carnivalgame_golfprop_cutout6",
+ 	"carnivalgame_golfprop_cutout7",
+ 	"carnivalgame_golfprop_cutout8",
+ 	"carnivalgame_golfprop_cutout9",
+ 	"carnivalgame_golfprop_cutout10",
 
 	---- CARPENTRY ----
 
@@ -649,6 +857,7 @@ CRAFTING_FILTERS.CRAFTING_STATION.recipes =
 	"stone_chair",
 	"wood_stool",
 	"stone_stool",
+	"hermit_chair_rocking",
 	"wood_table_round",
 	"stone_table_round",
 	"wood_table_square",
@@ -674,13 +883,23 @@ CRAFTING_FILTERS.TOOLS.recipes =
 	"goldenshovel",
 	"golden_farm_hoe",
 	"goldenpitchfork",
+	"fumaroleaxe",
+	"fumarolepickaxe",
+	"fumaroleshovel",
+	"fumarolehammer",
+	"fumarole_farm_hoe",
+	"moonglassaxe",
+    "wx78module_spin",
 	"trap",
 	"birdtrap",
 	"bugnet",
+    "thulecitebugnet",
+    "gestalt_cage",
 	"razor",
 	"compass",
 	"walking_stick",
 	"cane",
+	"fence_rotator",
 	"sewing_kit",
 	"sewing_tape",
 	"winona_remote",
@@ -709,6 +928,8 @@ CRAFTING_FILTERS.TOOLS.recipes =
 	"spider_repellent",
     "wx78_moduleremover",
     "wx78_scanner_item",
+    "wortox_nabbag",
+	"slingshotmodkit",
 }
 
 CRAFTING_FILTERS.LIGHT.recipes =
@@ -716,6 +937,7 @@ CRAFTING_FILTERS.LIGHT.recipes =
 	"lighter",
 	"torch",
 	"campfire",
+	"portablefirepit_item",
 	"firepit",
 	"cotl_tabernacle_level1",
 	"coldfire",
@@ -723,9 +945,10 @@ CRAFTING_FILTERS.LIGHT.recipes =
 	"pumpkin_lantern",
 	"minerhat",
 	"molehat",
-    "wx78module_nightvision",
 	"lantern",
     "wx78module_light",
+    "wx78module_light2",
+    "wx78module_nightvision",
 	"nightstick",
 	"nightlight",
 	"winona_spotlight",
@@ -759,12 +982,16 @@ CRAFTING_FILTERS.PROTOTYPERS.recipes =
 	"yot_catcoonshrine",
 	"yotr_rabbitshrine",
 	"yotd_dragonshrine",
+	"yots_snakeshrine",
+	"yoth_knightshrine",
 }
 
 CRAFTING_FILTERS.REFINE.recipes =
 {
 	"rope",
+	"walter_rope",
 	"boards",
+	"woodie_boards",
 	"cutstone",
 	"papyrus",
 	"transistor",
@@ -783,10 +1010,12 @@ CRAFTING_FILTERS.REFINE.recipes =
 
 CRAFTING_FILTERS.WEAPONS.recipes =
 {
+    "wx78module_taser",
 	"pocketwatch_weapon",
 	"slingshot",
 	"winona_catapult",
 	"winona_catapult_item",
+	"wortox_nabbag",
 	"spear",
 	"spear_wathgrithr",
 	"spear_wathgrithr_lightning",
@@ -796,6 +1025,7 @@ CRAFTING_FILTERS.WEAPONS.recipes =
 	"whip",
 	"nightstick",
 	"nightsword",
+	"glasscutter",
 	"wathgrithr_shield",
 	"sleepbomb",
 	"blowdart_pipe",
@@ -811,6 +1041,7 @@ CRAFTING_FILTERS.WEAPONS.recipes =
 	"trap_teeth",
 	"trap_bramble",
 	"beemine",
+	"trap_fumarole",
 	"waterballoon",
 	"boat_cannon_kit",
 	"cannonball_rock_item",
@@ -819,6 +1050,8 @@ CRAFTING_FILTERS.WEAPONS.recipes =
 
 CRAFTING_FILTERS.ARMOUR.recipes =
 {
+	"wx78module_shielding",
+
 	"armorgrass",
 	"armorwood",
 	"armor_bramble",
@@ -872,6 +1105,7 @@ CRAFTING_FILTERS.CLOTHING.recipes =
 	"antlionhat",
 	"moonstorm_goggleshat",
 	"watermelonhat",
+	"pumpkinhat",
 	"icehat",
 	"beehat",
 	"featherhat",
@@ -902,11 +1136,14 @@ CRAFTING_FILTERS.RESTORATION.recipes =
 	"spider_healer_item",
     "wx78module_bee",
 
+	"bandage_butterflywings",
 	"healingsalve",
 	"healingsalve_acid",
+	"healingsalve_fumarole",
 	"bandage",
 	"tillweedsalve",
 	"compostwrap",
+    "wortox_reviver",
 	"reviver",
 	"lifeinjector",
 	"amulet",
@@ -922,6 +1159,8 @@ CRAFTING_FILTERS.COOKING.recipes =
 {
 	"wintersfeastoven",
 
+	"wx78module_digestion",
+
 	"lighter",
 	"portablecookpot_item",
 	"portableblender_item",
@@ -932,6 +1171,7 @@ CRAFTING_FILTERS.COOKING.recipes =
 	"cookpot",
 	"meatrack",
 	"campfire",
+	"portablefirepit_item",
 	"firepit",
 	"cotl_tabernacle_level1",
 	"icebox",
@@ -946,6 +1186,7 @@ CRAFTING_FILTERS.GARDENING.recipes =
 	"farm_plow_item",
 	"farm_hoe",
 	"golden_farm_hoe",
+	"fumarole_farm_hoe",
 	"wateringcan",
 	"premiumwateringcan",
 	"fertilizer",
@@ -981,14 +1222,14 @@ CRAFTING_FILTERS.FISHING.recipes =
 	"oceanfishingbobber_canary",
 	"oceanfishingbobber_goose",
 	"oceanfishingbobber_malbatross",
-	
+
 	"oceanfishinglure_spoon_red",
 	"oceanfishinglure_spoon_green",
 	"oceanfishinglure_spoon_blue",
 	"oceanfishinglure_spinner_red",
 	"oceanfishinglure_spinner_green",
 	"oceanfishinglure_spinner_blue",
-	
+
 	"oceanfishinglure_hermit_rain",
 	"oceanfishinglure_hermit_snow",
 	"oceanfishinglure_hermit_drowsy",
@@ -1020,7 +1261,6 @@ CRAFTING_FILTERS.SEAFARING.recipes =
 
 	"boat_bumper_kelp_kit",
 	"boat_bumper_shell_kit",
-	"boat_bumper_yotd_kit",
 
 	"boat_cannon_kit",
 	"cannonball_rock_item",
@@ -1029,7 +1269,6 @@ CRAFTING_FILTERS.SEAFARING.recipes =
 
 	"mastupgrade_lamp_item",
 	"mastupgrade_lightningrod_item",
-    "mastupgrade_lamp_item_yotd",
 
 	"fish_box",
 	"winch",
@@ -1038,8 +1277,12 @@ CRAFTING_FILTERS.SEAFARING.recipes =
 	"boat_magnet_kit",
 	"boat_magnet_beacon",
 
+	"flotationcushion",
+
     "dock_kit",
     "dock_woodposts_item",
+
+    "wagpunk_floor_kit",
 
 	"chesspiece_anchor_sketch",
 }
@@ -1054,14 +1297,18 @@ CRAFTING_FILTERS.CONTAINERS.recipes =
 	"spicepack",
 	"seedpouch",
 	"candybag",
+	"battlesong_container",
+    "wortox_souljar",
+	"slingshotammo_container",
+	"elixir_container",
 	"treasurechest",
-    "chestupgrade_stacksize",
 	"dragonflychest",
+    "wx78module_stacksize",
+    "chestupgrade_stacksize",
 	"magician_chest",
 	"icebox",
 	"saltbox",
 	"fish_box",
-	"battlesong_container",
 }
 
 CRAFTING_FILTERS.STRUCTURES.recipes =
@@ -1078,6 +1325,8 @@ CRAFTING_FILTERS.STRUCTURES.recipes =
 	"yot_catcoonshrine",
 	"yotr_rabbitshrine",
 	"yotd_dragonshrine",
+	"yots_snakeshrine",
+	"yoth_knightshrine",
 
 	"researchlab",
 	"researchlab2",
@@ -1143,6 +1392,7 @@ CRAFTING_FILTERS.STRUCTURES.recipes =
 	"townportal",
 
     "dock_kit",
+    "wagpunk_floor_kit",
 
 	"telebase",
 	"endtable",
@@ -1154,6 +1404,7 @@ CRAFTING_FILTERS.STRUCTURES.recipes =
 
 	"fence_gate_item",
 	"fence_item",
+	"fence_electric_item",
 	"wall_hay_item",
 	"wall_wood_item",
 	"wall_stone_item",
@@ -1229,6 +1480,7 @@ CRAFTING_FILTERS.RIDING.recipes =
 CRAFTING_FILTERS.WINTER.recipes =
 {
 	"campfire",
+	"portablefirepit_item",
 	"firepit",
 	"cotl_tabernacle_level1",
 	"dragonflyfurnace",
@@ -1265,6 +1517,8 @@ CRAFTING_FILTERS.SUMMER.recipes =
 	"umbrella",
 	"featherfan",
 
+	"healingsalve_fumarole",
+
 	"reflectivevest",
 	"hawaiianshirt",
 
@@ -1274,6 +1528,7 @@ CRAFTING_FILTERS.SUMMER.recipes =
 	"green_mushroomhat",
 	"blue_mushroomhat",
 	"watermelonhat",
+	"pumpkinhat",
 	"deserthat",
 	"icehat",
 	"eyebrellahat",
@@ -1342,6 +1597,7 @@ CRAFTING_FILTERS.DECOR.recipes =
 	"pirate_flag_pole",
     "dock_kit",
 	"dock_woodposts_item",
+    "wagpunk_floor_kit",
 
     "sewing_mannequin",
 
@@ -1352,6 +1608,7 @@ CRAFTING_FILTERS.DECOR.recipes =
 	"turf_checkerfloor",
 	"turf_carpetfloor",
 	"turf_carpetfloor2",
+	"turf_beard_rug",
 	"turf_mosaic_red",
 	"turf_mosaic_blue",
 	"turf_mosaic_grey",
@@ -1363,6 +1620,7 @@ CRAFTING_FILTERS.DECOR.recipes =
 	"turf_ruinstrim",
 	"turf_ruinstrim_glow",
 	"turf_archive",
+	"turf_vault",
 
 	"turf_pebblebeach",
 	"turf_shellbeach",
@@ -1376,13 +1634,13 @@ CRAFTING_FILTERS.DECOR.recipes =
 	"turf_rocky",
 	"turf_cave",
 	"turf_underrock",
+	"turf_vent",
 	"turf_sinkhole",
 	"turf_marsh",
 	"turf_mud",
 	"turf_fungus",
 	"turf_fungus_red",
 	"turf_fungus_green",
-	"turf_beard_rug",	
 
 	"ruinsrelic_plate",
 	"ruinsrelic_chipbowl",
@@ -1391,15 +1649,21 @@ CRAFTING_FILTERS.DECOR.recipes =
 	"ruinsrelic_chair",
 	"ruinsrelic_table",
 
+	"vaultrelic_bowl",
+	"vaultrelic_vase",
+	"vaultrelic_planter",
+
 	"chesspiece_anchor_sketch",
 
 	"phonograph",
 	"record",
+	"w_radio",
 
 	"wood_chair",
 	"stone_chair",
 	"wood_stool",
 	"stone_stool",
+	"hermit_chair_rocking",
 	"wood_table_round",
 	"stone_table_round",
 	"wood_table_square",

@@ -204,7 +204,7 @@ end
 
 local function onattack(weapon, attacker, target)
     --target may be killed or removed in combat damage phase
-    if target ~= nil and target:IsValid() and target.components.burnable ~= nil and (math.random() < TUNING.TORCH_ATTACK_IGNITE_PERCENT * target.components.burnable.flammability or attacker.components.skilltreeupdater:IsActivated("willow_controlled_burn_1")) then
+    if target ~= nil and target:IsValid() and target.components.burnable ~= nil and (TryLuckRoll(attacker, TUNING.TORCH_ATTACK_IGNITE_PERCENT * target.components.burnable.flammability, LuckFormulas.LighterIgniteOnAttack) or attacker.components.skilltreeupdater:IsActivated("willow_controlled_burn_1")) then
         target.components.burnable:Ignite(nil, attacker)
     end
 end
@@ -374,7 +374,9 @@ local function OnExtinguish(inst)
 end
 
 local function OnSave(inst, data)
-	if inst.components.burnable:IsBurning() and not inst.components.inventoryitem:IsHeld() then
+	--V2C: use generic limbo check instead of inventoryitem:IsHeld()
+	--     e.g. wargshrine saves torches in limbo
+	if inst.components.burnable:IsBurning() and not inst:IsInLimbo() --[[inst.components.inventoryitem:IsHeld()]] then
 		if inst.thrower ~= nil then
 			data.thrower = inst.thrower
 		else
@@ -384,7 +386,7 @@ local function OnSave(inst, data)
 end
 
 local function OnLoad(inst, data)
-	if data ~= nil and (data.lit or data.thrower ~= nil) and not inst.components.inventoryitem:IsHeld() then
+	if data ~= nil and (data.lit or data.thrower ~= nil) and not inst:IsInLimbo() --[[inst.components.inventoryitem:IsHeld()]] then
 		inst.AnimState:PlayAnimation("land")
 		inst.thrower = data.thrower
 		IgniteTossed(inst)
@@ -418,6 +420,7 @@ local function fn()
 
 	--projectile (from complexprojectile component) added to pristine state for optimization
 	inst:AddTag("projectile")
+	inst:AddTag("complexprojectile")
 
 	--Only get TOSS action via PointSpecialActions
     inst:AddTag("special_action_toss")

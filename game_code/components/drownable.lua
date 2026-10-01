@@ -96,6 +96,18 @@ function Drownable:GetFallingReason()
     end
 end
 
+function Drownable:CheckDrownable()
+    local fallingreason = self:GetFallingReason()
+    if fallingreason == FALLINGREASON.OCEAN then
+        self.inst:PushEvent("onsink")
+        return true
+    elseif fallingreason == FALLINGREASON.VOID then
+        self.inst:PushEvent("onfallinvoid")
+        return true
+    end
+    return false
+end
+
 local function NoHoles(pt)
     return not TheWorld.Map:IsPointNearHole(pt)
 end
@@ -127,6 +139,7 @@ function Drownable:Teleport()
     end
 end
 
+--V2C: seems unused?
 function Drownable:GetWashingAshoreTeleportSpot(excludeclosest)
     local ex, ey, ez = self.inst.Transform:GetWorldPosition()
     local x, y, z = FindRandomPointOnShoreFromOcean(ex, ey, ez, excludeclosest)
@@ -181,11 +194,76 @@ function Drownable:ShouldDropItems()
 	return self.shoulddropitemsfn == nil and true or self.shoulddropitemsfn(self.inst)
 end
 
+function Drownable:GetTeleportPtFor(src)
+    if self.teleport_pt_stack then
+        for i = #self.teleport_pt_stack, 1, -1 do
+            local v = self.teleport_pt_stack[i]
+            if v.src == src then
+                return v.pt
+            end
+        end
+    end
+    return nil
+end
+
+function Drownable:PushTeleportPt(src, pt)
+	if self.teleport_pt_stack then
+		--See if src already exists; push to front
+		for i = #self.teleport_pt_stack, 1, -1 do
+			local v = self.teleport_pt_stack[i]
+			if v.src == src then
+				v.pt = pt
+				table.remove(self.teleport_pt_stack, i)
+				table.insert(self.teleport_pt_stack, v)
+				return
+			end
+		end
+	else
+		self.teleport_pt_stack = {}
+	end
+
+	table.insert(self.teleport_pt_stack, { src = src, pt = pt })
+	if EntityScript.is_instance(src) then
+		if self.teleport_pt_stack_ent_onremoved == nil then
+			self.teleport_pt_stack_ent_onremoved = function(ent) self:PopTeleportPt(ent) end
+		end
+		self.inst:ListenForEvent("onremove", self.teleport_pt_stack_ent_onremoved, src)
+	end
+end
+
+function Drownable:PopTeleportPt(src)
+	if self.teleport_pt_stack then
+		for i = #self.teleport_pt_stack, 1, -1 do
+			local v = self.teleport_pt_stack[i]
+			if v.src == src then
+				table.remove(self.teleport_pt_stack, i)
+				if EntityScript.is_instance(src) then
+					self.inst:RemoveEventCallback("onremove", self.teleport_pt_stack_ent_onremoved, src)
+				end
+				break
+			end
+		end
+	end
+end
+
+function Drownable:GetTeleportPtOverride()
+	if self.teleport_pt_stack then
+		if #self.teleport_pt_stack > 0 then
+			return self.teleport_pt_stack[#self.teleport_pt_stack].pt:Get()
+		end
+		self.teleport_pt_stack = nil
+		self.teleport_pt_stack_ent_onremoved = nil
+	end
+end
+
 function Drownable:OnFallInOcean(shore_x, shore_y, shore_z)
 	self.src_x, self.src_y, self.src_z = self.inst.Transform:GetWorldPosition()
 
 	if shore_x == nil then
-		shore_x, shore_y, shore_z = FindRandomPointOnShoreFromOcean(self.src_x, self.src_y, self.src_z)
+		shore_x, shore_y, shore_z = self:GetTeleportPtOverride()
+		if shore_x == nil then
+			shore_x, shore_y, shore_z = FindRandomPointOnShoreFromOcean(self.src_x, self.src_y, self.src_z)
+		end
 	end
 
 	self.dest_x, self.dest_y, self.dest_z = shore_x, shore_y, shore_z
@@ -232,7 +310,10 @@ function Drownable:OnFallInVoid(teleport_x, teleport_y, teleport_z)
 	self.src_x, self.src_y, self.src_z = self.inst.Transform:GetWorldPosition()
 
 	if teleport_x == nil then
-		teleport_x, teleport_y, teleport_z = FindRandomPointOnShoreFromOcean(self.src_x, self.src_y, self.src_z)
+		teleport_x, teleport_y, teleport_z = self:GetTeleportPtOverride()
+		if teleport_x == nil then
+			teleport_x, teleport_y, teleport_z = FindRandomPointOnShoreFromOcean(self.src_x, self.src_y, self.src_z)
+		end
 	end
 
 	self.dest_x, self.dest_y, self.dest_z = teleport_x, teleport_y, teleport_z
@@ -244,25 +325,41 @@ function Drownable:OnFallInVoid(teleport_x, teleport_y, teleport_z)
     -- FIXME(JBK): Penalties for falling in the void.
 end
 
-function Drownable:TakeDrowningDamage()
-	local tunings = self.customtuningsfn ~= nil and self.customtuningsfn(self.inst)
-					or TUNING.DROWNING_DAMAGE[string.upper(self.inst.prefab)]
-					or TUNING.DROWNING_DAMAGE[self.inst:HasTag("player") and "DEFAULT" or "CREATURE"]
+local function is_enabled_flotation_item(item)
+	return item.components.flotationdevice ~= nil and item.components.flotationdevice:IsEnabled()
+		and (not item.components.equippable or item.components.equippable:IsEquipped())
+end
 
-	if self.inst.components.moisture ~= nil and tunings.WETNESS ~= nil then
-		self.inst.components.moisture:DoDelta(tunings.WETNESS, true)
+function Drownable:GetDrowningDamageTuning()
+	return (self.customtuningsfn and self.customtuningsfn(self.inst))
+		or TUNING.DROWNING_DAMAGE[string.upper(self.inst.prefab)]
+		or TUNING.DROWNING_DAMAGE[self.inst.isplayer and "DEFAULT" or "CREATURE"]
+end
+
+function Drownable:TakeDrowningDamage()
+	local tunings = self:GetDrowningDamageTuning()
+
+	local penalty_scale = 1.0
+	if self.src_x then
+		local tile = TheWorld.Map:GetTileAtPoint(self.src_x, self.src_y, self.src_z)
+		penalty_scale = (TileGroupManager:IsShallowOceanTile(tile) and TUNING.DROWNING_SHALLOW_SCALE) or 1.0
+	end
+
+	if tunings.WETNESS ~= nil then
+		DoDeltaMoistureToEntity(self.inst, penalty_scale * tunings.WETNESS, nil, true, true)
 	end
 
 	if self.inst.components.inventory ~= nil then
-		local body_item = self.inst.components.inventory:GetEquippedItem(EQUIPSLOTS.BODY)
-		if body_item ~= nil and body_item.components.flotationdevice ~= nil and body_item.components.flotationdevice:IsEnabled() then
-			body_item.components.flotationdevice:OnPreventDrowningDamage()
+		-- For whatever reason, inventory:FindItem doesn't search equip slots, but inventory:FindItems does.
+		local flotationitems = self.inst.components.inventory:FindItems(is_enabled_flotation_item)
+		if #flotationitems > 0 then
+			flotationitems[1].components.flotationdevice:OnPreventDrowningDamage(Vector3(self.src_x, self.src_y, self.src_z))
 			return
 		end
 	end
 
 	if self.inst.components.hunger ~= nil and tunings.HUNGER ~= nil then
-		local delta = -math.min(tunings.HUNGER, self.inst.components.hunger.current - 30)
+		local delta = penalty_scale * -math.min(tunings.HUNGER, self.inst.components.hunger.current - 30)
 		if delta < 0 then
 			self.inst.components.hunger:DoDelta(delta)
 		end
@@ -270,11 +367,13 @@ function Drownable:TakeDrowningDamage()
 
 	if self.inst.components.health ~= nil then
 		if tunings.HEALTH_PENALTY ~= nil then
+			-- Health penalties don't get scaled because they're very particularly restricted in terms of character application,
+			-- and need to be of a particular size to even be visible in-game.
 			self.inst.components.health:DeltaPenalty(tunings.HEALTH_PENALTY)
 		end
 
 		if tunings.HEALTH ~= nil then
-			local delta = -math.min(tunings.HEALTH, self.inst.components.health.currenthealth - 30)
+			local delta = penalty_scale * -math.min(tunings.HEALTH, self.inst.components.health.currenthealth - 30)
 			if delta < 0 then
 				self.inst.components.health:DoDelta(delta, false, "drowning", true, nil, true)
 			end
@@ -282,7 +381,7 @@ function Drownable:TakeDrowningDamage()
 	end
 
 	if self.inst.components.sanity ~= nil and tunings.SANITY ~= nil then
-		local delta = -math.min(tunings.SANITY, self.inst.components.sanity.current - 30)
+		local delta = penalty_scale * -math.min(tunings.SANITY, self.inst.components.sanity.current - 30)
 		if delta < 0 then
 			self.inst.components.sanity:DoDelta(delta)
 		end
@@ -308,8 +407,14 @@ function Drownable:DropInventory()
 		end
 		shuffleArray(to_drop)
 
-		for i = 1, math.ceil(#to_drop / 2) do
-			Launch(inv:DropItem(inv.itemslots[ to_drop[i] ], true), self.inst, 2)
+		local x, y, z = self.inst.Transform:GetWorldPosition()
+		local tile = TheWorld.Map:GetTileAtPoint(x, y, z)
+		local inventory_partition = (TileGroupManager:IsShallowOceanTile(tile) and math.floor(#to_drop / TUNING.DROWNING_ITEMDROP_SHALLOWS))
+			or math.floor(#to_drop / TUNING.DROWNING_ITEMDROP_NORMAL)
+		if inventory_partition > 0 then
+			for i = 1, inventory_partition do
+				Launch(inv:DropItem(inv.itemslots[ to_drop[i] ], true), self.inst, 2)
+			end
 		end
 	end
 end

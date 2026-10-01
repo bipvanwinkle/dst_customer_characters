@@ -12,6 +12,68 @@ local function DoInspected(invitem, tried)
     end
 end
 
+--NOTE: keep in sync with RecipeTile.sSetImageFromRecipe
+local function SetImageFromItem(im, item)
+	if item.layeredinvimagefn then
+		local layers = item.layeredinvimagefn(item)
+		if layers and #layers > 0 then
+			local row = layers[1]
+			im:SetTexture(row.atlas or GetInventoryItemAtlas(row.image), row.image)
+			if row.offset then
+				print("WARNING: offset not supported on layer 1 of layered icon.  Item = "..tostring(item))
+				assert(BRANCH ~= "dev")
+			end
+
+            local j = 1
+
+			if #layers > 1 then
+				im.layers = im.layers or {}
+
+				local usecc = GetGameModeProperty("icons_use_cc")
+				for i = 2, #layers do
+					row = layers[i]
+					local w = im.layers[j]
+					if w then
+						w:SetTexture(row.atlas or GetInventoryItemAtlas(row.image), row.image)
+					else
+						w = im:AddChild(Image(row.atlas or GetInventoryItemAtlas(row.image), row.image))
+						if usecc then
+							w:SetEffect("shaders/ui_cc.ksh")
+						end
+						im.layers[j] = w
+					end
+					if row.offset then
+						w:SetPosition(row.offset)
+					else
+						w:SetPosition(0, 0, 0)
+					end
+					j = j + 1
+				end
+            end
+
+            if im.layers ~= nil then
+				for i = j, #im.layers do
+					im.layers[i]:Kill()
+					im.layers[i] = nil
+				end
+			end
+
+			return im
+		end
+	end
+	local inventoryitem = item.replica.inventoryitem
+	if inventoryitem then
+		if im.layers then
+			for i, v in ipairs(im.layers) do
+				v:Kill()
+			end
+			im.layers = nil
+		end
+		im:SetTexture(inventoryitem:GetAtlas(), inventoryitem:GetImage())
+	end
+	return im
+end
+
 local ItemTile = Class(Widget, function(self, invitem)
     Widget._ctor(self, "ItemTile")
     self.item = invitem
@@ -37,8 +99,9 @@ local ItemTile = Class(Widget, function(self, invitem)
     DoInspected(invitem)
 
 	local show_spoiled_meter = self:HasSpoilage() or self.item:HasTag("show_broken_ui")
+    local has_temperature = false --self.item:HasTag("inventoryitemtemperature") and not self.item:HasTag("hide_temperature")
 
-	if show_spoiled_meter or self.item:HasTag("show_spoiled") then
+	if has_temperature or show_spoiled_meter or self.item:HasTag("show_spoiled") then
 		self.bg = self:AddChild(Image(HUD_ATLAS, "inv_slot_spoiled.tex"))
         self.bg:SetClickable(false)
     end
@@ -51,6 +114,8 @@ local ItemTile = Class(Widget, function(self, invitem)
         self.spoilage:GetAnimState():SetBuild("spoiled_meter")
         self.spoilage:GetAnimState():AnimateWhilePaused(false)
         self.spoilage:SetClickable(false)
+		self.spoilage.inst:ListenForEvent("show_spoilage", function(invitem) self:ShowSpoilage() end, invitem)
+		self.spoilage.inst:ListenForEvent("hide_spoilage", function(invitem) self:HideSpoilage() end, invitem)
     end
 
     self.wetness = self:AddChild(UIAnim())
@@ -69,6 +134,19 @@ local ItemTile = Class(Widget, function(self, invitem)
         self.rechargeframe:GetAnimState():SetBuild("recharge_meter")
         self.rechargeframe:GetAnimState():PlayAnimation("frame")
         self.rechargeframe:GetAnimState():AnimateWhilePaused(false)
+        if self.item:HasTag("rechargeable_bonus") then
+            self.rechargeframe:GetAnimState():SetMultColour(0, 0.2, 0, 0.7) -- 'Bonus while' with DARK GREEN colour.
+        else
+            self.rechargeframe:GetAnimState():SetMultColour(0, 0, 0.3, 0.54) -- 'Cooldown until' with DARK BLUE colour.
+        end
+    end
+
+    if has_temperature then
+        self.temperature = self:AddChild(UIAnim())
+        self.temperature:GetAnimState():SetBank("temperature_meter")
+        self.temperature:GetAnimState():SetBuild("temperature_meter")
+        self.temperature:GetAnimState():AnimateWhilePaused(false)
+        self.temperature:SetClickable(false)
     end
 
     if self.item.inv_image_bg ~= nil then
@@ -78,7 +156,7 @@ local ItemTile = Class(Widget, function(self, invitem)
             self.imagebg:SetEffect("shaders/ui_cc.ksh")
         end
     end
-    self.image = self:AddChild(Image(invitem.replica.inventoryitem:GetAtlas(), invitem.replica.inventoryitem:GetImage(), "default.tex"))
+	self.image = self:AddChild(SetImageFromItem(Image(), invitem))
     if GetGameModeProperty("icons_use_cc") then
         self.image:SetEffect("shaders/ui_cc.ksh")
     end
@@ -92,6 +170,7 @@ local ItemTile = Class(Widget, function(self, invitem)
 
 	self:ToggleShadowFX()
 	self:HandleAcidSizzlingFX()
+    self:HandleBuffFX(invitem)
 
     if self.rechargeframe ~= nil then
         self.recharge = self:AddChild(UIAnim())
@@ -116,13 +195,13 @@ local ItemTile = Class(Widget, function(self, invitem)
                     self.imagebg:Hide()
                 end
             end
-            self.image:SetTexture(invitem.replica.inventoryitem:GetAtlas(), invitem.replica.inventoryitem:GetImage())
+			SetImageFromItem(self.image, invitem)
         end, invitem)
     if invitem:HasClientSideInventoryImageOverrides() then
         self.inst:ListenForEvent("clientsideinventoryflagschanged",
             function(player)
-                if invitem and invitem.replica.inventoryitem then
-                    self.image:SetTexture(invitem.replica.inventoryitem:GetAtlas(), invitem.replica.inventoryitem:GetImage())
+				if invitem then
+					SetImageFromItem(self.image, invitem)
                 end
             end, ThePlayer)
     end
@@ -152,6 +231,11 @@ local ItemTile = Class(Widget, function(self, invitem)
                     self:UpdateTooltip()
                 end
             end, ThePlayer)
+    self.inst:ListenForEvent("item_buff_changed",
+        function(player, data)
+            self:HandleBuffFX(invitem, true, data)
+        end,
+    ThePlayer)
     self.inst:ListenForEvent("stacksizechange",
         function(invitem, data)
             if invitem.replica.stackable ~= nil then
@@ -166,7 +250,7 @@ local ItemTile = Class(Widget, function(self, invitem)
                         self.movinganim:Kill()
                     end
                     local dest_pos = self:GetWorldPosition()
-                    local im = Image(invitem.replica.inventoryitem:GetAtlas(), invitem.replica.inventoryitem:GetImage())
+					local im = SetImageFromItem(Image(), invitem)
                     if GetGameModeProperty("icons_use_cc") then
                         im:SetEffect("shaders/ui_cc.ksh")
                     end
@@ -196,6 +280,23 @@ local ItemTile = Class(Widget, function(self, invitem)
             end
         end, invitem)
 
+	self.inst:ListenForEvent("container_got_item_while_closed",
+		function(invitem, data)
+			if not self.ispreviewing then
+				if self.movinganim then
+					self.movinganim.isolddata = true
+				end
+				self:ScaleTo(self.basescale * 2, self.basescale, 0.25)
+			end
+			local parent = self.item.entity:GetParent()
+			if parent._receiveitemonopen and
+				parent._receiveitemonopen.item == self.item and
+				parent._receiveitemonopen.isclosed
+			then
+				parent._receiveitemonopen = nil
+			end
+		end, invitem)
+
     self.inst:ListenForEvent("percentusedchange",
         function(invitem, data)
             self:SetPercent(data.percent)
@@ -205,7 +306,7 @@ local ItemTile = Class(Widget, function(self, invitem)
         function(invitem, data)
             if self:HasSpoilage() then
                 self:SetPerishPercent(data.percent)
-            elseif invitem:HasTag("fresh") or invitem:HasTag("stale") or invitem:HasTag("spoiled") then
+			elseif invitem:HasAnyTag("fresh", "stale", "spoiled") then
                 self:SetPercent(data.percent)
             end
         end, invitem)
@@ -222,6 +323,11 @@ local ItemTile = Class(Widget, function(self, invitem)
             end, invitem)
     end
 
+    self.inst:ListenForEvent("temperaturedelta",
+        function(invitem, data)
+            self:UpdateTemperaturePercent(data.new, data.mintemp, data.maxtemp)
+        end, invitem)
+
     self.inst:ListenForEvent("wetnesschange",
         function(invitem, wet)
             if not self.isactivetile then
@@ -232,7 +338,7 @@ local ItemTile = Class(Widget, function(self, invitem)
                 end
             end
         end, invitem)
-        
+
     self.inst:ListenForEvent("acidsizzlingchange",
         function(invitem, isacidsizzling)
             if not self.isactivetile then
@@ -275,6 +381,9 @@ local ItemTile = Class(Widget, function(self, invitem)
     self:Refresh()
 end)
 
+--static function so we can share it to other files without making it global
+ItemTile.sSetImageFromItem = SetImageFromItem
+
 function ItemTile:Refresh()
     self.ispreviewing = false
     self.ignore_stacksize_anim = nil
@@ -298,6 +407,11 @@ function ItemTile:Refresh()
             self:SetPercent(self.item.components.fueled:GetPercent())
         end
 
+        if self.item.components.inventoryitemtemperature ~= nil then
+            local inventoryitem = self.item.components.inventoryitem
+            self:UpdateTemperaturePercent(inventoryitem:GetTemperature(), inventoryitem:GetMinTemperature(), inventoryitem:GetMaxTemperature())
+        end
+
         if self.rechargeframe ~= nil and self.item.components.rechargeable ~= nil then
             self:SetChargePercent(self.item.components.rechargeable:GetPercent())
             self:SetChargeTime(self.item.components.rechargeable:GetRechargeTime())
@@ -313,6 +427,10 @@ function ItemTile:Refresh()
             self.wetness:Hide()
         end
         self:HandleAcidSizzlingFX()
+    end
+
+    if self.item.itemtile_Refresh ~= nil then
+        self.item.itemtile_Refresh(self.item, self.dragging)
     end
 end
 
@@ -338,7 +456,8 @@ end
 
 function ItemTile:GetDescriptionString()
     local str = ""
-    if self.item ~= nil and self.item:IsValid() and self.item.replica.inventoryitem ~= nil then
+	local inventoryitem = self.item and self.item:IsValid() and self.item.replica.inventoryitem or nil
+	if inventoryitem then
         local adjective = self.item:GetAdjective()
         if adjective ~= nil then
             str = adjective.." "
@@ -348,39 +467,69 @@ function ItemTile:GetDescriptionString()
         local player = ThePlayer
         local actionpicker = player.components.playeractionpicker
         local active_item = player.replica.inventory:GetActiveItem()
-        if active_item == nil then
-            if not (self.item.replica.equippable ~= nil and self.item.replica.equippable:IsEquipped()) then
-                --self.namedisp:SetHAlign(ANCHOR_LEFT)
-                if TheInput:IsControlPressed(CONTROL_FORCE_INSPECT) then
-                    str = str.."\n"..TheInput:GetLocalizedControl(TheInput:GetControllerID(), CONTROL_PRIMARY)..": "..STRINGS.INSPECTMOD
-                elseif TheInput:IsControlPressed(CONTROL_FORCE_TRADE) and not self.item.replica.inventoryitem:CanOnlyGoInPocket() then
-                    if next(player.replica.inventory:GetOpenContainers()) ~= nil then
-                        str = str.."\n"..TheInput:GetLocalizedControl(TheInput:GetControllerID(), CONTROL_PRIMARY)..": "..((TheInput:IsControlPressed(CONTROL_FORCE_STACK) and self.item.replica.stackable ~= nil) and (STRINGS.STACKMOD.." "..STRINGS.TRADEMOD) or STRINGS.TRADEMOD)
+        if not self.readonlycontainer then
+            if active_item == nil then
+                if not (self.item.replica.equippable ~= nil and self.item.replica.equippable:IsEquipped()) then
+                    --self.namedisp:SetHAlign(ANCHOR_LEFT)
+                    if TheInput:IsControlPressed(CONTROL_FORCE_INSPECT) then
+                        str = str.."\n"..TheInput:GetLocalizedControl(TheInput:GetControllerID(), CONTROL_PRIMARY)..": "..STRINGS.INSPECTMOD
+                    else
+						local stack_mod = TheInput:IsControlPressed(CONTROL_FORCE_STACK)
+						if stack_mod then
+							local stackable = self.item.replica.stackable
+							stack_mod = stackable ~= nil and stackable:IsStack()
+						end
+						if TheInput:IsControlPressed(CONTROL_FORCE_TRADE) then
+							if stack_mod or not inventoryitem:IsLockedInSlot() then
+								local showhint = false
+								local containers = player.replica.inventory:GetOpenContainers()
+								if containers then
+									local canonlygoinpocketorpocketcontainers = inventoryitem:CanOnlyGoInPocketOrPocketContainers()
+									local cangoinpocket = not inventoryitem:CanOnlyGoInPocket()
+									for container, _ in pairs(containers) do
+										if container.replica.container == nil or not container.replica.container:IsReadOnlyContainer() then
+											if canonlygoinpocketorpocketcontainers then
+												if container.replica.inventoryitem and container.replica.inventoryitem:CanOnlyGoInPocket() then
+													showhint = true
+													break
+												end
+											elseif cangoinpocket then
+												showhint = true
+												break
+											end
+										end
+									end
+								end
+								if showhint then
+									str = str.."\n"..TheInput:GetLocalizedControl(TheInput:GetControllerID(), CONTROL_PRIMARY)..": "..(stack_mod and (STRINGS.STACKMOD.." "..STRINGS.TRADEMOD) or STRINGS.TRADEMOD)
+								end
+							end
+						elseif stack_mod then
+							str = str.."\n"..TheInput:GetLocalizedControl(TheInput:GetControllerID(), CONTROL_PRIMARY)..": "..STRINGS.STACKMOD
+						end
                     end
-                elseif TheInput:IsControlPressed(CONTROL_FORCE_STACK) and self.item.replica.stackable ~= nil then
-                    str = str.."\n"..TheInput:GetLocalizedControl(TheInput:GetControllerID(), CONTROL_PRIMARY)..": "..STRINGS.STACKMOD
                 end
-            end
 
-            local actions = actionpicker:GetInventoryActions(self.item)
-            if #actions > 0 then
-                str = str.."\n"..TheInput:GetLocalizedControl(TheInput:GetControllerID(), CONTROL_SECONDARY)..": "..actions[1]:GetActionString()
-            end
-        elseif active_item:IsValid() then
-            if not (self.item.replica.equippable ~= nil and self.item.replica.equippable:IsEquipped()) then
-                if active_item.replica.stackable ~= nil and active_item.prefab == self.item.prefab and self.item:StackableSkinHack(active_item) then
-                    str = str.."\n"..TheInput:GetLocalizedControl(TheInput:GetControllerID(), CONTROL_PRIMARY)..": "..STRINGS.UI.HUD.PUT
-                else
-                    str = str.."\n"..TheInput:GetLocalizedControl(TheInput:GetControllerID(), CONTROL_PRIMARY)..": "..STRINGS.UI.HUD.SWAP
+                local actions = actionpicker and actionpicker:GetInventoryActions(self.item) or nil
+                if actions and actions[1] ~= nil then
+                    str = str.."\n"..TheInput:GetLocalizedControl(TheInput:GetControllerID(), CONTROL_SECONDARY)..": "..actions[1]:GetActionString()
                 end
-            end
+            elseif active_item:IsValid() then
+                if not (self.item.replica.equippable ~= nil and self.item.replica.equippable:IsEquipped()) then
+                    if active_item.replica.stackable ~= nil and active_item.replica.stackable:CanStackWith(self.item) then
+                        str = str.."\n"..TheInput:GetLocalizedControl(TheInput:GetControllerID(), CONTROL_PRIMARY)..": "..STRINGS.UI.HUD.PUT
+					elseif not inventoryitem:IsLockedInSlot() then
+                        str = str.."\n"..TheInput:GetLocalizedControl(TheInput:GetControllerID(), CONTROL_PRIMARY)..": "..STRINGS.UI.HUD.SWAP
+                    end
+                end
 
-            --no RMB hint for quickdrop while holding an item, as that might be confusing since players would think its the item they are holding.
-            --the mod never had the hint, and people discovered it just fine, so this should also be fine -Zachary
+                --no RMB hint for quickdrop while holding an item, as that might be confusing since players would think its the item they are holding.
+                --the mod never had the hint, and people discovered it just fine, so this should also be fine -Zachary
 
-            local actions = actionpicker:GetUseItemActions(self.item, active_item, true)
-            if #actions > 0 then
-                str = str.."\n"..TheInput:GetLocalizedControl(TheInput:GetControllerID(), CONTROL_SECONDARY)..": "..actions[1]:GetActionString()
+                local actions = actionpicker and actionpicker:GetUseItemActions(self.item, active_item, true) or nil
+                if actions and actions[1] ~= nil then
+                    str = str.."\n"..TheInput:GetLocalizedControl(TheInput:GetControllerID(), CONTROL_SECONDARY)..": "..actions[1]:GetActionString()
+                end
             end
         end
     end
@@ -418,19 +567,21 @@ function ItemTile:SetQuantity(quantity)
 end
 
 function ItemTile:SetPerishPercent(percent)
-    --percent is approximated over the network, so check tags to
-    --determine the correct color at the 50% and 20% boundaries.
-    if percent < .51 and percent > .49 and self.item:HasTag("fresh") then
-        self.spoilage:GetAnimState():OverrideSymbol("meter", "spoiled_meter", "meter_green")
-        self.spoilage:GetAnimState():OverrideSymbol("frame", "spoiled_meter", "frame_green")
-    elseif percent < .21 and percent > .19 and self.item:HasTag("stale") then
-        self.spoilage:GetAnimState():OverrideSymbol("meter", "spoiled_meter", "meter_yellow")
-        self.spoilage:GetAnimState():OverrideSymbol("frame", "spoiled_meter", "frame_yellow")
-    else
-        self.spoilage:GetAnimState():ClearAllOverrideSymbols()
-    end
-    --don't use 100% frame, since it should be replace by something like "spoiled_food" then
-    self.spoilage:GetAnimState():SetPercent("anim", math.clamp(1 - percent, 0, .99))
+	if self.spoilage then
+		--percent is approximated over the network, so check tags to
+		--determine the correct color at the 50% and 20% boundaries.
+		if percent < 0.51 and percent > 0.49 and self.item:HasTag("fresh") then
+			self.spoilage:GetAnimState():OverrideSymbol("meter", "spoiled_meter", "meter_green")
+			self.spoilage:GetAnimState():OverrideSymbol("frame", "spoiled_meter", "frame_green")
+		elseif percent < 0.21 and percent > 0.19 and self.item:HasTag("stale") then
+			self.spoilage:GetAnimState():OverrideSymbol("meter", "spoiled_meter", "meter_yellow")
+			self.spoilage:GetAnimState():OverrideSymbol("frame", "spoiled_meter", "frame_yellow")
+		else
+			self.spoilage:GetAnimState():ClearAllOverrideSymbols()
+		end
+		--don't use 100% frame, since it should be replace by something like "spoiled_food" then
+		self.spoilage:GetAnimState():SetPercent("anim", math.clamp(1 - percent, 0, 0.99))
+	end
 end
 
 function ItemTile:SetPercent(percent)
@@ -449,10 +600,16 @@ function ItemTile:SetPercent(percent)
 		self.percent:SetString(string.format("%2.0f%%", val_to_show))
 		if not self.dragging and self.item:HasTag("show_broken_ui") then
 			if percent > 0 then
-				self.bg:Hide()
-				self.spoilage:Hide()
+				if self.bg then
+					self.bg:Hide()
+				end
+				if self.spoilage then
+					self.spoilage:Hide()
+				end
 			else
-				self.bg:Show()
+				if self.bg then
+					self.bg:Show()
+				end
 				self:SetPerishPercent(0)
 			end
 		end
@@ -464,6 +621,9 @@ function ItemTile:SetChargePercent(percent)
     self.rechargepct = percent
 	if self.recharge.shown then
 		if percent < 1 then
+            if self.recharge.ResetColour ~= nil then
+                self.recharge.ResetColour()
+            end
 			self.recharge:GetAnimState():SetPercent("recharge", percent)
 			if not self.rechargeframe.shown then
 				self.rechargeframe:Show()
@@ -476,6 +636,19 @@ function ItemTile:SetChargePercent(percent)
 		else
 			if prev_precent < 1 and not self.recharge:GetAnimState():IsCurrentAnimation("frame_pst") then
 				self.recharge:GetAnimState():PlayAnimation("frame_pst")
+                self.recharge:GetAnimState():SetMultColour(1, 1, 1, 1)
+                local isbonus = self.item:HasTag("rechargeable_bonus")
+                self.recharge.ResetColour = function()
+                    if isbonus then
+                        self.recharge:GetAnimState():SetMultColour(0, 0.3, 0, 0.8) -- 'Bonus while' with GREEN colour.
+                    else
+                        self.recharge:GetAnimState():SetMultColour(0, 0, 0.4, 0.64) -- 'Cooldown until' with BLUE colour.
+                    end
+                    self.recharge.inst:RemoveEventCallback("animover", self.recharge.ResetColour)
+                    self.recharge.ResetColour = nil
+                end
+                
+                self.recharge.inst:ListenForEvent("animover", self.recharge.ResetColour)
 			end
 			if self.rechargeframe.shown then
 				self.rechargeframe:Hide()
@@ -498,11 +671,11 @@ end
 function ItemTile:CancelDrag()
     self:StopFollowMouse()
 
-    if self.item:HasTag("show_spoiled") or (self.item.components.edible and self.item.components.perishable) then
+	if self.bg and self.item:HasTag("show_spoiled") or (self.item.components.edible and self.item.components.perishable) then
         self.bg:Show( )
     end
 
-    if self.item.components.perishable and self.item.components.edible then
+	if self.spoilage and self.item.components.perishable and self.item.components.edible then
         self.spoilage:Show()
     end
 
@@ -516,6 +689,9 @@ function ItemTile:StartDrag()
     if self.item.replica.inventoryitem ~= nil then -- HACK HACK: items without an inventory component won't have any of these
         if self.spoilage ~= nil then
             self.spoilage:Hide()
+        end
+        if self.temperature ~= nil then
+            self.temperature:Hide()
         end
         self.wetness:Hide()
         self:HandleAcidSizzlingFX(false)
@@ -531,10 +707,32 @@ function ItemTile:StartDrag()
     end
 end
 
+function ItemTile:ShowSpoilage()
+    if not self.dragging then
+        self.is_spoilage_shown = true
+        if self.bg then
+	    	self.bg:Show()
+	    end
+	    if self.spoilage then
+	    	self.spoilage:Show()
+	    end
+    end
+end
+
+function ItemTile:HideSpoilage()
+    self.is_spoilage_shown = nil
+	if self.bg then
+		self.bg:Hide()
+	end
+	if self.spoilage then
+		self.spoilage:Hide()
+	end
+end
+
 function ItemTile:HasSpoilage()
     if self.hasspoilage ~= nil then
         return self.hasspoilage
-    elseif not (self.item:HasTag("fresh") or self.item:HasTag("stale") or self.item:HasTag("spoiled")) then
+    elseif not self.item:HasAnyTag("fresh", "stale", "spoiled") then
         self.hasspoilage = false
     elseif self.item:HasTag("show_spoilage") then
         self.hasspoilage = true
@@ -658,6 +856,120 @@ function ItemTile:HandleAcidSizzlingFX(isacidsizzling)
             self.acidsizzling:Kill()
             self.acidsizzling = nil
         end
+    end
+end
+
+function ItemTile:HandleBuffFX(invitem, fromchanged, data)
+    local player_classified = ThePlayer and ThePlayer.player_classified or nil
+    if not player_classified then
+        return
+    end
+
+    if invitem.prefab == "panflute" then
+        if player_classified.wortox_panflute_buff:value() then
+            if self.freecastpanflute == nil then
+                self.freecastpanflute = self.image:AddChild(UIAnim())
+                local ref = self.freecastpanflute
+                ref:GetAnimState():SetBank("inventory_fx_buff_panflute")
+                ref:GetAnimState():SetBuild("inventory_fx_buff_panflute")
+                
+                local function RandomizeLoop()
+                    ref:GetAnimState():PlayAnimation("notes_loop", true)
+                    ref:GetAnimState():SetTime(math.random())
+                end
+                if fromchanged then
+                    ref:GetAnimState():PlayAnimation("notes_pre")
+                    local function DoRandomizeLoop()
+                        RandomizeLoop()
+                        ref.inst:RemoveEventCallback("animover", DoRandomizeLoop)
+                    end
+                    ref.inst:ListenForEvent("animover", DoRandomizeLoop)
+                else
+                    RandomizeLoop()
+                end
+                ref:GetAnimState():SetMultColour(1, 1, 1, 0.9)
+                ref:GetAnimState():AnimateWhilePaused(false)
+                ref:SetClickable(false)
+            end
+        else
+            if self.freecastpanflute ~= nil then
+                local ref = self.freecastpanflute
+                self.freecastpanflute = nil
+                ref:GetAnimState():PlayAnimation("notes_pst")
+                ref.inst:ListenForEvent("animover", function() ref:Kill() end)
+            end
+        end
+    elseif invitem.prefab == "desiccant" or invitem.prefab == "desiccantboosted" then
+        if data and data.effect == "playwaterfx" and data.inst == invitem then
+            if self.playwaterfx == nil then
+                self.playwaterfx = self.image:AddChild(UIAnim())
+                local ref = self.playwaterfx
+                ref:GetAnimState():SetBank("inventory_fx_absorbwater")
+                ref:GetAnimState():SetBuild("inventory_fx_absorbwater")
+                ref:GetAnimState():PlayAnimation("absorb", false)
+                ref:GetAnimState():AnimateWhilePaused(true) -- Based off of a sound that plays so it should also keep going.
+                ref:SetClickable(false)
+                ref.inst:ListenForEvent("animover", function()
+                    self.playwaterfx = nil
+                    ref:Kill()
+                end)
+                ref.inst:DoTaskInTime(8 * FRAMES, function()
+                    if TheFocalPoint then
+                        TheFocalPoint.SoundEmitter:PlaySound("winter2025/dessicant/use")
+                    end
+                end)
+            end
+        end
+    elseif invitem:HasAnyTag("luckyitem", "unluckyitem", "luckysource", "unluckysource") and data then
+        if (data.effect == "playluckyfx" and invitem:HasAnyTag("luckyitem", "luckysource"))
+            or (data.effect == "playunluckyfx" and invitem:HasAnyTag("unluckyitem", "unluckysource")) then
+            if self.playluckyfx == nil then
+                self.playluckyfx = self.image:AddChild(UIAnim())
+                local ref = self.playluckyfx
+                ref:GetAnimState():SetBank("inventory_fx_luck")
+                ref:GetAnimState():SetBuild("inventory_fx_luck")
+                ref:GetAnimState():PlayAnimation(data.effect == "playluckyfx" and "lucky" or "unlucky", false)
+                ref:GetAnimState():AnimateWhilePaused(true)
+                ref:SetClickable(false)
+                ref.inst:ListenForEvent("animover", function()
+                    self.playluckyfx = nil
+                    ref:Kill()
+                end)
+            end
+        end
+    end
+end
+
+function ItemTile:UpdateTemperaturePercent(temperature, mintemp, maxtemp)
+    -- Haack. we need to update broken state for fumarole tool, so do it hereeeee :)
+	if not self.dragging and self.item:HasTag("show_broken_ui") then
+        if self.item:HasTag("broken") then
+            if self.bg then
+				self.bg:Show()
+			end
+            if self.spoilage then
+                self.spoilage:Show()
+            end
+			self:SetPerishPercent(0)
+        else
+            if self.bg then
+				self.bg:Hide()
+			end
+			if self.spoilage then
+				self.spoilage:Hide()
+			end
+		end
+	end
+
+    if temperature ~= nil and mintemp ~= nil and maxtemp ~= nil then
+        local percent = Remap(temperature, mintemp, maxtemp, 0, 1)
+        self:SetTemperaturePercent(percent)
+    end
+end
+
+function ItemTile:SetTemperaturePercent(percent)
+    if self.temperature ~= nil then
+        self.temperature:GetAnimState():SetPercent("idle", percent)
     end
 end
 

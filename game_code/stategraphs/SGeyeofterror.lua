@@ -1,9 +1,5 @@
 require("stategraphs/commonstates")
 
-local actionhandlers =
-{
-}
-
 local function PlaySpeechOnPlayerTarget(inst, speech_line_name)
     -- We don't want both twins playing speech lines,
     -- so we have a simple toggle set on the prefab.
@@ -31,12 +27,14 @@ local events =
     CommonHandlers.OnSleepEx(),
     CommonHandlers.OnWakeEx(),
     CommonHandlers.OnFreeze(),
+	CommonHandlers.OnElectrocute(),
     CommonHandlers.OnAttacked(),
     CommonHandlers.OnDeath(),
 
     EventHandler("doattack", function(inst)
         if inst.components.health ~= nil and not inst.components.health:IsDead()
-                and (not inst.sg:HasStateTag("busy") or inst.sg:HasStateTag("hit")) then
+			and (not inst.sg:HasStateTag("busy") or (inst.sg:HasStateTag("hit") and not inst.sg:HasStateTag("electrocute")))
+		then
             inst.sg:GoToState("taunt")
         end
     end),
@@ -101,6 +99,9 @@ local events =
     EventHandler("flyback", function(inst)
         inst.sg:GoToState("flyback")
     end),
+
+	-- Corpse handlers
+	CommonHandlers.OnCorpseChomped(),
 }
 
 local function go_to_idle(inst)
@@ -310,7 +311,17 @@ local states =
         end,
 
         onupdate = function(inst, dt)
-            if inst.sg.statemem.collisiontime <= 0 then
+			if inst.sg.statemem.fxtime > 0 then
+				inst.sg.statemem.fxtime = inst.sg.statemem.fxtime - dt
+			else
+				inst.sg.statemem.fxtime = FX_TIME - dt
+				spawn_ground_fx(inst)
+			end
+
+			if inst.sg.statemem.collisiontime > 0 then
+				inst.sg.statemem.collisiontime = inst.sg.statemem.collisiontime - dt
+			else
+				inst.sg.statemem.collisiontime = COLLIDE_TIME - dt
 				--assert(TUNING.EYEOFTERROR_CHARGE_AOERANGE <= inst.components.combat.hitrange)
                 local x,y,z = inst.Transform:GetWorldPosition()
 				local theta = inst.Transform:GetRotation() * DEGREES
@@ -321,21 +332,13 @@ local states =
 					if ent:IsValid() then
 						local range = TUNING.EYEOFTERROR_CHARGE_AOERANGE + ent:GetPhysicsRadius(0)
 						if ent:GetDistanceSqToPoint(x, y, z) < range * range then
+							--NOTE: It is possible for this call to cause us to exit state
+							--      e.g. colliding against something that reflects electrocute
 							inst:OnCollide(ent)
 						end
 					end
                 end
-
-                inst.sg.statemem.collisiontime = COLLIDE_TIME
             end
-            inst.sg.statemem.collisiontime = inst.sg.statemem.collisiontime - dt
-
-            if inst.sg.statemem.fxtime <= 0 then
-                spawn_ground_fx(inst)
-
-                inst.sg.statemem.fxtime = FX_TIME
-            end
-            inst.sg.statemem.fxtime = inst.sg.statemem.fxtime - dt
         end,
 
         onexit = function(inst)
@@ -454,6 +457,12 @@ local states =
 					end
                 end
 
+				if inst.sg.currentstate.name ~= "mouthcharge_loop" then
+					--OnCollide attack resulted in us leaving this state already.
+					--e.g. Hit something that electrocutes us.
+					return
+				end
+
                 inst.sg.statemem.collisiontime = COLLIDE_TIME
             end
             inst.sg.statemem.collisiontime = inst.sg.statemem.collisiontime - dt
@@ -486,7 +495,7 @@ local states =
 
     State {
         name = "spawnminieyes",
-        tags = { "spawnminieyes", "busy", "nosleep", "nofreeze" },
+		tags = { "spawnminieyes", "busy", "nosleep", "nofreeze", "noelectrocute" },
 
         onenter = function(inst)
             local target = inst.components.combat.target
@@ -522,6 +531,7 @@ local states =
                 inst.sg:RemoveStateTag("busy")
                 inst.sg:RemoveStateTag("nosleep")
                 inst.sg:RemoveStateTag("nofreeze")
+				inst.sg:RemoveStateTag("noelectrocute")
             end),
         },
 
@@ -537,7 +547,7 @@ local states =
 
     State {
         name = "spawnminieyes_mouth",
-        tags = { "spawnminieyes", "busy", "nosleep", "nofreeze" },
+		tags = { "spawnminieyes", "busy", "nosleep", "nofreeze", "noelectrocute" },
 
         onenter = function(inst)
             inst.components.locomotor:Stop()
@@ -560,15 +570,24 @@ local states =
 
         events =
         {
-            CommonHandlers.OnNoSleepAnimOver("spawnminieyes_mouth_loop"),
+			EventHandler("animover", function(inst)
+				if inst.AnimState:AnimDone() then
+					inst.sg.statemem.spawning = true
+					inst.sg:GoToState("spawnminieyes_mouth_loop")
+				end
+			end),
         },
 
-        onexit = raise_flying_creature,
+		onexit = function(inst)
+			if not inst.sg.statemem.spawning then
+				raise_flying_creature(inst)
+			end
+		end,
     },
 
     State {
         name = "spawnminieyes_mouth_loop",
-        tags = { "spawnminieyes", "busy", "nosleep", "nofreeze" },
+		tags = { "spawnminieyes", "busy", "nosleep", "nofreeze", "noelectrocute" },
 
         onenter = function(inst)
             inst.components.locomotor:Stop()
@@ -577,7 +596,9 @@ local states =
 
             inst.SoundEmitter:PlaySound(inst._soundpath .. "spawn2_lp")
 
-            lower_flying_creature(inst)
+			if not inst.sg.lasttags["spawnminieyes"] then
+				lower_flying_creature(inst)
+			end
 
             if inst.sg.mem.minieye_spawns == nil then
                 inst.sg.mem.minieye_spawns = math.random(2, inst._mouthspawncount)
@@ -605,13 +626,17 @@ local states =
 
         events =
         {
-            CommonHandlers.OnNoSleepAnimOver(function(inst)
-                if inst.sg.mem.minieye_spawns > 0 and
-                        inst.components.commander:GetNumSoldiers() < inst:GetDesiredSoldiers() then
-                    inst.sg.statemem.looping = true
-                    inst.sg:GoToState("spawnminieyes_mouth_loop")
-                else
-                    inst.sg:GoToState("spawnminieyes_mouth_pst")
+			EventHandler("animover", function(inst)
+				if inst.AnimState:AnimDone() then
+					inst.sg.statemem.spawning = true
+					if inst.sg.mem.minieye_spawns > 0 and
+						inst.components.commander:GetNumSoldiers() < inst:GetDesiredSoldiers()
+					then
+						inst.sg.statemem.looping = true
+						inst.sg:GoToState("spawnminieyes_mouth_loop")
+					else
+						inst.sg:GoToState("spawnminieyes_mouth_pst")
+					end
                 end
             end),
         },
@@ -622,30 +647,37 @@ local states =
             if not inst.sg.statemem.looping then
                 inst.sg.mem.minieye_spawns = nil
             end
-
-            raise_flying_creature(inst)
+			if not inst.sg.statemem.spawning then
+				raise_flying_creature(inst)
+			end
         end,
     },
 
     State {
         name = "spawnminieyes_mouth_pst",
-        tags = { "spawnminieyes", "busy", "nosleep", "nofreeze" },
+		tags = { "spawnminieyes", "busy", "nosleep", "nofreeze", "noelectrocute" },
 
         onenter = function(inst)
             inst.components.locomotor:Stop()
 
             inst.AnimState:PlayAnimation("spawn2_pst")
 
-            lower_flying_creature(inst)
+			if not inst.sg.lasttags["spawnminieyes"] then
+				lower_flying_creature(inst)
+			end
         end,
 
         timeline =
         {
-            TimeEvent(6*FRAMES, raise_flying_creature),
+			FrameEvent(6, function(inst)
+				inst.sg:RemoveStateTag("spawnminieyes")
+				raise_flying_creature(inst)
+			end),
             CommonHandlers.OnNoSleepTimeEvent(8*FRAMES, function(inst)
                 inst.sg:RemoveStateTag("busy")
                 inst.sg:RemoveStateTag("nosleep")
                 inst.sg:RemoveStateTag("nofreeze")
+				inst.sg:RemoveStateTag("noelectrocute")
             end),
         },
 
@@ -653,11 +685,18 @@ local states =
         {
             CommonHandlers.OnNoSleepAnimOver("idle"),
         },
+
+		onexit = function(inst)
+			if inst.sg:HasStateTag("spawnminieyes") then
+				inst.sg:RemoveStateTag("spawnminieyes")
+				raise_flying_creature(inst)
+			end
+		end,
     },
 
     State {
         name = "focustarget",
-        tags = { "focustarget", "busy", "nosleep", "nofreeze" },
+        tags = { "focustarget", "busy", "nosleep", "nofreeze", "noelectrocute" },
 
         onenter = function(inst)
             inst.components.locomotor:StopMoving()
@@ -693,6 +732,13 @@ local states =
                     end
                 end
             end),
+			FrameEvent(34, function(inst)
+				inst.sg:RemoveStateTag("nofreeze")
+				inst.sg:RemoveStateTag("noelectrocute")
+			end),
+			CommonHandlers.OnNoSleepFrameEvent(51, function(inst)
+				inst.sg:RemoveStateTag("nosleep")
+			end),
         },
 
         events =
@@ -703,7 +749,7 @@ local states =
 
     State {
         name = "transform",
-        tags = { "busy", "noaoestun", "nofreeze", "nosleep", "nostun" },
+		tags = { "busy", "noaoestun", "nofreeze", "nosleep", "nostun", "noelectrocute" },
 
         onenter = function(inst)
             inst.components.locomotor:Stop()
@@ -740,7 +786,7 @@ local states =
 
     State {
         name = "arrive_delay",
-        tags = { "busy", "charge", "flight", "noaoestun", "noattack", "nofreeze", "nosleep", "nostun" },
+		tags = { "busy", "charge", "flight", "noaoestun", "noattack", "nofreeze", "nosleep", "nostun", "noelectrocute" },
 
         onenter = function(inst)
             inst.components.locomotor:Stop()
@@ -762,7 +808,7 @@ local states =
 
     State {
         name = "arrive",
-        tags = { "busy", "charge", "flight", "noaoestun", "noattack", "nofreeze", "nosleep", "nostun" },
+		tags = { "busy", "charge", "flight", "noaoestun", "noattack", "nofreeze", "nosleep", "nostun", "noelectrocute" },
 
         onenter = function(inst)
             inst.components.locomotor:Stop()
@@ -925,7 +971,7 @@ local states =
             TimeEvent(36*FRAMES, function(inst)
 				if inst.persists then
 					inst.persists = false
-					inst.components.lootdropper:DropLoot(inst:GetPosition())
+                    inst:DropDeathLoot()
 				end
                 ShakeAllCameras(CAMERASHAKE.VERTICAL, 0.5, 0.15, 0.1, inst, 40)
 				inst:PushEvent("forgetme")
@@ -938,6 +984,7 @@ local states =
             EventHandler("animover", function(inst)
 				if inst.AnimState:AnimDone() then
 					inst:PushEvent("turnoff_terrarium")
+                    inst.sg:GoToState("corpse")
 				end
             end),
         },
@@ -950,7 +997,7 @@ local states =
 
     State {
         name = "flyaway",
-        tags = {"busy", "charge", "leaving", "noaoestun", "nofreeze", "nosleep", "nostun" },
+		tags = { "busy", "charge", "leaving", "noaoestun", "nofreeze", "nosleep", "nostun", "noelectrocute" },
 
         onenter = function(inst)
             inst.components.locomotor:Stop()
@@ -995,7 +1042,7 @@ local states =
 
     State {
         name = "flyback_delay",
-        tags = { "busy", "charge", "flight", "noaoestun", "noattack", "nofreeze", "nosleep", "nostun" },
+		tags = { "busy", "charge", "flight", "noaoestun", "noattack", "nofreeze", "nosleep", "nostun", "noelectrocute" },
 
         onenter = function(inst)
             inst.components.locomotor:Stop()
@@ -1017,7 +1064,7 @@ local states =
 
     State {
         name = "flyback",
-        tags = { "busy", "charge", "flight", "noaoestun", "noattack", "nofreeze", "nosleep", "nostun" },
+		tags = { "busy", "charge", "flight", "noaoestun", "noattack", "nofreeze", "nosleep", "nostun", "noelectrocute" },
 
         onenter = function(inst)
             inst.components.locomotor:Stop()
@@ -1061,6 +1108,7 @@ CommonStates.AddHitState(states)
 
 CommonStates.AddWalkStates(states)
 CommonStates.AddFrozenStates(states, lower_flying_creature, raise_flying_creature)
+CommonStates.AddElectrocuteStates(states)
 CommonStates.AddSleepExStates(states,
 {
     starttimeline =
@@ -1085,4 +1133,7 @@ CommonStates.AddSleepExStates(states,
     onexitwake = raise_flying_creature,
 })
 
-return StateGraph("eyeofterror", states, events, "idle", actionhandlers)
+CommonStates.AddInitState(states, "idle")
+CommonStates.AddCorpseStates(states)
+
+return StateGraph("eyeofterror", states, events, "init")

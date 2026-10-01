@@ -10,6 +10,7 @@ end)
 
 function FocalPoint:Reset(no_snap)
 	self.current_focus = nil
+	--V2C: Technically, this conflicts with player_classified camera settings.
     TheCamera:SetDefault()
 	if not no_snap then
 	    TheCamera:Snap()
@@ -19,24 +20,26 @@ end
 -- TheFocalPoint.components.focalpoint:StartFocusSource(c_sel(), "small", nil, 999, 999, 3)
 -- TheFocalPoint.components.focalpoint:StopFocusSource(c_sel(), "large")
 
-function FocalPoint:StartFocusSource(source, id, target, minrange, maxrange, priority, updater)
+function FocalPoint:StartFocusSource(source, id, target, minrange, maxrange, priority, updater, offset, redirecttarget)
     id = id or "_default_"
     local sourcetbl = self.targets[source]
     if sourcetbl == nil then
-        self.targets[source] = { [id] = { target = target or source, source = source, id = id, minrange = minrange, maxrange = maxrange, priority = priority, updater = updater } }
+        self.targets[source] = { [id] = { target = target or source, source = source, id = id, minrange = minrange, maxrange = maxrange, priority = priority, updater = updater, offset = offset, redirecttarget = redirecttarget } }
         self.inst:ListenForEvent("onremove", self._onsourceremoved, source)
     else
         local params = sourcetbl[id]
         if params == nil then
-            sourcetbl[id] = { target = target or source, source = source, id = id, minrange = minrange, maxrange = maxrange, priority = priority, updater = updater }
+            sourcetbl[id] = { target = target or source, source = source, id = id, minrange = minrange, maxrange = maxrange, priority = priority, updater = updater, offset = offset, redirecttarget = redirecttarget }
         else
             params.target = target or source
+			params.redirecttarget = redirecttarget -- focus on this as we get closer to target
 			params.source = source
             params.id = id
             params.minrange = minrange
             params.maxrange = maxrange
             params.priority = priority
 			params.updater = updater
+			params.offset = offset
         end
     end
 	self:CameraUpdate(0)
@@ -76,8 +79,9 @@ function FocalPoint:PushTempFocus(target, minrange, maxrange, priority)
 	print("PushTempFocus is deprecated")
 end
 
-local function UpdateFocus(dt, params, parent, dist_sq)
-    local tpos = params.target:GetPosition()
+--global
+function FocalPoint_CalcBaseOffset(dt, params, parent, dist_sq)
+    local tpos = (params.redirecttarget or params.target):GetPosition()
     local ppos = parent:GetPosition()
 
     local offs = tpos - ppos
@@ -85,7 +89,16 @@ local function UpdateFocus(dt, params, parent, dist_sq)
 		local range = params.maxrange - params.minrange
         offs = offs * (range ~= 0 and ((params.maxrange - math.sqrt(dist_sq)) / range))
     end
-    offs.y = offs.y + 1.5
+	return offs
+end
+
+local function UpdateFocus(dt, params, parent, dist_sq)
+	local offs = FocalPoint_CalcBaseOffset(dt, params, parent, dist_sq)
+	if params.offset ~= nil then
+		offs = offs + params.offset
+	else
+    	offs.y = offs.y + 1.5
+	end
     TheCamera:SetOffset(offs)
 end
 
@@ -118,7 +131,11 @@ function FocalPoint:CameraUpdate(dt)
 		if best_focus ~= nil then
 			if self.current_focus ~= best_focus then
 				if self.current_focus ~= nil then
-					self:StopFocusSource(self.current_focus.source, self.current_focus.id)
+					--V2C: -Don't StopFocusSource, very inconsistent with the priority stack behaviour.
+					--     -Was this was added to fix some other bug?
+					--     -Use Reset(true) instead.
+					--self:StopFocusSource(self.current_focus.source, self.current_focus.id)
+					self:Reset(true)
 				end
 				self.current_focus = best_focus
 				if best_focus.updater ~= nil and best_focus.updater.ActiveFn ~= nil then
@@ -127,7 +144,7 @@ function FocalPoint:CameraUpdate(dt)
 			end
 			local fn = best_focus.updater and best_focus.updater.UpdateFn or UpdateFocus
 			fn(dt, best_focus, parent, best_dist_sq)
-		else
+		elseif self.current_focus then
 			self:Reset(true)
 		end
 	elseif self.current_focus ~= nil then

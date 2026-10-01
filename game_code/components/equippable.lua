@@ -19,7 +19,7 @@ local function onrestrictedtag(self, restrictedtag)
 end
 
 local function onpreventunequipping(self, prevent)
-    self.inst.replica.equippable:SetPreventUnequipping(prevent)
+	self.inst.replica.equippable:SetPreventUnequipping(prevent == true)
 end
 
 local Equippable = Class(function(self, inst)
@@ -53,6 +53,7 @@ nil,
 })
 
 function Equippable:OnRemoveFromEntity()
+	self:SetPreventUnequipping(false)
     local inventoryitem = self.inst.replica.inventoryitem
     if inventoryitem ~= nil then
         inventoryitem:SetWalkSpeedMult(1)
@@ -121,45 +122,75 @@ function Equippable:Unequip(owner)
     self.inst:PushEvent("unequipped", { owner = owner })
 end
 
+-- Keep logic in sync with inventoryitem_replica::GetWalkSpeedMult()
 function Equippable:GetWalkSpeedMult()
-    return self.walkspeedmult or 1.0
+
+    local speed = self.walkspeedmult or 1.0
+
+    local owner = self.inst.components.inventoryitem and self.inst.components.inventoryitem.owner
+
+    if owner and self.isequipped then
+        if speed < 1 and owner:HasTag("vigorbuff") then
+            speed = math.min(1, speed + 0.25)
+        end
+
+        local speedmodifierfn = owner.inventory_EquippableWalkSpeedMultModifier
+        if speedmodifierfn ~= nil then
+            speed = speedmodifierfn(owner, speed, self.inst)
+        end
+    end
+
+    return speed
 end
 
+--V2C: reminder to update replica version as well XD
 function Equippable:IsRestricted(target)
+	if not target:HasAnyTag("player", "possessedbody") then
+		--restricted tags and links only apply to players
+		return false
+	end
+    local linkeditem = self.inst.components.linkeditem
+    if linkeditem and linkeditem:IsEquippableRestrictedToOwner() then
+        local owneruserid = linkeditem:GetOwnerUserID()
+        if owneruserid and owneruserid ~= target.userid then
+            return true
+        end
+    end
     return self.restrictedtag ~= nil
         and self.restrictedtag:len() > 0
         and not target:HasTag(self.restrictedtag)
-        and target:HasTag("player") --restricted tags only apply to players
 end
 
 function Equippable:IsRestricted_FromLoad(target)
-    if SKILLTREE_EQUIPPABLE_RESTRICTED_TAGS[self.restrictedtag] == target.prefab then
-        -- NOTES(JBK): If a player is resolving equipment from a snapshot load assume the player has the tag only if the tag is from a skill tree.
+    -- NOTES(JBK): If a player is resolving equipment from a snapshot load assume the player has the tag only if the tag is from a skill tree.
+    if type(SKILLTREE_EQUIPPABLE_RESTRICTED_TAGS[self.restrictedtag]) == "table" then
+        if SKILLTREE_EQUIPPABLE_RESTRICTED_TAGS[self.restrictedtag][target.prefab] then
+            return false
+        end
+    elseif SKILLTREE_EQUIPPABLE_RESTRICTED_TAGS[self.restrictedtag] == target.prefab then
         return false
     end
     return self:IsRestricted(target)
 end
 
 function Equippable:ShouldPreventUnequipping()
-    return self.preventunequipping
+	return self.preventunequipping == true
 end
 
-local function OnRemove(inst, data)
+local function OnRemove(inst)
     inst.components.equippable:SetPreventUnequipping(false)
 end
 
 function Equippable:SetPreventUnequipping(shouldprevent)
     if shouldprevent then
-        if self._onremovelistener == nil then
-            self._onremovelistener = self.inst:ListenForEvent("onremove", OnRemove)
+		if not self.preventunequipping then
+			self.inst:ListenForEvent("onremove", OnRemove)
+			self.preventunequipping = true
         end
-    else
-        if self._onremovelistener ~= nil then
-            self.inst:RemoveEventCallback("onremove", OnRemove)
-            self._onremovelistener = nil
-        end
+	elseif self.preventunequipping then
+		self.inst:RemoveEventCallback("onremove", OnRemove)
+		self.preventunequipping = nil
     end
-    self.preventunequipping = shouldprevent
 end
 
 function Equippable:GetDapperness(owner, ignore_wetness)

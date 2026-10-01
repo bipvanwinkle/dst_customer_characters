@@ -128,7 +128,9 @@ local function TossDebris(inst)
 			local cos_theta = math.cos(theta)
 			local sin_theta = math.sin(theta)
 			local speed = 2 + math.random() * 2
-			v.Physics:Teleport(x + cos_theta * radius, 1, z - sin_theta * radius)
+			if not TryTeleportToLaunchPos(v, x + cos_theta * radius, 1, z - sin_theta * radius) then
+				v.Physics:Teleport(x, 1, z)
+			end
 			v.Physics:SetVel(speed * cos_theta, 2 + math.random() * 2, -speed * sin_theta)
 			v.AnimState:PlayAnimation("rock_float_0"..tostring(v.variation))
 		end
@@ -147,7 +149,9 @@ local function DropDebris(inst)
 			local cos_theta = math.cos(theta)
 			local sin_theta = math.sin(theta)
 			local speed = 2 + math.random() * 2
-			v.Physics:Teleport(x + cos_theta * radius, 0, z - sin_theta * radius)
+			if not TryTeleportToLaunchPos(v, x + cos_theta * radius, 0, z - sin_theta * radius) then
+				v.Physics:Teleport(x, 0, z)
+			end
 			v.Physics:SetVel(speed * cos_theta, 0, -speed * sin_theta)
 			v.AnimState:PlayAnimation("rock_float_0"..tostring(v.variation))
 		end
@@ -325,6 +329,11 @@ local function OnAttacked(inst, data)
 	end
 end
 
+local function OnCaptured(inst, obj, doer)
+	inst.persists = false
+	inst:PushEventImmediate("captured_despawn")
+end
+
 --------------------------------------------------------------------------
 
 local function OnEntitySleep(inst)
@@ -385,6 +394,10 @@ local function fn()
 	inst:AddTag("hostile")
 	inst:AddTag("notraptrigger")
 	inst:AddTag("lunar_aligned")
+	inst:AddTag("brightmare")
+
+	--gestaltcapturable (from gestaltcapturable component) added to pristine state for optimization
+	inst:AddTag("gestaltcapturable")
 
 	MakeCharacterPhysics(inst, 10, .5)
 
@@ -409,6 +422,9 @@ local function fn()
 	if not TheWorld.ismastersim then
 		return inst
 	end
+
+    inst.scrapbook_animoffsety = 0
+    inst.scrapbook_bb_y_extra = 75
 
 	inst.cloud = SpawnPrefab("lunar_goop_cloud_fx")
 	inst.cloud.entity:SetParent(inst.entity)
@@ -448,6 +464,11 @@ local function fn()
 
 	inst:AddComponent("knownlocations")
 	inst:AddComponent("entitytracker")
+
+	inst:AddComponent("gestaltcapturable")
+	inst.components.gestaltcapturable:SetLevel(2)
+    inst.components.gestaltcapturable:SetIsPlanar(true)
+	inst.components.gestaltcapturable:SetOnCapturedFn(OnCaptured)
 
 	inst.debris = nil
 	inst.debrisshown = false

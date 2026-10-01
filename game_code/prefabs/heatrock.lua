@@ -52,7 +52,7 @@ end
 local emitted_temperatures = { -10, 10, 25, 40, 60 }
 
 local function HeatFn(inst, observer)
-    local range = GetRangeForTemperature(inst.components.temperature:GetCurrent(), TheWorld.state.temperature)
+	local range = GetRangeForTemperature(inst.components.temperature:GetCurrent(), GetLocalTemperature(inst))
     if range <= 2 then
         inst.components.heater:SetThermics(false, true)
     elseif range >= 4 then
@@ -113,7 +113,7 @@ local function AdjustLighting(inst, range, ambient)
 end
 
 local function TemperatureChange(inst, data)
-    local ambient_temp = TheWorld.state.temperature
+	local ambient_temp = GetLocalTemperature(inst)
     local cur_temp = inst.components.temperature:GetCurrent()
     local range = GetRangeForTemperature(cur_temp, ambient_temp)
 
@@ -140,8 +140,9 @@ local function TemperatureChange(inst, data)
     if range ~= inst.currentTempRange then
         UpdateImages(inst, range)
 
-        if (inst.lowTemp ~= nil and range >= 3) or
-            (inst.highTemp ~= nil and range <= 3) then
+        local hasrate = data and data.hasrate or false
+        if hasrate and ((inst.lowTemp ~= nil and range >= 3) or
+            (inst.highTemp ~= nil and range <= 3)) then
             inst.lowTemp = nil
             inst.highTemp = nil
             inst.components.fueled:SetPercent(inst.components.fueled:GetPercent() - 1 / TUNING.HEATROCK_NUMUSES)
@@ -170,7 +171,7 @@ local function OnOwnerChange(inst)
         owner = nextowner
     end
 
-	if owner:HasTag("pocketdimension_container") or owner:HasTag("buried") then
+	if owner:HasAnyTag("pocketdimension_container", "buried") then
 		inst._light.entity:SetParent(inst.entity)
 		if not inst._light:IsInLimbo() then
 			inst._light:RemoveFromScene()

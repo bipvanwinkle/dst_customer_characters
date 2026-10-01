@@ -16,7 +16,7 @@ local UPDATE_PERIOD = 29 -- less likely to update on the same frame as others
 local BASE_RADIUS = 20
 local EXCLUDE_RADIUS = 3
 local JITTER_RADIUS = 20
-local MIN_PLAYER_DISTANCE = 64 * 1.2 -- this is our "outer" sleep radius
+local MIN_PLAYER_DISTANCE = ENTITY_POPOUT_RADIUS -- this is our "outer" sleep radius
 local RETRY_MULT = 0.25 -- if we fail, try again sooner
 
 local REGROW_STATUS = {
@@ -210,6 +210,12 @@ end
 self:SetRegrowthForType("red_mushroom", TUNING.MUSHROOM_REGROWTH_TIME, "red_mushroom", RedMushroomRegrowth)
 self:SetRegrowthForType("green_mushroom", TUNING.MUSHROOM_REGROWTH_TIME, "green_mushroom", GreenMushroomRegrowth)
 self:SetRegrowthForType("blue_mushroom", TUNING.MUSHROOM_REGROWTH_TIME, "blue_mushroom", BlueMushroomRegrowth)
+
+local function MandrakePlantedRegrowth()
+    return TUNING.MANDRAKE_PLANTED_REGROWTH_TIME_MULT
+end
+
+self:SetRegrowthForType("mandrake_planted", TUNING.MANDRAKE_PLANTED_REGROWTH_TIME, "mandrake_planted", MandrakePlantedRegrowth)
 
 --------------------------------------------------------------------------
 --[[ Update ]]

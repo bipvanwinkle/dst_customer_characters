@@ -17,6 +17,8 @@ local prefabs =
     "boneshard",
     "deer_antler",
     "deer_growantler_fx",
+
+    "deercorpse",
 }
 
 local redprefabs =
@@ -26,6 +28,8 @@ local redprefabs =
     "deer_fire_circle",
     "deer_fire_charge",
     "deer_unshackle_fx",
+
+    "deercorpse",
 }
 
 local blueprefabs =
@@ -35,6 +39,8 @@ local blueprefabs =
     "deer_ice_circle",
     "deer_ice_charge",
     "deer_unshackle_fx",
+
+    "deercorpse",
 }
 
 local brain = require("brains/deerbrain")
@@ -411,6 +417,16 @@ local function getstatus(inst)
     return inst.charged and "ANTLER" or nil
 end
 
+local SCRAPBOOK_OVERRIDEDATA_NORMAL = {
+    {"swap_neck_collar", "deer_build", "swap_neck" }, 
+    {"swap_antler_red", "deer_build", "swap_antler1"}
+}
+local SCRAPBOOK_HIDE_NORMAL = { "CHAIN" }
+local SCRAPBOOK_DEPS_NORMAL = { "meat", "deer_antler1", "deer_antler2", "deer_antler3"}
+
+local SCRAPBOOK_OVERRIDEDATA_BLUEGEM = { {"swap_antler_red", "deer_build", "swap_antler_blue"}}
+local SCRAPBOOK_DEPS_BLUEGEM = { "meat", "bluegem" }
+local SCRAPBOOK_DEPS_REDGEM = { "meat", "redgem" }
 local function common_fn(gem)
     local inst = CreateEntity()
 
@@ -464,11 +480,18 @@ local function common_fn(gem)
         return inst
     end
 
-    inst.scrapbook_overridedata = {{"swap_neck_collar", "deer_build", "swap_neck" }, {"swap_antler_red", "deer_build", "swap_antler1"}}
-    inst.scrapbook_hide = { "CHAIN" }
-    inst.scrapbook_deps = { "meat", "deer_antler1", "deer_antler2", "deer_antler3"}
-    inst.scrapbook_anim = "idle"
+	inst.override_combat_fx_height = "high"
 
+    if gem ~= nil then
+        inst.scrapbook_overridedata = gem == "blue" and SCRAPBOOK_OVERRIDEDATA_BLUEGEM or nil
+        inst.scrapbook_deps = gem == "blue" and SCRAPBOOK_DEPS_BLUEGEM or SCRAPBOOK_DEPS_REDGEM
+    else
+        inst.scrapbook_overridedata = SCRAPBOOK_OVERRIDEDATA_NORMAL
+        inst.scrapbook_hide = SCRAPBOOK_HIDE_NORMAL
+        inst.scrapbook_deps = SCRAPBOOK_DEPS_NORMAL
+    end
+
+    inst.scrapbook_anim = "idle"
 
     inst.gem = gem
 

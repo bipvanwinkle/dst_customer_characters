@@ -84,6 +84,7 @@ local function fn()
     inst.entity:AddNetwork()
 
     MakeObstaclePhysics(inst, .1)
+    MakeCollidesWithElectricField(inst)
 
     inst.Transform:SetFourFaced()
 
@@ -103,6 +104,8 @@ local function fn()
     if not TheWorld.ismastersim then
         return inst
     end
+
+	inst.override_combat_fx_height = "low"
 
     inst:AddComponent("locomotor")
     inst.components.locomotor:SetSlowMultiplier( 1 )
@@ -132,6 +135,7 @@ local function fn()
     inst:AddComponent("inspectable")
 
     inst:SetStateGraph("SGeyeplant")
+	inst.sg.mem.burn_on_electrocute = true
 
     inst:AddComponent("lootdropper")
 
@@ -139,6 +143,8 @@ local function fn()
 
     MakeSmallBurnable(inst)
     MakeMediumPropagator(inst)
+    inst.components.burnable:SetBurnTime(10 * TUNING.PLANTMOB_BURNTIME_MULT)
+    inst.components.health.fire_damage_scale = TUNING.PLANTMOB_FIRE_DAMAGE_SCALE
 
     MakeHauntableIgnite(inst)
 

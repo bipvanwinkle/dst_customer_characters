@@ -20,6 +20,15 @@ function Prototyper:OnRemoveFromEntity()
     self.inst:RemoveTag("prototyper")
     for k, v in pairs(self.doers) do
         self.inst:RemoveEventCallback("onremove", self.onremovedoer, k)
+        if self.onturnofffordoer ~= nil then
+            self.onturnofffordoer(self.inst, k)
+        end
+    end
+    if self.on then
+        if self.onturnoff ~= nil then
+            self.onturnoff(self.inst)
+        end
+        self.on = false
     end
     self.doers = nil
 end
@@ -28,6 +37,9 @@ function Prototyper:TurnOn(doer)
     if not self.doers[doer] then
         self.doers[doer] = true
         self.inst:ListenForEvent("onremove", self.onremovedoer, doer)
+        if self.onturnonfordoer ~= nil then
+            self.onturnonfordoer(self.inst, doer)
+        end
         if not self.on then
             if self.onturnon ~= nil then
                 self.onturnon(self.inst)
@@ -41,6 +53,9 @@ function Prototyper:TurnOff(doer)
     if self.doers[doer] then
         self.doers[doer] = nil
         self.inst:RemoveEventCallback("onremove", self.onremovedoer, doer)
+        if self.onturnofffordoer ~= nil then
+            self.onturnofffordoer(self.inst, doer)
+        end
         if next(self.doers) == nil and self.on then
             if self.onturnoff ~= nil then
                 self.onturnoff(self.inst)
@@ -50,11 +65,22 @@ function Prototyper:TurnOff(doer)
     end
 end
 
+function Prototyper:CanUsePrototyper(doer)
+    if self.overridecanuseprototyper ~= nil then
+        return self.overridecanuseprototyper(self.inst, doer)
+    end
+
+    return doer:IsNear(self.inst, TUNING.RESEARCH_MACHINE_DIST)
+end
+
 function Prototyper:GetTechTrees()
     return deepcopy(self.trees)
 end
 
 function Prototyper:Activate(doer, recipe)
+    if self.inst.components.craftingstation then
+        self.inst.components.craftingstation:RecipeCrafted(self.doers, recipe.name)
+    end
     if self.onactivate ~= nil then
         self.onactivate(self.inst, doer, recipe)
     end

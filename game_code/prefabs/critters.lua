@@ -7,7 +7,8 @@ local HUNGRY_PERISH_PERCENT = 0.5 -- matches stale tag
 local STARVING_PERISH_PERCENT = 0.2 -- matches spoiked tag
 
 local function IsLeaderSleeping(inst)
-    return inst.components.follower.leader and inst.components.follower.leader:HasTag("sleeping")
+    local leader = inst.components.follower and inst.components.follower:GetLeader()
+    return leader and leader:HasTag("sleeping")
 end
 
 local function ShouldWakeUp(inst)
@@ -58,6 +59,10 @@ local function IsAffectionate(inst)
             or false
 end
 
+local function IsHungry(inst)
+    return inst.components.perishable and inst.components.perishable:GetPercent() <= HUNGRY_PERISH_PERCENT
+end
+
 local function IsPlayful(inst)
 	return IsAffectionate(inst)
 end
@@ -100,17 +105,29 @@ end
 -------------------------------------------------------------------------------
 
 local function MakeCritter(name, animname, face, diet, flying, data, prefabs)
-    local buildname = (data and data.buildname) or animname.."_build"
+    local buildname
+    if not data or not data.skin_only then
+        buildname = (data and data.buildname) or animname.."_build"
+    end
     local assets =
     {
-        Asset("ANIM", "anim/"..buildname..".zip"),
 	    Asset("ANIM", "anim/"..animname.."_basic.zip"),
-	    Asset("ANIM", "anim/"..animname.."_emotes.zip"),
-	    Asset("ANIM", "anim/"..animname.."_traits.zip"),
+        Asset("ANIM", "anim/"..animname.."_emotes.zip"),
+        Asset("ANIM", "anim/"..animname.."_traits.zip"),
     }
+    if buildname then
+        table.insert(assets, Asset("ANIM", "anim/"..buildname..".zip"))
+    end
 
-    if data.allow_platform_hopping then
-        table.insert(assets, Asset("ANIM", "anim/"..animname.."_jump.zip"))
+    if data then
+        if data.allow_platform_hopping then
+            table.insert(assets, Asset("ANIM", "anim/"..animname.."_jump.zip"))
+        end
+        if data.assets then
+            for _, v in ipairs(data.assets) do
+                table.insert(assets, v)
+            end
+        end
     end
 
     local function fn()
@@ -135,7 +152,9 @@ local function MakeCritter(name, animname, face, diet, flying, data, prefabs)
         end
 
         inst.AnimState:SetBank(animname)
-        inst.AnimState:SetBuild(buildname)
+        if buildname then
+            inst.AnimState:SetBuild(buildname)
+        end
         inst.AnimState:PlayAnimation("idle_loop")
 
         if flying then
@@ -146,10 +165,11 @@ local function MakeCritter(name, animname, face, diet, flying, data, prefabs)
             inst.Physics:SetFriction(0)
             inst.Physics:SetDamping(5)
             inst.Physics:SetCollisionGroup(COLLISION.CHARACTERS)
-            inst.Physics:ClearCollisionMask()
-            inst.Physics:CollidesWith((TheWorld:CanFlyingCrossBarriers() and COLLISION.GROUND) or COLLISION.WORLD)
-            inst.Physics:CollidesWith(COLLISION.FLYERS)
-            inst.Physics:CollidesWith(COLLISION.CHARACTERS)
+			inst.Physics:SetCollisionMask(
+				TheWorld:CanFlyingCrossBarriers() and COLLISION.GROUND or COLLISION.WORLD,
+				COLLISION.FLYERS,
+				COLLISION.CHARACTERS
+			)
             inst.Physics:SetCapsule(.5, 1)
 
             inst:AddTag("flying")
@@ -191,6 +211,7 @@ local function MakeCritter(name, animname, face, diet, flying, data, prefabs)
         inst.IsAffectionate = IsAffectionate
         inst.IsSuperCute = IsSuperCute
         inst.IsPlayful = IsPlayful
+        inst.IsHungry = IsHungry
 
 		inst.playmatetags = {"critter"}
 		if data ~= nil and data.playmatetags ~= nil then
@@ -339,6 +360,13 @@ end
 -------------------------------------------------------------------------------
 local standard_diet = { FOODGROUP.OMNI }
 
+local bulbin_assets = {
+    Asset("ANIM", "anim/bulbin_whistle.zip"),
+    Asset("ANIM", "anim/bulbin_spin.zip"),
+    Asset("SOUND", "sound/together.fsb"),
+    Asset("SOUND", "sound/beefalo.fsb"),
+}
+
 return MakeCritter("critter_lamb", "sheepington", 6, standard_diet, false, {favoritefood="guacamole", allow_platform_hopping=true}),
        MakeBuilder("critter_lamb"),
        MakeCritter("critter_puppy", "pupington", 4, standard_diet, false, {favoritefood="monsterlasagna", allow_platform_hopping=true}),
@@ -354,4 +382,8 @@ return MakeCritter("critter_lamb", "sheepington", 6, standard_diet, false, {favo
        MakeCritter("critter_lunarmothling", "lunarmoth", 4, standard_diet, true, {favoritefood="flowersalad", flyingsoundloop="dontstarve_DLC001/creatures/together/dragonling/flap_LP", special_powers_fn = lunarmoth_special_powers_fn}, {"critterbuff_lunarmoth"}),
        MakeBuilder("critter_lunarmothling"),
        MakeCritter("critter_eyeofterror", "eyeofterror_mini", 6, standard_diet, true, {buildname = "eyeofterror_mini_basic", favoritefood="baconeggs"--[[, flyingsoundloop = "a hover loop here, IF we want it"]] }),
-       MakeBuilder("critter_eyeofterror")
+       MakeBuilder("critter_eyeofterror"),
+       MakeCritter("critter_bulbin", "bulbin", 6, standard_diet, false, {skin_only=true, favoritefood="stuffedeggplant", allow_platform_hopping=true, assets=bulbin_assets}),
+       MakeBuilder("critter_bulbin"),
+       MakeCritter("critter_eets", "eets", 4, standard_diet, false, {skin_only=true, favoritefood="butterflymuffin", allow_platform_hopping=true}),
+       MakeBuilder("critter_eets")

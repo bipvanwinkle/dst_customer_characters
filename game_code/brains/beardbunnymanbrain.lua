@@ -24,7 +24,7 @@ local function FindFoodAction(inst)
 end
 
 local function GoHomeAction(inst)
-    if not inst.components.follower.leader and
+    if not inst.components.follower:GetLeader() and
        inst.components.homeseeker and
        inst.components.homeseeker.home and
        inst.components.homeseeker.home:IsValid() then
@@ -49,6 +49,7 @@ function WerePigBrain:OnStart()
     local root = PriorityNode(
     {
 		BrainCommon.PanicTrigger(self.inst),
+        BrainCommon.ElectricFencePanicTrigger(self.inst),
         WhileNode(function() return not TargetIsAggressive(self.inst) end, "SafeToEat",
             DoAction(self.inst, function() return FindFoodAction(self.inst) end, "EatMeat", true)
         ),

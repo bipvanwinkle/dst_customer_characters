@@ -24,7 +24,7 @@ local TIME_BETWEEN_EATING = 30
 local LEASH_RETURN_DIST = 15
 local LEASH_MAX_DIST = 20
 
-local NO_LOOTING_TAGS = { "INLIMBO", "catchable", "fire", "irreplaceable", "heavy", "outofreach", "spider" }
+local NO_LOOTING_TAGS = { "INLIMBO", "catchable", "fire", "irreplaceable", "heavy", "outofreach", "spider", "mineactive" }
 local NO_PICKUP_TAGS = deepcopy(NO_LOOTING_TAGS)
 table.insert(NO_PICKUP_TAGS, "_container")
 
@@ -286,6 +286,7 @@ function MonkeyBrain:OnStart()
     local root = PriorityNode(
     {
 		BrainCommon.PanicTrigger(self.inst),
+        BrainCommon.ElectricFencePanicTrigger(self.inst),
 
         --Monkeys go home when quakes start.
         EventNode(self.inst, "gohome",

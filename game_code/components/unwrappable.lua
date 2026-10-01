@@ -12,6 +12,7 @@ local Unwrappable = Class(function(self, inst)
     self.canbeunwrapped = true
     self.onwrappedfn = nil
     self.onunwrappedfn = nil
+	self.unwrapdelayfn = nil
     self.origin = nil
 
     --V2C: Recommended to explicitly add tags to prefab pristine state
@@ -30,6 +31,19 @@ function Unwrappable:SetOnUnwrappedFn(fn)
     self.onunwrappedfn = fn
 end
 
+function Unwrappable:SetUnwrapDelayFn(fn)
+	self.unwrapdelayfn = fn
+end
+
+function Unwrappable:SetPeekContainer(peekcontainer)
+    self.peekcontainer = peekcontainer
+    if self.peekcontainer then
+        self.inst:AddTag("canpeek")
+    else
+        self.inst:RemoveTag("canpeek")
+    end
+end
+
 function Unwrappable:WrapItems(items, doer)
     if #items > 0 then
         self.origin = TheWorld.meta.session_identifier
@@ -41,6 +55,8 @@ function Unwrappable:WrapItems(items, doer)
 
             local data = item:GetSaveRecord()
             table.insert(self.itemdata, data)
+
+			item:PushEvent("wrappeditem", { bundle = self.inst, doer = doer })
 
             if is_string then
                 item:Remove()
@@ -57,7 +73,12 @@ local function NoHoles(pt)
     return not TheWorld.Map:IsPointNearHole(pt)
 end
 
-function Unwrappable:Unwrap(doer)
+local function DoUnwrap(inst, self, doer)
+	self:Unwrap(doer and doer:IsValid() and doer or nil, true)
+end
+
+function Unwrappable:Unwrap(doer, nodelay)
+	local delay = not nodelay and self.unwrapdelayfn and self.unwrapdelayfn(self.inst, doer) or nil
     local pos = self.inst:GetPosition()
     pos.y = 0
     if self.itemdata ~= nil then
@@ -73,7 +94,7 @@ function Unwrappable:Unwrap(doer)
 						owner = doer
 					end
 				end
-				if owner == doer then
+				if owner == doer or delay then
 					local doerpos = doer:GetPosition()
 					local offset = FindWalkableOffset(doerpos, doer.Transform:GetRotation() * DEGREES, 1, 8, false, true, NoHoles)
 					if offset ~= nil then
@@ -82,9 +103,16 @@ function Unwrappable:Unwrap(doer)
 					else
 						pos.x, pos.z = doerpos.x, doerpos.z
 					end
+					if delay then
+						doer.components.inventory:DropItem(self.inst, true, false, pos)
+					end
 				end
 			end
         end
+		if delay then
+			self.inst:DoTaskInTime(delay, DoUnwrap, self, doer)
+			return
+		end
         local creator = self.origin ~= nil and TheWorld.meta.session_identifier ~= self.origin and { sessionid = self.origin } or nil
         for i, v in ipairs(self.itemdata) do
             local item = SpawnPrefab(v.prefab, v.skinname, v.skin_id, creator)
@@ -98,13 +126,57 @@ function Unwrappable:Unwrap(doer)
                 if item.components.inventoryitem ~= nil then
                     item.components.inventoryitem:OnDropped(true, .5)
                 end
+				item:PushEvent("unwrappeditem", { bundle = self.inst, doer = doer })
             end
         end
         self.itemdata = nil
     end
+    self.inst:PushEvent("unwrapped", { doer = doer })
     if self.onunwrappedfn ~= nil then
         self.onunwrappedfn(self.inst, pos, doer)
     end
+end
+
+-- NOTES(JBK): Unwrappable:PeekInContainer is similar to Bundler:StartBundling and these two functions should be refactored at some point.
+function Unwrappable:PeekInContainer(doer)
+    if self.itemdata and self.peekcontainer then
+        local peekcontainer = SpawnPrefab(self.peekcontainer)
+        if peekcontainer then
+            if peekcontainer.components.container then
+                peekcontainer.components.container:Open(doer)
+                if peekcontainer.components.container:IsOpenedBy(doer) then
+                    peekcontainer.entity:SetParent(doer.entity)
+                    peekcontainer.persists = false
+                    local creator = self.origin ~= nil and TheWorld.meta.session_identifier ~= self.origin and { sessionid = self.origin } or nil
+                    local failed = false
+                    for slot, v in ipairs(self.itemdata) do
+                        local item = SpawnPrefab(v.prefab, v.skinname, v.skin_id, creator)
+                        if item and item:IsValid() then
+                            item:SetPersistData(v.data)
+                            item.persists = false
+                            if not peekcontainer.components.container:GiveItem(item, slot, nil, false) then
+                                item:Remove()
+                                item = nil
+                                failed = true
+                                break
+                            end
+                        end
+                    end
+                    if not failed then
+                        peekcontainer.components.container:EnableReadOnlyContainer(true)
+                        doer.sg.statemem.bundling = true -- Stops sound from being killed.
+                        doer.sg:GoToState("bundling")
+                        doer.sg.statemem.peeksourceinst = self.inst
+                        doer.sg.statemem.peekcontainer = peekcontainer
+                        return true
+                    end
+                end
+            end
+            peekcontainer:Remove()
+            peekcontainer = nil
+        end
+    end
+    return false
 end
 
 function Unwrappable:OnSave()

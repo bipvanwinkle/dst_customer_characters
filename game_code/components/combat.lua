@@ -29,6 +29,7 @@ local Combat = Class(function(self, inst)
     self.attackrange = 3
     self.hitrange = 3
     self.areahitrange = nil
+	self.hitarc = nil
     self.temprange = nil
 	--self.areahitcheck = nil
     self.areahitdamagepercent = nil
@@ -53,10 +54,17 @@ local Combat = Class(function(self, inst)
     self.shouldavoidaggro = nil
     self.forbiddenaggrotags = nil
 	self.lastwasattackedbytargettime = 0
+	--self.lastattacker = nil
+	--self.lastattacktype = nil
+	--self.laststimuli = nil
+
+    --self.tough = false
+	--self.workmultiplierfn = nil
+	--self.shouldrecoilfn = nil
 
 	self.externaldamagemultipliers = SourceModifierList(self.inst) -- damage dealt to others multiplier
-
 	self.externaldamagetakenmultipliers = SourceModifierList(self.inst) -- my damage taken multiplier (post armour reduction)
+    -- self.conditionexternaldamagetakenmultipliers = {} -- extra damage taken on certain conditions (post armour reduction)
 
     self.min_attack_period = 4
     self.onhitfn = nil
@@ -82,6 +90,11 @@ local Combat = Class(function(self, inst)
 				self:DropTarget()
 			end
 		else
+			self:DropTarget()
+		end
+	end
+	self.allycheckcallback = function(target)
+		if self:CanBeAlly(target) then
 			self:DropTarget()
 		end
 	end
@@ -137,6 +150,10 @@ function Combat:SetRange(attack, hit)
     self.hitrange = (hit or self.attackrange)
 end
 
+function Combat:SetHitArc(arc)
+	self.hitarc = arc
+end
+
 function Combat:SetPlayerStunlock(stunlock)
     self.playerstunlock = stunlock
 end
@@ -189,7 +206,7 @@ function Combat:ShareTarget(target, range, fn, maxnum, musttags)
         if v ~= self.inst
             and not (v.components.health ~= nil and
                     v.components.health:IsDead())
-            and (fn == nil or fn(v))
+            and (fn == nil or fn(v, self.inst))
             and v.components.combat:SuggestTarget(target) then
 
             --print("    share with", v)
@@ -210,8 +227,12 @@ function Combat:SetOnHit(fn)
     self.onhitfn = fn
 end
 
+function Combat:SetCanSuggestTargetFn(fn)
+    self.cansuggesttargetfn = fn
+end
+
 function Combat:SuggestTarget(target)
-    if self.target == nil and target ~= nil then
+    if self.target == nil and target ~= nil and (self.cansuggesttargetfn == nil or self.cansuggesttargetfn(self.inst, target)) then
         --print("Combat:SuggestTarget", self.inst, target)
         self:SetTarget(target)
         return true
@@ -302,10 +323,21 @@ function Combat:OnUpdate(dt)
             end
             self.keeptargettimeout = 1
 
-            if not self.target:IsValid() or
-                self.target:IsInLimbo() or
-                not self.keeptargetfn(self.inst, self.target) or not
-                (self.target and self.target.components.combat and self.target.components.combat:CanBeAttacked(self.inst)) then
+			local drop
+			if not self.target:IsValid() or self.target:IsInLimbo() then
+				drop = true
+			else
+				local iframeskeepaggro_combat = self.target.sg and self.target.sg:HasStateTag("iframeskeepaggro") and self.inst.replica.combat or nil --V2C: intentionally using replica on server
+				if iframeskeepaggro_combat then
+					iframeskeepaggro_combat.temp_iframes_keep_aggro = true
+				end
+				drop = not (self.target.components.combat and self.keeptargetfn(self.inst, self.target) and self.target.components.combat:CanBeAttacked(self.inst))
+				if iframeskeepaggro_combat then
+					iframeskeepaggro_combat.temp_iframes_keep_aggro = nil
+				end
+			end
+
+			if drop then
                 self.inst:PushEvent("losttarget")
                 self:DropTarget()
             end
@@ -322,10 +354,12 @@ function Combat:StartTrackingTarget(target)
         self.inst:ListenForEvent("enterlimbo", self.losetargetcallback, target)
         self.inst:ListenForEvent("onremove", self.losetargetcallback, target)
 		self.inst:ListenForEvent("transfercombattarget", self.transfertargetcallback, target)
+		self.inst:ListenForEvent("leaderchanged", self.allycheckcallback, target)
     end
 end
 
 function Combat:StopTrackingTarget(target)
+	self.inst:RemoveEventCallback("leaderchanged", self.allycheckcallback, target)
 	self.inst:RemoveEventCallback("transfercombattarget", self.transfertargetcallback, target)
     self.inst:RemoveEventCallback("enterlimbo", self.losetargetcallback, target)
     self.inst:RemoveEventCallback("onremove", self.losetargetcallback, target)
@@ -345,20 +379,23 @@ function Combat:DropTarget(hasnexttarget)
     end
 end
 
-function Combat:EngageTarget(target)
+--V2C: [oldtarget] and [hasnexttarget](above) are really internal use flags.
+--     [oldtarget] is NOT an override, hence not "oldtarget or self.target".
+--     We really should assert that they don't mismatch, but no need because [oldtarget]
+--     was added very late, and should not be passed in externally (now or in the past).
+function Combat:EngageTarget(target, oldtarget)
     if target then
-		if not (self.inst.components.follower and self.inst.components.follower.leader == target and self.inst.components.follower.leader.components.leader ~= nil and self.inst.components.follower.keepleaderonattacked) then
-	        local oldtarget = self.target
-			self.target = target
-			self.inst:PushEvent("newcombattarget", {target=target, oldtarget=oldtarget})
-			self:StartTrackingTarget(target)
-			if self.keeptargetfn then
-				self.inst:StartUpdatingComponent(self)
-			end
-			if self.inst.components.follower and self.inst.components.follower.leader == target and self.inst.components.follower.leader.components.leader then
-				self.inst.components.follower.leader.components.leader:RemoveFollower(self.inst)
-			end
-		end
+		oldtarget = self.target or oldtarget
+        self.target = target
+        self.inst:PushEvent("newcombattarget", {target=target, oldtarget=oldtarget})
+        self:StartTrackingTarget(target)
+        if self.keeptargetfn then
+            self.inst:StartUpdatingComponent(self)
+        end
+        local leader = self.inst.components.follower and self.inst.components.follower:GetLeader()
+        if leader and leader == target and leader.components.leader and not self.inst.components.follower.keepleaderonattacked then
+            leader.components.leader:RemoveFollower(self.inst)
+        end
     end
 end
 
@@ -402,7 +439,7 @@ function Combat:ShouldAggro(target, ignore_forbidden)
 		end
 		if target.components.health ~= nil and (target.components.health.minhealth or 0) > 0 and not target:HasTag("hostile") then
 			target = target.components.follower ~= nil and target.components.follower:GetLeader() or target
-			if not target:HasTag("player") then
+			if not target.isplayer then
 				--npc should not aggro on things that can't be killed (unless hostile!)
 				return false
 			end
@@ -434,10 +471,11 @@ end
 function Combat:SetTarget(target)
     if target ~= self.target and
         (target == nil or (self:IsValidTarget(target) and self:ShouldAggro(target))) and
-        not (target and target.sg and target.sg:HasStateTag("hiding") and target:HasTag("player"))
-        then
+		not (target and target.isplayer and target.sg and target.sg:HasStateTag("hiding"))
+	then
+		local oldtarget = self.target
         self:DropTarget(target ~= nil)
-        self:EngageTarget(target)
+		self:EngageTarget(target, oldtarget)
     end
 end
 
@@ -544,6 +582,27 @@ function Combat:GetAttacked(attacker, damage, weapon, stimuli, spdamage)
 
     self.lastattacker = attacker
 
+	--can add more attacktypes as needed
+	--currently just "projectile" or nil, used for hit stun calculation
+	if (damage or 0) > 0 and
+		weapon and
+		(	weapon.components.projectile or
+			(weapon.components.weapon and weapon.components.weapon.projectile)
+		)
+	then
+		self.lastattacktype = "projectile"
+	else
+		self.lastattacktype = nil
+	end
+	self.laststimuli = stimuli
+
+    local recoil
+    recoil, damage = self:ShouldRecoil(attacker, weapon, damage)
+
+    if recoil then
+        blocked = true
+    end
+
     if self.inst.components.health ~= nil and damage ~= nil and damageredirecttarget == nil then
         if self.inst.components.attackdodger ~= nil and self.inst.components.attackdodger:CanDodge(attacker) then
             self.inst.components.attackdodger:Dodge(attacker)
@@ -556,7 +615,6 @@ function Combat:GetAttacked(attacker, damage, weapon, stimuli, spdamage)
 			end
 			damage, spdamage = self.inst.components.inventory:ApplyDamage(damage, attacker, weapon, spdamage)
         end
-		local damagetypemult = 1
 		if self.inst.components.rideable ~= nil then
 			local saddle = self.inst.components.rideable.saddle
 			if saddle ~= nil then
@@ -565,9 +623,13 @@ function Combat:GetAttacked(attacker, damage, weapon, stimuli, spdamage)
                 end
 			end
 		end
+        local damagetypemult = 1
 		if self.inst.components.damagetyperesist ~= nil then
 			damagetypemult = damagetypemult * self.inst.components.damagetyperesist:GetResist(attacker, weapon)
 		end
+        if self.conditionexternaldamagetakenmultipliers ~= nil then
+            damage = damagetypemult * self:ApplyConditionExternalDamageTakenMultiplier(damage, attacker, weapon)
+        end
 		damage = damage * damagetypemult * self.externaldamagetakenmultipliers:Get()
 		if (damage > 0 or spdamage ~= nil) and not self.inst.components.health:IsInvincible() then
 			if damage > 0 then
@@ -605,7 +667,10 @@ function Combat:GetAttacked(attacker, damage, weapon, stimuli, spdamage)
 
     local redirect_combat = damageredirecttarget ~= nil and damageredirecttarget.components.combat or nil
     if redirect_combat ~= nil then
+        -- Small hack for centipede
+        redirect_combat.redirected_from = self.inst
 		redirect_combat:GetAttacked(attacker, damage, weapon, stimuli, spdamage)
+        redirect_combat.redirected_from = nil
     end
 
     if self.inst.SoundEmitter ~= nil and not self.inst:IsInLimbo() then
@@ -636,7 +701,8 @@ function Combat:GetAttacked(attacker, damage, weapon, stimuli, spdamage)
             end
         end
     else
-        self.inst:PushEvent("blocked", { attacker = attacker })
+        -- We blocked it, but we might still want to know how much they rattled us in damage value!
+        self.inst:PushEvent("blocked", { attacker = attacker, damage = damage, spdamage = spdamage, original_damage = original_damage })
     end
 
 	if self.target == nil or self.target == attacker then
@@ -651,71 +717,21 @@ function Combat:GetImpactSound(target, weapon)
         return
     end
 
-    --V2C: Considered creating a mapping for tags to strings, but we cannot really
-    --     rely on these tags being properly mutually exclusive, so it's better to
-    --     leave it like this as if explicitly ordered by priority.
-
-    local hitsound = "dontstarve/impacts/impact_"
     local weaponmod = weapon ~= nil and weapon:HasTag("sharp") and "sharp" or "dull"
     local tgtinv = target.components.inventory
     if tgtinv ~= nil and tgtinv:IsWearingArmor() then
-		--Order by priority
-		local armormod =
-			(tgtinv:ArmorHasTag("forcefield") and "forcefield_armour_") or
-			(tgtinv:ArmorHasTag("sanity") and "sanity_armour_") or
-			(tgtinv:ArmorHasTag("lunarplant") and "lunarplant_armour_") or
-			(tgtinv:ArmorHasTag("dreadstone") and "dreadstone_armour_") or
-			(tgtinv:ArmorHasTag("metal") and "metal_armour_") or
-			(tgtinv:ArmorHasTag("marble") and "marble_armour_") or
-			(tgtinv:ArmorHasTag("shell") and "shell_armour_") or
-			(tgtinv:ArmorHasTag("wood") and "wood_armour_") or
-			(tgtinv:ArmorHasTag("grass") and "straw_armour_") or
-			(tgtinv:ArmorHasTag("fur") and "fur_armour_") or
-			(tgtinv:ArmorHasTag("cloth") and "shadowcloth_armour_") or
-			nil
-		if armormod ~= nil then
-			return hitsound..armormod..weaponmod
-		end
+        local armor_impact_sound = GetArmorImpactSound(tgtinv, weaponmod)
+        if armor_impact_sound ~= nil then
+            return armor_impact_sound
+        end
 	end
+
 	if target:HasTag("wall") then
-        return
-            hitsound..(
-                (target:HasTag("grass") and "straw_wall_") or
-                (target:HasTag("stone") and "stone_wall_") or
-                (target:HasTag("marble") and "marble_wall_") or
-                "wood_wall_"
-            )..weaponmod
-
+        return GetWallImpactSound(target, weaponmod)
     elseif target:HasTag("object") then
-        return
-            hitsound..(
-                (target:HasTag("clay") and "clay_object_") or
-                (target:HasTag("stone") and "stone_object_") or
-                "object_"
-            )..weaponmod
-
+        return GetObjectImpactSound(target, weaponmod)
     else
-        local tgttype =
-            ((target:HasTag("hive") or target:HasTag("eyeturret") or target:HasTag("houndmound")) and "hive_") or
-            (target:HasTag("ghost") and "ghost_") or
-            ((target:HasTag("insect") or target:HasTag("spider")) and "insect_") or
-            ((target:HasTag("chess") or target:HasTag("mech")) and "mech_") or
-            (target:HasTag("mound") and "mound_") or
-            ((target:HasTag("shadow") or target:HasTag("shadowminion") or target:HasTag("shadowchesspiece")) and "shadow_") or
-            ((target:HasTag("tree") or target:HasTag("wooden")) and "tree_") or
-            (target:HasTag("veggie") and "vegetable_") or
-            (target:HasTag("shell") and "shell_") or
-            ((target:HasTag("rocky") or target:HasTag("fossil")) and "stone_") or
-            nil
-        return
-            hitsound..(
-                tgttype or "flesh_"
-            )..(
-                ((target:HasTag("smallcreature") or target:HasTag("small")) and "sml_") or
-                ((target:HasTag("largecreature") or target:HasTag("epic") or target:HasTag("large")) and not (target:HasTag("shadowchesspiece") or target:HasTag("fossil")) and "lrg_") or
-                (tgttype == nil and target:GetIsWet() and "wet_") or
-                "med_"
-            )..weaponmod
+        return GetCreatureImpactSound(target, weaponmod)
     end
 end
 
@@ -723,12 +739,10 @@ function Combat:StartAttack()
     if self.forcefacing and self.target ~= nil and self.target:IsValid() then
         self.inst:ForceFacePoint(self.target:GetPosition())
     end
-    self.laststartattacktime = GetTime()
+	self:RestartCooldown()
 end
 
-function Combat:CancelAttack()
-    self.laststartattacktime = nil
-end
+Combat.CancelAttack = Combat.ResetCooldown
 
 function Combat:CanTarget(target)
     return self.inst.replica.combat:CanTarget(target)
@@ -753,14 +767,6 @@ function Combat:CanAttack(target)
                 self.ignorehitrange or
                 distsq(target:GetPosition(), self.inst:GetPosition()) <= self:CalcAttackRangeSq(target)
             )
-        and not (   -- gjans: Some specific logic so the birchnutter doesn't attack it's spawn with it's AOE
-                    -- This could possibly be made more generic so that "things" don't attack other things in their "group" or something
-                    self.inst:HasTag("birchnutroot") and
-                    (   target:HasTag("birchnutroot") or
-                        target:HasTag("birchnut") or
-                        target:HasTag("birchnutdrake")
-                    )
-                )
 end
 
 function Combat:LocomotorCanAttack(reached_dest, target)
@@ -768,28 +774,20 @@ function Combat:LocomotorCanAttack(reached_dest, target)
         return false, true, false
     end
 
-    local attackrange = self:CalcAttackRangeSq(target)
+	local attackrangesq = self:CalcAttackRangeSq(target)
 
     reached_dest = reached_dest or
-        (self.ignorehitrange or distsq(target:GetPosition(), self.inst:GetPosition()) <= attackrange)
+		(self.ignorehitrange or distsq(target:GetPosition(), self.inst:GetPosition()) <= attackrangesq)
 
     local valid = self.canattack
         and (   self.inst.sg == nil or
                 not self.inst.sg:HasStateTag("busy") or
                 self.inst.sg:HasStateTag("hit")
             )
-        and not (   -- gjans: Some specific logic so the birchnutter doesn't attack it's spawn with it's AOE
-                    -- This could possibly be made more generic so that "things" don't attack other things in their "group" or something
-                    self.inst:HasTag("birchnutroot") and
-                    (   target:HasTag("birchnutroot") or
-                        target:HasTag("birchnut") or
-                        target:HasTag("birchnutdrake")
-                    )
-                )
 
-    if attackrange > 2 * 2 and self.inst:HasTag("player") then
+	if attackrangesq > 4 and self.inst.isplayer then
         local weapon = self:GetWeapon()
-        local is_ranged_weapon = weapon ~= nil and (weapon:HasTag("projectile") or weapon:HasTag("rangedweapon"))
+		local is_ranged_weapon = weapon ~= nil and weapon:HasAnyTag("projectile", "rangedweapon")
 
         if not is_ranged_weapon then
             local currentpos = self.inst:GetPosition()
@@ -855,8 +853,8 @@ function Combat:CalcDamage(target, weapon, multiplier)
     local externaldamagemultipliers = self.externaldamagemultipliers
 	local damagetypemult = 1
     local bonus = self.damagebonus --not affected by multipliers
-    local playermultiplier = target ~= nil and target:HasTag("player")
-    local pvpmultiplier = playermultiplier and self.inst:HasTag("player") and self.pvp_damagemod or 1
+	local playermultiplier = CanApplyPlayerDamageMod(target)
+	local pvpmultiplier = playermultiplier and self.inst.isplayer and self.pvp_damagemod or 1
 	local mount = nil
 	local spdamage
 
@@ -928,9 +926,14 @@ function Combat:CalcDamage(target, weapon, multiplier)
 			--playermultiplier * --@V2C excluded to avoid tuning nightmare
 			pvpmultiplier
 
+        if self.customspdamagemultfn then
+            spmult = spmult * (self.customspdamagemultfn(self.inst, target, weapon, multiplier, mount) or 1)
+        end
+
 		if spmult ~= 1 then
 			spdamage = SpDamageUtil.ApplyMult(spdamage, spmult)
 		end
+
 	end
 	return damage, spdamage
 end
@@ -1027,6 +1030,7 @@ function Combat:CanLightTarget(target, weapon)
         --V2C: fueled or fueltype should not really matter. if we can burn it, should still allow lighting.
 end
 
+--@V2C: WARNING!  This doesn't match combat replica's version.  Why is this needed on clients anyway?
 function Combat:CanHitTarget(target, weapon)
     if self.inst ~= nil and
         self.inst:IsValid() and
@@ -1040,16 +1044,45 @@ function Combat:CanHitTarget(target, weapon)
             )
         ) then
 
-        local targetpos = target:GetPosition()
-        -- V2C: this is 3D distsq
-        local pos = self.temppos or self.inst:GetPosition()
-        if self.ignorehitrange or distsq(targetpos, pos) <= self:CalcHitRangeSq(target) then
-            return true
-        elseif weapon ~= nil and weapon.components.projectile ~= nil then
+		if self.ignorehitrange then
+			return true
+		end
+
+		local x1, y1, z1 = target.Transform:GetWorldPosition()
+		local x, y, z
+		if self.temppos then
+			x, y, z = self.temppos:Get()
+		else
+			x, y, z = self.inst.Transform:GetWorldPosition()
+		end
+
+		local dx = x1 - x
+		local dy = y1 - y
+		local dz = z1 - z
+		local dsq3d = dx * dx + dy * dy + dz * dz
+
+		if dsq3d <= self:CalcHitRangeSq(target) then
+			if self.hitarc == nil or (dx == 0 and dz == 0) then
+				return true
+			end
+			local rot = self.inst.Transform:GetRotation()
+			local rot1 = math.atan2(-dz, dx) * RADIANS
+			if DiffAngle(rot, rot1) * 2 <= self.hitarc then
+				return true
+			end
+		end
+
+		--OOR, but check projectile as well
+		if weapon and weapon.components.projectile then
+			x, y, z = weapon.Transform:GetWorldPosition()
+			dx = x1 - x
+			dy = y1 - y
+			dz = z1 - z
+			dsq3d = dx * dx + dy * dy + dz * dz
+
             local range = target:GetPhysicsRadius(0) + weapon.components.projectile.hitdist
-            -- V2C: this is 3D distsq
-            return distsq(targetpos, weapon:GetPosition()) <= range * range
-        end
+			return dsq3d <= range * range
+		end
     end
     return false
 end
@@ -1073,8 +1106,13 @@ function Combat:DoAttack(targ, weapon, projectile, stimuli, instancemult, instra
         weapon = self:GetWeapon()
     end
     if stimuli == nil then
-        if weapon ~= nil and weapon.components.weapon ~= nil and weapon.components.weapon.overridestimulifn ~= nil then
-            stimuli = weapon.components.weapon.overridestimulifn(weapon, self.inst, targ)
+		if weapon and weapon.components.weapon then
+			if weapon.components.weapon.overridestimulifn then
+				stimuli = weapon.components.weapon.overridestimulifn(weapon, self.inst, targ)
+			end
+			if stimuli == nil and weapon.components.weapon.stimuli == "electric" then
+				stimuli = "electric"
+			end
         end
         if stimuli == nil and self.inst.components.electricattacks ~= nil then
             stimuli = "electric"
@@ -1088,6 +1126,16 @@ function Combat:DoAttack(targ, weapon, projectile, stimuli, instancemult, instra
         end
         self:ClearAttackTemps()
         return
+    end
+
+    if targ.components.combat then
+        local recoil, damage = targ.components.combat:ShouldRecoil(self.inst, weapon)
+	    if recoil and self.inst.sg ~= nil and self.inst.sg.statemem.recoilstate ~= nil then
+            self.inst:PushEventImmediate("recoil_off", { target = targ } )
+	    	if damage == 0 or damage == nil then
+	    		self.inst:PushEvent("weapontooweak")
+	    	end
+	    end
     end
 
     self.inst:PushEvent("onattackother", { target = targ, weapon = weapon, projectile = projectile, stimuli = stimuli })
@@ -1128,16 +1176,12 @@ function Combat:DoAttack(targ, weapon, projectile, stimuli, instancemult, instra
                 stimuli == "electric" or
                 (_weapon_cmp ~= nil and _weapon_cmp.stimuli == "electric")
             )
-            and not
-            (
-                targ:HasTag("electricdamageimmune") or
-                (targ.components.inventory ~= nil and targ.components.inventory:IsInsulated())
-            )
+            and not IsEntityElectricImmune(targ)
         then
             local electric_damage_mult = _weapon_cmp ~= nil and _weapon_cmp.electric_damage_mult or TUNING.ELECTRIC_DAMAGE_MULT
             local electric_wet_damage_mult = _weapon_cmp ~= nil and _weapon_cmp.electric_wet_damage_mult or TUNING.ELECTRIC_WET_DAMAGE_MULT
 
-            mult = electric_damage_mult + electric_wet_damage_mult * (targ.components.moisture ~= nil and targ.components.moisture:GetMoisturePercent() or (targ:GetIsWet() and 1 or 0))
+            mult = electric_damage_mult + electric_wet_damage_mult * targ:GetWetMultiplier()
         end
 
 		local dmg, spdmg = self:CalcDamage(targ, weapon, mult)
@@ -1172,6 +1216,57 @@ function Combat:DoAttack(targ, weapon, projectile, stimuli, instancemult, instra
     end
 end
 
+function Combat:SetRequiresToughCombat(tough)
+	self.tough = tough
+end
+
+function Combat:SetShouldRecoilFn(fn)
+	self.shouldrecoilfn = fn
+end
+
+function Combat:ShouldRecoil(attacker, weapon, damage)
+	if self.shouldrecoilfn ~= nil then
+		local recoil, remaining_damage = self.shouldrecoilfn(self.inst, attacker, weapon, damage)
+		if recoil ~= nil then
+			if recoil then
+				return true, remaining_damage or nil
+			end
+			return false, remaining_damage or damage
+		end
+	end
+
+	if self.tough and
+		not (attacker ~= nil and attacker:HasTag("toughfighter")) and --TODO reuse toughworker?
+		not (weapon ~= nil and weapon.components.weapon ~= nil and weapon.components.weapon:CanDoToughFight())
+		then
+		return true, nil
+	end
+
+	return false, damage
+end
+
+function Combat:AddConditionExternalDamageTakenMultiplier(fn)
+    self.conditionexternaldamagetakenmultipliers = self.conditionexternaldamagetakenmultipliers or {}
+    self:RemoveConditionExternalDamageTakenMultiplier(fn)
+    table.insert(self.conditionexternaldamagetakenmultipliers, fn)
+end
+
+function Combat:RemoveConditionExternalDamageTakenMultiplier(fn)
+    if self.conditionexternaldamagetakenmultipliers ~= nil then
+        table.removearrayvalue(self.conditionexternaldamagetakenmultipliers, fn)
+    end
+end
+
+function Combat:ApplyConditionExternalDamageTakenMultiplier(damage, attacker, weapon)
+    local damagetakenmult = 1
+
+    for k, fn in ipairs(self.conditionexternaldamagetakenmultipliers) do
+        damagetakenmult = damagetakenmult * (fn(self.inst, attacker, weapon) or 1)
+    end
+
+    return damage * damagetakenmult
+end
+
 --#V2C: what's this? not used?
 function Combat:GetDamageReflect(target, damage, weapon, stimuli)
     if target.components.rider ~= nil and target.components.rider:IsRiding() then
@@ -1189,29 +1284,45 @@ function Combat:GetDamageReflect(target, damage, weapon, stimuli)
 end
 
 local AREAATTACK_MUST_TAGS = { "_combat" }
-function Combat:DoAreaAttack(target, range, weapon, validfn, stimuli, excludetags)
+function Combat:DoAreaAttack(target, range, weapon, validfn, stimuli, excludetags, onlyontarget)
     local hitcount = 0
     local x, y, z = target.Transform:GetWorldPosition()
-    local ents = TheSim:FindEntities(x, y, z, range, AREAATTACK_MUST_TAGS, excludetags)
-    for i, ent in ipairs(ents) do
-        if ent ~= target and
-            ent ~= self.inst and
-            self:IsValidTarget(ent) and
+    if onlyontarget then
+        local ent = target
+        if self:IsValidTarget(ent) and
             (validfn == nil or validfn(ent, self.inst)) then
             self.inst:PushEvent("onareaattackother", { target = ent, weapon = weapon, stimuli = stimuli })
-			local dmg, spdmg = self:CalcDamage(ent, weapon, self.areahitdamagepercent)
-			ent.components.combat:GetAttacked(self.inst, dmg, weapon, stimuli, spdmg)
+            local dmg, spdmg = self:CalcDamage(ent, weapon, self.areahitdamagepercent)
+            ent.components.combat:GetAttacked(self.inst, dmg, weapon, stimuli, spdmg)
             hitcount = hitcount + 1
+        end
+    else
+        local ents = TheSim:FindEntities(x, y, z, range, AREAATTACK_MUST_TAGS, excludetags)
+        for i, ent in ipairs(ents) do
+            if ent ~= target and
+                ent ~= self.inst and
+                self:IsValidTarget(ent) and
+                (validfn == nil or validfn(ent, self.inst)) then
+                self.inst:PushEvent("onareaattackother", { target = ent, weapon = weapon, stimuli = stimuli })
+                local dmg, spdmg = self:CalcDamage(ent, weapon, self.areahitdamagepercent)
+                ent.components.combat:GetAttacked(self.inst, dmg, weapon, stimuli, spdmg)
+                hitcount = hitcount + 1
+            end
         end
     end
 
     return hitcount
 end
 
+function Combat:CanBeAlly(guy)
+	return self.inst.replica.combat:CanBeAlly(guy)
+end
+
 function Combat:IsAlly(guy)
     return self.inst.replica.combat:IsAlly(guy)
 end
 
+--V2C: *deprecated* use similar functions IsAlly/CanBeAlly instead
 function Combat:TargetHasFriendlyLeader(target)
     return self.inst.replica.combat:TargetHasFriendlyLeader(target)
 end

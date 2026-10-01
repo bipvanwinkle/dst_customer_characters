@@ -8,6 +8,7 @@ local Combat = Class(function(self, inst)
 
     if TheWorld.ismastersim then
         self.classified = inst.player_classified
+		--self.temp_iframes_keep_aggro = nil --for targets that have i-frames, but don't want to deaggro
     elseif self.classified == nil and inst.player_classified ~= nil then
         self:AttachClassified(inst.player_classified)
     end
@@ -88,13 +89,20 @@ function Combat:GetAttackRangeWithWeapon()
         or self._attackrange:value()
 end
 
+function Combat:GetWeaponAttackRange()
+    local weapon = self:GetWeapon()
+    return weapon and weapon.replica.inventoryitem:AttackRange() or 0
+end
+
 function Combat:GetWeapon()
     if self.inst.components.combat ~= nil then
         return self.inst.components.combat:GetWeapon()
     elseif self.inst.replica.inventory ~= nil then
         local item = self.inst.replica.inventory:GetEquippedItem(EQUIPSLOTS.HANDS)
         if item ~= nil and item:HasTag("weapon") then
-            if item:HasTag("projectile") or item:HasTag("rangedweapon") then
+			if (item:HasTag("projectile") and not item:HasTag("complexprojectile")) or
+				item:HasTag("rangedweapon")
+			then
                 return item
             end
             local rider = self.inst.replica.rider
@@ -172,14 +180,6 @@ function Combat:CanAttack(target)
         -- V2C: this is 3D distsq
         --      client does not support ignorehitrange for players
         return distsq(target:GetPosition(), self.inst:GetPosition()) <= range * range
-            and not (   -- gjans: Some specific logic so the birchnutter doesn't attack it's spawn with it's AOE
-                        -- This could possibly be made more generic so that "things" don't attack other things in their "group" or something
-                        self.inst:HasTag("birchnutroot") and
-                        (   target:HasTag("birchnutroot") or
-                            target:HasTag("birchnut") or
-                            target:HasTag("birchnutdrake")
-                        )
-                    )
     else
         return false
     end
@@ -201,18 +201,10 @@ function Combat:LocomotorCanAttack(reached_dest, target)
                     not self.inst.sg:HasStateTag("busy") or
                     self.inst.sg:HasStateTag("hit")
                 )
-            and not (   -- gjans: Some specific logic so the birchnutter doesn't attack it's spawn with it's AOE
-                        -- This could possibly be made more generic so that "things" don't attack other things in their "group" or something
-                        self.inst:HasTag("birchnutroot") and
-                        (   target:HasTag("birchnutroot") or
-                            target:HasTag("birchnut") or
-                            target:HasTag("birchnutdrake")
-                        )
-                    )
 
-        if range > 2 and self.inst:HasTag("player") then
+		if range > 2 and self.inst.isplayer then
             local weapon = self:GetWeapon()
-            local is_ranged_weapon = weapon ~= nil and (weapon:HasTag("projectile") or weapon:HasTag("rangedweapon"))
+			local is_ranged_weapon = weapon ~= nil and weapon:HasAnyTag("projectile", "rangedweapon")
 
             if not is_ranged_weapon then
                 local currentpos = self.inst:GetPosition()
@@ -234,7 +226,7 @@ function Combat:CanExtinguishTarget(target, weapon)
         return self.inst.components.combat:CanExtinguishTarget(target, weapon)
     end
     return (weapon ~= nil and weapon:HasTag("extinguisher") or self.inst:HasTag("extinguisher"))
-        and (target:HasTag("smolder") or target:HasTag("fire"))
+		and (target:HasAnyTag("smolder", "fire"))
 end
 
 function Combat:CanLightTarget(target, weapon)
@@ -265,10 +257,14 @@ function Combat:CanLightTarget(target, weapon)
     return weapon ~= nil
         and weapon:HasTag("rangedlighter")
         and target:HasTag("canlight")
-        and not (target:HasTag("fire") or target:HasTag("burnt"))
+		and not target:HasAnyTag("fire", "burnt")
 end
 
+--@V2C: WARNING!  This doesn't match combat component's version.  Why is this needed on clients anyway?
 function Combat:CanHitTarget(target)
+	print("WARNING: combat_replica::CanHitTarget is deprecated; no client-safe support for this.")
+	assert(BRANCH ~= "dev")
+
     if self.inst.components.combat ~= nil then
         return self.inst.components.combat:CanHitTarget(target)
     elseif self.classified ~= nil
@@ -308,57 +304,89 @@ function Combat:IsValidTarget(target)
             not target:HasTag("spawnprotection") and
             not (target:HasTag("shadow") and self.inst.replica.sanity == nil and not self.inst:HasTag("crazy")) and
             not (target:HasTag("playerghost") and (self.inst.replica.sanity == nil or self.inst.replica.sanity:IsSane()) and not self.inst:HasTag("crazy")) and
-            -- gjans: Some specific logic so the birchnutter doesn't attack it's spawn with it's AOE
-            -- This could possibly be made more generic so that "things" don't attack other things in their "group" or something
-            (not self.inst:HasTag("birchnutroot") or not (target:HasTag("birchnutroot") or target:HasTag("birchnut") or target:HasTag("birchnutdrake"))) and
-            (TheNet:GetPVPEnabled() or not (self.inst:HasTag("player") and target:HasTag("player")) or (weapon ~= nil and weapon:HasTag("propweapon"))) and
+			(TheNet:GetPVPEnabled() or not (self.inst.isplayer and target.isplayer) or (weapon and weapon:HasTag("propweapon"))) and
             target:GetPosition().y <= self._attackrange:value())
 end
 
 function Combat:CanTarget(target)
-
     local rider = self.inst.replica.rider
     local weapon = self:GetWeapon()
-    local is_ranged_weapon = weapon ~= nil and (weapon:HasTag("projectile") or weapon:HasTag("rangedweapon"))
+	local is_ranged_weapon = weapon ~= nil and weapon:HasAnyTag("projectile", "rangedweapon")
 
     return self:IsValidTarget(target)
-        and not (self._ispanic:value()
-                or target:HasTag("INLIMBO")
-                or target:HasTag("notarget")
-                or target:HasTag("invisible")
-                or target:HasTag("debugnoattack"))
+		and not (	self._ispanic:value() or
+					target:HasAnyTag("INLIMBO", "notarget", "debugnoattack")
+				)
+		and (self.temp_iframes_keep_aggro or not target:HasTag("invisible"))
         and (target.replica.combat == nil
             or target.replica.combat:CanBeAttacked(self.inst))
         and (rider == nil or (not rider:IsRiding() or (not rider:GetMount():HasTag("peacefulmount") or is_ranged_weapon)))
 end
 
-function Combat:IsAlly(guy)
-    if guy == self.inst or
-        (self.inst.replica.follower ~= nil and guy == self.inst.replica.follower:GetLeader()) then
-        --It's me! or it's my leader
-        return true
+function Combat:CanBeAlly(guy)
+    if guy:HasTag("alwayshostile") then
+        return false
     end
 
-    local follower = guy.replica.follower
-    local leader = follower ~= nil and follower:GetLeader() or nil
-    --It's my follower
-    --or I'm a player and it's a companion (or following another player in non PVP)
-    --unless it's attacking me
-    return self.inst == leader
-        or (    self.inst:HasTag("player") and
-                (   guy:HasTag("companion") or
-                    (   leader ~= nil and
-                        not TheNet:GetPVPEnabled() and
-                        leader:HasTag("player")
-                    )
-                ) and
-                (   guy.replica.combat == nil or
-                    guy.replica.combat:GetTarget() ~= self.inst
-                )
-            )
+    if guy == self.inst then
+        return true -- It's me.
+    end
+
+	local follower = self.inst.replica.follower
+	local myleader = follower and follower:GetLeader()
+    if myleader and guy == myleader then
+        return true -- It's my leader.
+    end
+
+	local guy_follower = guy.replica.follower
+	local theirleader = guy_follower and guy_follower:GetLeader()
+    if self.inst == theirleader then
+        return true -- It's my follower.
+    end
+
+    if myleader and myleader == theirleader then
+        return true -- Same leader we should be friends.
+    end
+
+	-- Are we player aligned?
+	if self.inst.isplayer or
+		self.inst.bedazzled or
+		(myleader and (myleader.isplayer or myleader.replica.inventoryitem)) or
+		self.inst:HasAnyTag("player_aligned", "domesticated", "saltlicker_salted")
+	then
+		if guy.bedazzled or
+			guy:HasTag("companion") or
+			(theirleader and theirleader.replica.inventoryitem)
+		then
+			return true -- Consider it aligned to all players.
+		end
+
+		if not TheNet:GetPVPEnabled() then
+			if guy.isplayer or (theirleader and theirleader.isplayer) then
+				return true -- They're aligned to another player.
+			end
+
+			if guy:HasAnyTag("player_aligned", "domesticated", "saltlicker_salted") then
+				return true -- No current leader, but still considered aligned to players.
+			end
+		end
+	end
+
+	return false
 end
 
+function Combat:IsAlly(guy)
+	if not self:CanBeAlly(guy) then
+		return false
+	end
+	local guy_combat = guy.replica.combat
+	return guy_combat == nil or guy_combat:GetTarget() ~= self.inst
+end
+
+--V2C: *deprecated* use similar functions IsAlly/CanBeAlly instead
 function Combat:TargetHasFriendlyLeader(target)
+	assert(BRANCH ~= "dev", "Deprecated! Use IsAlly/CanBeAlly.")
+
     local leader = self.inst.replica.follower ~= nil and self.inst.replica.follower:GetLeader()
     if leader ~= nil then
         local target_leader = target.replica.follower ~= nil and target.replica.follower:GetLeader() or nil
@@ -374,19 +402,19 @@ function Combat:TargetHasFriendlyLeader(target)
         local PVP_enabled = TheNet:GetPVPEnabled()
 
         return leader == target
-				or (target_leader ~= nil and (target_leader == leader or (target_leader:HasTag("player") and not PVP_enabled)))
-				or (target:HasTag("domesticated") and not PVP_enabled)
+				or (target_leader ~= nil and (target_leader == leader or (target_leader.isplayer and not PVP_enabled)))
+				or (target:HasAnyTag("player_aligned", "domesticated") and not PVP_enabled)
     end
 
     return false
 end
 
-
 function Combat:CanBeAttacked(attacker)
-    if self.inst:HasTag("playerghost") or
-        self.inst:HasTag("noattack") or
-        self.inst:HasTag("flight") or
-        self.inst:HasTag("invisible") then
+	if self.inst:HasAnyTag("playerghost", "flight") or
+		(	not self.temp_iframes_keep_aggro and
+			self.inst:HasAnyTag("noattack", "invisible")
+		)
+	then
         --Can't be attacked by anyone
         return false
 	end
@@ -395,18 +423,12 @@ function Combat:CanBeAttacked(attacker)
 
 	if attacker ~= nil then
         --Attacker checks
-        if self.inst:HasTag("birchnutdrake")
-            and (attacker:HasTag("birchnutdrake") or
-                attacker:HasTag("birchnutroot") or
-                attacker:HasTag("birchnut")) then
-            --Birchnut check
-            return false
-        elseif self.inst:HasTag("noplayertarget") and attacker:HasTag("player") then
+		if attacker.isplayer and self.inst:HasTag("noplayertarget") then
             --Can't be attacked by players
             return false
-        elseif attacker ~= self.inst and self.inst:HasTag("player") then
+        elseif attacker ~= self.inst and self.inst.isplayer then
             --Player target check
-            if not TheNet:GetPVPEnabled() and attacker:HasTag("player") then
+			if attacker.isplayer and not TheNet:GetPVPEnabled() then
                 --PVP check
                 local combat = attacker.replica.combat
                 local weapon = combat ~= nil and combat:GetWeapon() or nil
@@ -421,7 +443,7 @@ function Combat:CanBeAttacked(attacker)
                     local leader = follower:GetLeader()
                     if leader ~= nil and
                         leader ~= self._target:value() and
-                        leader:HasTag("player") then
+						leader.isplayer and not attacker:HasTag("alwayshostile") then
                         local combat = attacker.replica.combat
                         if combat ~= nil and combat:GetTarget() ~= self.inst then
                             --Follower check

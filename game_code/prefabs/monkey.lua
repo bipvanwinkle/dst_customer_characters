@@ -14,6 +14,7 @@ local prefabs =
     "beardhair",
     "nightmarefuel",
 	"shadow_despawn",
+    "monkeycorpse",
 }
 
 local brain = require "brains/monkeybrain"
@@ -153,8 +154,10 @@ local function FindTargetOfInterest(inst)
             local target = targets[randomtarget]
             table.remove(targets, randomtarget)
             --Higher chance to follow if he has bananas
-            if target.components.inventory ~= nil and
-                    math.random() < (target.components.inventory:FindItem(IsBanana) ~= nil and .6 or .15) then
+            local chance = target.components.inventory ~= nil and target.components.inventory:FindItem(IsBanana) ~= nil and
+                TUNING.MONKEY_FOLLOW_PLAYER_WITH_BANANA_CHANCE or
+                TUNING.MONKEY_FOLLOW_PLAYER_CHANCE
+            if TryLuckRoll(target, chance, LuckFormulas.MonkeyFollowPlayer) then
                 SetHarassPlayer(inst, target)
                 return
             end
@@ -265,6 +268,8 @@ end
 
 local function SetNormalMonkey(inst)
     inst:RemoveTag("nightmare")
+    inst:RemoveTag("shadow_aligned")
+
     inst:SetBrain(brain)
     inst.AnimState:SetBuild("kiki_basic")
     inst.AnimState:SetMultColour(1, 1, 1, 1)
@@ -282,6 +287,8 @@ end
 
 local function SetNightmareMonkey(inst)
     inst:AddTag("nightmare")
+    inst:AddTag("shadow_aligned")
+
     inst.AnimState:SetMultColour(1, 1, 1, .6)
     inst:SetBrain(nightmarebrain)
     inst.AnimState:SetBuild("kiki_nightmare_skin")
@@ -428,6 +435,7 @@ local function fn()
         return inst
     end
 
+	inst.override_combat_fx_height = "high"
     inst.soundtype = ""
 
     MakeMediumBurnableCharacter(inst)

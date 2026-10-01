@@ -21,9 +21,12 @@ local VALID_TILES = table.invert(
     WORLD_TILES.SAVANNA,
     WORLD_TILES.GRASS,
     WORLD_TILES.FOREST,
+	WORLD_TILES.DECIDUOUS,
     WORLD_TILES.MARSH,
     WORLD_TILES.CAVE,
     WORLD_TILES.FUNGUS,
+	WORLD_TILES.FUNGUSRED,
+	WORLD_TILES.FUNGUSGREEN,
     WORLD_TILES.SINKHOLE,
     WORLD_TILES.MUD,
 })
@@ -133,7 +136,7 @@ local function SpawnLurePlantForPlayer(playerinst, playerdata, reschedule)
     if not _worldstate.iswinter then
 
         local chance = 1/#_activeplayers
-        local should_spawn = math.random() < chance
+        local should_spawn = TryLuckRoll(playerinst, chance, LuckFormulas.LureplantChanceSpawn)
         local loc = FindSpawnLocationInTrail(playerdata.trail) or FindSpawnLocation(playerinst.Transform:GetWorldPosition())
         if loc ~= nil and should_spawn then
             local plant = SpawnPrefab("lureplant")
@@ -254,23 +257,23 @@ StartUpdating(true)
 --------------------------------------------------------------------------
 
 function self:SpawnModeNever()
-    --depreciated
+    --deprecated
 end
 
 function self:SpawnModeHeavy()
-    --depreciated
+    --deprecated
 end
 
 function self:SpawnModeNormal()
-    --depreciated
+    --deprecated
 end
 
 function self:SpawnModeMed()
-    --depreciated
+    --deprecated
 end
 
 function self:SpawnModeLight()
-    --depreciated
+    --deprecated
 end
 
 --------------------------------------------------------------------------

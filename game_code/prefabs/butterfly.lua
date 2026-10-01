@@ -51,10 +51,6 @@ local function OnWorked(inst, worker)
     end
 end
 
-local function CanDeploy(inst)
-    return true
-end
-
 local function OnDeploy(inst, pt, deployer)
     local flower = SpawnPrefab("planted_flower")
     if flower then
@@ -124,7 +120,9 @@ local function fn()
     inst:AddComponent("locomotor") -- locomotor must be constructed before the stategraph
     inst.components.locomotor:EnableGroundSpeedMultiplier(false)
     inst.components.locomotor:SetTriggersCreep(false)
+
     inst:SetStateGraph("SGbutterfly")
+	inst.sg.mem.burn_on_electrocute = true
 
     ---------------------
     inst:AddComponent("stackable")
@@ -150,6 +148,8 @@ local function fn()
 
     MakeSmallBurnableCharacter(inst, "butterfly_body")
     MakeTinyFreezableCharacter(inst, "butterfly_body")
+    inst.components.burnable:SetBurnTime(6 * TUNING.PLANTMOB_BURNTIME_MULT)
+    inst.components.health.fire_damage_scale = TUNING.PLANTMOB_FIRE_DAMAGE_SCALE
 
     ------------------
     inst:AddComponent("inspectable")
@@ -181,7 +181,7 @@ local function fn()
 
     inst.butterflyspawner = TheWorld.components.butterflyspawner
     if inst.butterflyspawner ~= nil then
-        inst.components.inventoryitem:SetOnPickupFn(inst.butterflyspawner.StopTrackingFn)
+        inst.components.inventoryitem:SetOnPutInInventoryFn(inst.butterflyspawner.StopTrackingFn)
         inst:ListenForEvent("onremove", inst.butterflyspawner.StopTrackingFn)
         inst.butterflyspawner:StartTracking(inst)
     end

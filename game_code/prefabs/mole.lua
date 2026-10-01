@@ -13,6 +13,8 @@ local prefabs =
     "cookedsmallmeat",
     "mole_move_fx",
     "molehat",
+
+    "molecorpse",
 }
 
 local brain = require("brains/molebrain")
@@ -92,9 +94,10 @@ local function SetUnderPhysics(inst)
         inst.isunder = true
 		inst:AddTag("notdrawable")
         inst.Physics:SetCollisionGroup(COLLISION.CHARACTERS)
-        inst.Physics:ClearCollisionMask()
-        inst.Physics:CollidesWith(COLLISION.WORLD)
-        inst.Physics:CollidesWith(COLLISION.OBSTACLES)
+		inst.Physics:SetCollisionMask(
+			COLLISION.WORLD,
+			COLLISION.OBSTACLES
+		)
     end
 end
 
@@ -196,6 +199,8 @@ local function fn()
 
         return inst
     end
+
+	inst.scrapbook_speechstatus = "ABOVEGROUND"
 
     inst:AddComponent("tradable")
 

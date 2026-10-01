@@ -9,6 +9,9 @@ local prefabs =
     "glommerfuel",
     "glommerwings",
     "monstermeat",
+    
+    "glommercorpse",
+	"globalmapiconunderfog",
 }
 
 local brain = require("brains/glommerbrain")
@@ -62,7 +65,7 @@ local function OnStopFollowing(inst)
 end
 
 local function OnStartFollowing(inst)
-    if inst.components.follower.leader:HasTag("glommerflower") then
+    if inst.components.follower.leader:HasTag("glommerflower") then -- Getting leader directly special case.
         inst:AddTag("companion")
     end
 end
@@ -103,6 +106,9 @@ local function fn()
     if not TheWorld.ismastersim then
         return inst
     end
+
+	inst:AddComponent("maprevealable")
+	inst.components.maprevealable:SetIconPrefab("globalmapiconunderfog")
 
     inst:AddComponent("inspectable")
 

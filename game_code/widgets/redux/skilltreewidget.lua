@@ -9,6 +9,15 @@ local UIAnim = require "widgets/uianim"
 
 require("util")
 
+local BG_WIDTH_ART = 625
+local BG_HEIGHT_ART = 384
+local BG_WIDTH_INGAME = 521
+local BG_HEIGHT_INGAME = 320
+local TOLERANCE = 2 -- NOTES(JBK): Tolerance for atlasing packing with UV coordinates rounding errors.
+local function IsBackgroundSizeGood(bg)
+    local width, height = bg:GetSize()
+    return math.abs(width - BG_WIDTH_ART) <= TOLERANCE and math.abs(height - BG_HEIGHT_ART) <= TOLERANCE
+end
 -------------------------------------------------------------------------------------------------------
 local SkillTreeWidget = Class(Widget, function(self, prefabname, targetdata, fromfrontend)
     Widget._ctor(self, "SkillTreeWidget")
@@ -25,9 +34,34 @@ local SkillTreeWidget = Class(Widget, function(self, prefabname, targetdata, fro
 
     self.midlay = self.root:AddChild(Widget())
 
-    self.bg_tree = self.root:AddChild(Image(GetSkilltreeBG(self.target.."_background.tex"), self.target.."_background.tex"))
-    self.bg_tree:SetPosition(2,-20)
-    self.bg_tree:ScaleToSize(600, 460)
+    local bg_tree_imagename = self.target .. "_background.tex"
+    local bg_tree_atlas = GetSkilltreeBG(bg_tree_imagename)
+    if bg_tree_atlas == nil then
+        print(string.format("FIXME: Skill tree background %s image is missing!", bg_tree_imagename))
+        self.bg_tree = self.root:AddChild(Image("images/skilltree.xml", "fallbackbackground.tex"))
+        self.bg_tree:SetTint(0, 0, 0, 1) -- Black box for missing asset.
+    else
+        self.bg_tree = self.root:AddChild(Image(bg_tree_atlas, bg_tree_imagename))
+    end
+    local use_deprecated_dimensions = false
+    if not table.contains(DST_CHARACTERLIST, self.target) then
+        -- Modded characters may have already created art for their skill trees use the old fallback if the dimensions are not what we expect.
+        if not IsBackgroundSizeGood(self.bg_tree) then
+            use_deprecated_dimensions = true
+        end
+    end
+    if use_deprecated_dimensions then
+        self.bg_tree:SetPosition(2, -20)
+        self.bg_tree:ScaleToSize(600, 460)
+    else
+        -- Our backgrounds are now at a fixed resolution size to keep art and visuals in the correct aspect ratio.
+        -- The backgrounds we use are about 20% bigger for alpha visuals to antialias.
+        if BRANCH == "dev" then
+            assert(IsBackgroundSizeGood(self.bg_tree), "Skill tree background image for " .. bg_tree_imagename .. " must be of size: " .. BG_WIDTH_ART .. " x " .. BG_HEIGHT_ART)
+        end
+        self.bg_tree:SetPosition(5, 50)
+        self.bg_tree:ScaleToSize(BG_WIDTH_INGAME, BG_HEIGHT_INGAME)
+    end
 
     local defs = skilltreedefs.SKILLTREE_METAINFO[prefabname]
     local tint_bright, tint_dim
@@ -108,7 +142,7 @@ local SkillTreeWidget = Class(Widget, function(self, prefabname, targetdata, fro
             self:RespecSkills()
         end, STRINGS.SKILLTREE.RESPEC, {200, 50}))
     if TheInput:ControllerAttached() then
-        self.root.infopanel.respec_button:SetText(TheInput:GetLocalizedControl(TheInput:GetControllerID(),  CONTROL_MENU_MISC_1).." "..STRINGS.SKILLTREE.RESPEC)
+        self.root.infopanel.respec_button:SetText(TheInput:GetLocalizedControl(TheInput:GetControllerID(),  CONTROL_MENU_MISC_2).." "..STRINGS.SKILLTREE.RESPEC)
     end
 
     self.root.infopanel.respec_button:SetPosition(0,-120)
@@ -156,8 +190,9 @@ function SkillTreeWidget:RespecSkills()
         graphics.status = {}
     end
 
-    self.root.tree:RefreshTree()
+    self.root.tree:RefreshTree(true)
 end
+
 
 function SkillTreeWidget:SpawnFavorOverlay(pre)
     if not self.fromfrontend and (self.midlay ~= nil and self.midlay.splash == nil) then
@@ -217,16 +252,24 @@ function SkillTreeWidget:SpawnFavorOverlay(pre)
         end
     end
 end
+--[[
+function SkillTreeWidget:OnUpdate()
+    if self.root.infopanel.puck then
+
+    end
+end
+]]
 
 function SkillTreeWidget:Kill()
-    --ThePlantRegistry:Save() -- for saving filter settings
+    self.root.tree:Kill()
+
     SkillTreeWidget._base.Kill(self)
 end
 
 function SkillTreeWidget:OnControl(control, down)
     if SkillTreeWidget._base.OnControl(self, control, down) then return true end
 
-    if not down and control ==  CONTROL_MENU_MISC_1 and self.root.infopanel.respec_button:IsVisible() then
+    if not down and control ==  CONTROL_MENU_MISC_2 and self.root.infopanel.respec_button:IsVisible() then
         self:RespecSkills()
         return true
     end
@@ -258,7 +301,7 @@ function SkillTreeWidget:GetHelpText()
     local t = {}
 
     if self.root.infopanel.respec_button:IsVisible() then
-        table.insert(t, TheInput:GetLocalizedControl(controller_id,  CONTROL_MENU_MISC_1).. " " .. STRINGS.SKILLTREE.RESPEC)
+        table.insert(t, TheInput:GetLocalizedControl(controller_id,  CONTROL_MENU_MISC_2).. " " .. STRINGS.SKILLTREE.RESPEC)
     end
 
     return table.concat(t, "  ")

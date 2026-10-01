@@ -18,12 +18,23 @@ local events=
     CommonHandlers.OnSink(),
     CommonHandlers.OnSleep(),
     CommonHandlers.OnFreeze(),
-    EventHandler("newcombattarget", function(inst) if not inst.components.health:IsDead() and not (inst.sg:HasStateTag("attack") or inst.sg:HasStateTag("busy")) then inst.sg:GoToState("taunt_newtarget") end end),
-    EventHandler("attacked", function(inst) if not inst.components.health:IsDead() and not inst.sg:HasStateTag("attack") and not CommonHandlers.HitRecoveryDelay(inst, nil, TUNING.WALRUS_MAX_STUN_LOCKS) then inst.sg:GoToState("hit") end end),
-    EventHandler("death", function(inst) inst.sg:GoToState("death") end),
-
+	CommonHandlers.OnElectrocute(),
+	EventHandler("newcombattarget", function(inst)
+		if not (inst.components.health:IsDead() or inst.sg:HasAnyStateTag("attack", "busy")) then
+			inst.sg:GoToState("taunt_newtarget")
+		end
+	end),
+	EventHandler("attacked", function(inst, data)
+		if inst.components.health and not inst.components.health:IsDead() then
+			if CommonHandlers.TryElectrocuteOnAttacked(inst, data) then
+				return
+			elseif not (inst.sg:HasAnyStateTag("attack", "electrocute") or CommonHandlers.HitRecoveryDelay(inst, nil, TUNING.WALRUS_MAX_STUN_LOCKS)) then
+				inst.sg:GoToState("hit")
+			end
+		end
+	end),
     EventHandler("doattack", function(inst)
-        if not inst.components.health:IsDead() then
+		if not (inst.components.health:IsDead() or inst.sg:HasStateTag("electrocute")) then
             if inst.components.combat.target and inst:IsNear(inst.components.combat.target, TUNING.WALRUS_MELEE_RANGE) then
                 inst.sg:GoToState("attack")
             else
@@ -35,6 +46,10 @@ local events=
             end
         end
     end),
+    CommonHandlers.OnDeath(),
+
+	-- Corpse handlers
+	CommonHandlers.OnCorpseChomped(),
 }
 
 local states=
@@ -47,11 +62,14 @@ local states=
             PlayCreatureSound(inst, "death")
             inst.AnimState:PlayAnimation("death")
             inst.components.locomotor:StopMoving()
-            inst.components.lootdropper:DropLoot(Vector3(inst.Transform:GetWorldPosition()))
-
+            inst:DropDeathLoot()
             RemovePhysicsColliders(inst)
         end,
 
+        events =
+        {
+            CommonHandlers.OnCorpseDeathAnimOver(),
+        },
     },
 
     State{
@@ -228,7 +246,6 @@ CommonStates.AddRunStates(states,
     },
 })
 
-
 CommonStates.AddSleepStates(states,
 {
     sleeptimeline =
@@ -241,8 +258,11 @@ CommonStates.AddIdle(states, "funny_idle")
 
 CommonStates.AddSimpleActionState(states, "gohome", "pig_take", 15*FRAMES, {"busy"})
 CommonStates.AddFrozenStates(states)
+CommonStates.AddElectrocuteStates(states)
 CommonStates.AddSinkAndWashAshoreStates(states)
 
+CommonStates.AddInitState(states, "idle")
+CommonStates.AddCorpseStates(states)
 
-return StateGraph("walrus", states, events, "idle", actionhandlers)
+return StateGraph("walrus", states, events, "init", actionhandlers)
 

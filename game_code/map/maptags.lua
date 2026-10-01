@@ -10,6 +10,7 @@ local function MakeTags()
 			["CharlieStage_Spawner"] = true,
 			["StatueHarp_HedgeSpawner"] = true,
 			["Junkyard_Spawner"] = true,
+			["Balatro_Spawner"] = true,
 		}
 
 	local Terrarium_Spawners = 
@@ -123,7 +124,20 @@ local function MakeTags()
 										end
 
 										return "STATIC", "junk_yard"
-									end,									
+									end,
+
+			["Balatro_Spawner"] = function(tagdata, level)
+										if tagdata["Balatro_Spawner"] == false then
+											return
+										end
+										tagdata["Balatro_Spawner"] = false
+
+										if level ~= nil and level.overrides ~= nil and level.overrides.balatro == "never" then
+											return
+										end
+
+										return "STATIC", "Balatro"
+									end,
 
 			["StatueHarp_HedgeSpawner"] = function(tagdata, level)
 										if tagdata["StatueHarp_HedgeSpawner"] == false then
@@ -170,6 +184,7 @@ local function MakeTags()
             ["not_mainland"] =        function(tagdata) return "TAG", "not_mainland" end,
             ["lunacyarea"] =          function(tagdata) return "TAG", "lunacyarea" end,
             ["GrottoWarEntrance"] =   function(tagdata) return "TAG", "GrottoWarEntrance" end,
+            ["fumarolearea"] =        function(tagdata) return "TAG", "fumarolearea" end,
 		}
 	return {Tag = map_tags, TagData = map_data }
 end

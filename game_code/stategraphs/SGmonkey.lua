@@ -15,11 +15,12 @@ local events=
 {
     CommonHandlers.OnLocomote(false, true),
     CommonHandlers.OnFreeze(),
+	CommonHandlers.OnElectrocute(),
     CommonHandlers.OnAttacked(),
     CommonHandlers.OnDeath(),
     CommonHandlers.OnSleep(),
     EventHandler("doattack", function(inst, data)
-        if not (inst.components.health:IsDead() or inst.sg:HasStateTag("busy")) then
+        if inst.components.health and not (inst.components.health:IsDead() or inst.sg:HasStateTag("busy")) then
             --If you're not in melee range throw instead.
             --Maybe do some randomness to throw or not?
             --V2C: gdi. because sg events are queued, ALL data can possibly go invalid >_ <""
@@ -32,6 +33,9 @@ local events=
             )
         end
     end),
+
+	-- Corpse handlers
+	CommonHandlers.OnCorpseChomped(),
 }
 
 local function go_to_idle(inst)
@@ -76,16 +80,21 @@ local states =
         name = "action",
         onenter = function(inst, playanim)
             inst.Physics:Stop()
-            inst.AnimState:PlayAnimation("interact", true)
+            inst.AnimState:PlayAnimation("interact")
             inst.SoundEmitter:PlaySound("dontstarve/wilson/make_trap", "make")
         end,
         onexit = function(inst)
             inst.SoundEmitter:KillSound("make")
         end,
+        timeline =
+        {
+            FrameEvent(25, function(inst)
+                inst:PerformBufferedAction()
+            end)
+        },
         events =
         {
             EventHandler("animover", function (inst)
-                inst:PerformBufferedAction()
                 inst.sg:GoToState("idle")
             end),
         }
@@ -225,8 +234,17 @@ CommonStates.AddCombatStates(states,
             inst.SoundEmitter:PlaySound("dontstarve/creatures/monkey"..inst.soundtype.."/death")
         end),
     },
+},
+nil,
+nil,
+{
+    has_corpse_handler = true,
 })
 
 CommonStates.AddFrozenStates(states)
+CommonStates.AddElectrocuteStates(states)
 
-return StateGraph("monkey", states, events, "idle", actionhandlers)
+CommonStates.AddInitState(states, "idle")
+CommonStates.AddCorpseStates(states)
+
+return StateGraph("monkey", states, events, "init", actionhandlers)

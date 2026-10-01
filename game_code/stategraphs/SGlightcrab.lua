@@ -12,6 +12,7 @@ local events=
 {
     CommonHandlers.OnSleep(),
     CommonHandlers.OnFreeze(),
+	CommonHandlers.OnElectrocute(),
     CommonHandlers.OnAttacked(),
     CommonHandlers.OnDeath(),
     CommonHandlers.OnLocomote(true, true),
@@ -25,6 +26,9 @@ local events=
 			inst.sg:GoToState("stunned")
 		end
     end),
+
+	-- Corpse handlers
+	CommonHandlers.OnCorpseChomped(),
 }
 
 local states=
@@ -89,14 +93,18 @@ local states=
 
             inst.AnimState:PlayAnimation("death")
             inst.SoundEmitter:PlaySound("monkeyisland/lightcrab/death")
-            inst.components.lootdropper:DropLoot()
+            inst:DropDeathLoot()
         end,
 
+        events =
+        {
+            CommonHandlers.OnCorpseDeathAnimOver(),
+        },
     },
 
-     State{
+    State{
         name = "portal_spawn",
-        tags = {"busy", "stunned", "nointerrupt", "jumping", "nosleep"},
+		tags = { "busy", "stunned", "nointerrupt", "jumping", "nosleep", "noelectrocute" },
         onenter = function(inst)
             inst.Physics:SetDamping(0)
             inst.AnimState:PlayAnimation("stunned_loop", true)
@@ -141,7 +149,7 @@ local states=
 
     State{
         name = "trapped",
-        tags = {"busy", "trapped"},
+		tags = { "busy", "trapped", "noelectrocute" },
 
         onenter = function(inst)
             inst.Physics:Stop()
@@ -240,6 +248,7 @@ nil, nil, nil, nil,
 
 CommonStates.AddSleepStates(states)
 CommonStates.AddFrozenStates(states)
+CommonStates.AddElectrocuteStates(states)
 CommonStates.AddSimpleState(states, "idle2", "idle2", {"canrotate"},nil,nil,{
     onenter = function(inst)
         inst.SoundEmitter:PlaySound("monkeyisland/lightcrab/idle2")
@@ -251,6 +260,7 @@ CommonStates.AddSimpleState(states, "idle3", "idle3", {"canrotate"},nil,nil,{
     end,
 })
 
+CommonStates.AddInitState(states, "idle")
+CommonStates.AddCorpseStates(states)
 
-return StateGraph("lightcrab", states, events, "idle", actionhandlers)
-
+return StateGraph("lightcrab", states, events, "init", actionhandlers)

@@ -29,6 +29,7 @@ local events=
     CommonHandlers.OnSleepEx(),
     CommonHandlers.OnWakeEx(),
     CommonHandlers.OnFreeze(),
+	CommonHandlers.OnElectrocute(),
     CommonHandlers.OnIpecacPoop(),
 
     EventHandler("onsink", function(inst, data)
@@ -41,13 +42,28 @@ local events=
             end
         end
     end),
-    EventHandler("doattack", function(inst, data) if not inst.components.health:IsDead() then inst.sg:GoToState("attack", data.target) end end),
+	EventHandler("doattack", function(inst, data)
+		if not (inst.components.health:IsDead() or inst.sg:HasStateTag("electrocute")) then
+			inst.sg:GoToState("attack", data.target)
+		end
+	end),
     EventHandler("death", function(inst, data)
         if inst.components.rideable == nil or not inst.components.rideable:IsBeingRidden() then
             inst.sg:GoToState("death", data.cause == "file_load")
         end
     end),
-    EventHandler("attacked", function(inst) if not inst.components.health:IsDead() and not inst.sg:HasStateTag("attack") then inst.sg:GoToState("hit") end end),
+	EventHandler("attacked", function(inst, data)
+		if inst.components.health and not inst.components.health:IsDead() then
+			if CommonHandlers.TryElectrocuteOnAttacked(inst, data) then
+				return
+			elseif not (	inst.sg:HasAnyStateTag("attack", "electrocute") or
+							CommonHandlers.HitRecoveryDelay(inst, nil, math.huge) --hit delay only for projectiles
+						)
+			then
+				inst.sg:GoToState("hit")
+			end
+		end
+	end),
     EventHandler("heardhorn", function(inst, data)
         if not inst.components.health:IsDead()
            and not inst.sg:HasStateTag("attack")
@@ -633,8 +649,7 @@ local states=
                 end
             else
                 RemovePhysicsColliders(inst)
-
-                inst.components.lootdropper:DropLoot()
+                inst:DropDeathLoot()
                 -- We handle our own erode, rather than the health component ~gjans
                 inst:DoTaskInTime(2, ErodeAway)
             end
@@ -659,10 +674,6 @@ local states=
             inst.components.health:SetInvincible(true)
 
             inst.components.sleeper:WakeUp()
-
-            if inst.brain ~= nil and inst.brain.stopped then
-                inst.brain:Start()
-            end
         end,
 
         timeline=
@@ -702,8 +713,7 @@ local states=
             inst.components.beard:EnableGrowth(true)
             inst.components.hunger:Resume()
 
-            inst.components.follower.noleashing = false
-            inst.components.follower:StartLeashing()
+            inst.components.follower:EnableLeashing()
 
             inst:RemoveTag("deadcreature")
         end,
@@ -717,13 +727,19 @@ local states=
             inst.components.locomotor:StopMoving()
             inst.AnimState:PlayAnimation("transform")
             inst.SoundEmitter:PlaySound("dontstarve/beefalo/hairgrow_pop")
-            inst.domesticationPending = false
         end,
 
         timeline=
         {
-            TimeEvent(8*FRAMES, function(inst) SpawnPrefab("beefalo_transform_fx").Transform:SetPosition(inst.Transform:GetWorldPosition()) end),
-            TimeEvent(11*FRAMES, function(inst) inst:UpdateDomestication() end),
+            TimeEvent(8*FRAMES, function(inst)
+                inst:SpawnChild("beefalo_transform_fx")
+            end),
+
+            TimeEvent(11*FRAMES, function(inst)
+                inst:UpdateDomestication()
+
+                inst.domesticationPending = false
+            end),
         },
 
         events=
@@ -731,9 +747,21 @@ local states=
             EventHandler("animover", go_to_idle),
         },
 
-		onexit = function(inst)
+        onexit = function(inst)
+            local parent = inst.entity:GetParent()
+
+            if parent ~= nil then -- If mounted during this state...
+                parent:SpawnChild("beefalo_transform_fx")
+            end
+
+            if inst.domesticationPending then
+                inst:UpdateDomestication()
+
+                inst.domesticationPending = false
+            end
+
             AwardPlayerAchievement("domesticated_beefalo", inst.components.beefalometrics.lastdomesticator)
-		end,
+        end,
     },
 
     State{
@@ -969,7 +997,8 @@ CommonStates.AddWalkStates(
         }
     })
 
-CommonStates.AddSimpleState(states,"hit", "hit")
+CommonStates.AddSimpleState(states, "hit", "hit", nil, nil, nil, { onenter = CommonHandlers.UpdateHitRecoveryDelay })
+CommonStates.AddElectrocuteStates(states)
 CommonStates.AddFrozenStates(states)
 CommonStates.AddSinkAndWashAshoreStates(states)
 CommonStates.AddVoidFallStates(states)
@@ -984,5 +1013,8 @@ CommonStates.AddSleepExStates(states,
     },
 })
 
-return StateGraph("beefalo", states, events, "idle", actionhandlers)
+CommonStates.AddInitState(states, "idle")
+-- CommonStates.AddCorpseStates(states) -- TODO (Omar): No corpse states for now due to shadow revive beefalo corpse being handled differently.
+
+return StateGraph("beefalo", states, events, "init", actionhandlers)
 

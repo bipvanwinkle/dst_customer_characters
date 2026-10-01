@@ -67,6 +67,81 @@ local function StopFx(inst)
     end
 end
 
+local function OnBathingPoolTick_PerOccupant(inst, occupant, dt)
+    if occupant.components.health then
+        occupant.components.health:DoDelta(TUNING.HOTSPRING_HEALTH_PER_SECOND * dt, true, inst.prefab, true)
+    end
+    if occupant.components.sanity then -- Update sanity rate in case it shifts.
+        local rate = TUNING.HOTSPRING_SANITY_PER_SECOND
+        if TheWorld.Map:IsInLunacyArea(occupant.Transform:GetWorldPosition()) then
+            rate = -rate
+        end
+        occupant.components.sanity.externalmodifiers:SetModifier(inst, rate)
+    end
+end
+
+local function OnBathingPoolTick(inst)
+    local bathingpool = inst.components.bathingpool
+    if bathingpool then
+        bathingpool:ForEachOccupant(OnBathingPoolTick_PerOccupant, TUNING.HOTSPRING_TICK_PERIOD)
+    end
+end
+
+local function OnStartBeingOccupiedBy(inst, ent)
+    if not inst.bathingpoolents then
+        inst.bathingpoolents = {
+            [ent] = true,
+        }
+        inst.bathingpooltask = inst:DoPeriodicTask(TUNING.HOTSPRING_TICK_PERIOD, OnBathingPoolTick)
+    else
+        inst.bathingpoolents[ent] = true
+    end
+    if ent.components.sanity then
+        local rate = TUNING.HOTSPRING_SANITY_PER_SECOND
+        if TheWorld.Map:IsInLunacyArea(ent.Transform:GetWorldPosition()) then
+            rate = -rate
+        end
+        ent.components.sanity.externalmodifiers:SetModifier(inst, rate)
+    end
+end
+
+local function OnStopBeingOccupiedBy(inst, ent)
+    if inst.bathingpoolents then
+        inst.bathingpoolents[ent] = nil
+        if ent.components.sanity then
+            ent.components.sanity.externalmodifiers:RemoveModifier(inst)
+        end
+        if next(inst.bathingpoolents) == nil then
+            if inst.bathingpooltask then
+                inst.bathingpooltask:Cancel()
+                inst.bathingpooltask = nil
+            end
+            inst.bathingpoolents = nil
+        end
+    end
+end
+
+local function EnableBathingPool(inst, enable)
+	if not enable then
+		inst:RemoveComponent("bathingpool")
+	elseif inst.components.bathingpool == nil then
+		inst:AddComponent("bathingpool")
+		inst.components.bathingpool:SetRadius(1.1)
+        inst.components.bathingpool:SetOnStartBeingOccupiedBy(OnStartBeingOccupiedBy)
+        inst.components.bathingpool:SetOnStopBeingOccupiedBy(OnStopBeingOccupiedBy)
+	end
+end
+
+local function SetGlassedLayering(inst, enable)
+	if enable then
+		inst.AnimState:SetLayer(LAYER_WORLD)
+		inst.AnimState:SetSortOrder(0)
+	else
+		inst.AnimState:SetLayer(LAYER_BACKGROUND)
+		inst.AnimState:SetSortOrder(2)
+	end
+end
+
 local function Refill(inst, snap)
 	if inst.delay_refill_task ~= nil then
 		inst.delay_refill_task:Cancel()
@@ -77,6 +152,8 @@ local function Refill(inst, snap)
     inst:RemoveTag("moonglass")
     inst.components.watersource.available = true
     inst.components.bathbombable:Reset()
+	EnableBathingPool(inst, false)
+	SetGlassedLayering(inst, false)
 
 	if not snap then
 		inst.AnimState:PlayAnimation("refill", false)
@@ -99,6 +176,8 @@ local function RemoveGlass(inst)
     inst:RemoveTag("moonglass")
     inst.components.watersource.available = false
     inst.components.bathbombable:DisableBathBombing()
+	EnableBathingPool(inst, false)
+	SetGlassedLayering(inst, false)
 	inst.AnimState:PlayAnimation("empty")
 	StopFx(inst)
 
@@ -107,7 +186,7 @@ end
 
 local function OnGlassedSpringMineFinished(inst, miner)
     inst.components.lootdropper:DropLoot()
-    if math.random() < TUNING.HOTSPRING_GEM_DROP_CHANCE then
+    if TryLuckRoll(miner, TUNING.HOTSPRING_GEM_DROP_CHANCE, LuckFormulas.LootDropperChance) then
         inst.components.lootdropper:SpawnLootPrefab((math.random(2) == 1 and "bluegem") or "redgem")
     end
     RemoveGlass(inst)
@@ -118,11 +197,20 @@ local function OnGlassSpringMined(inst, miner, mines_remaining, num_mines)
     inst.AnimState:PlayAnimation(glass_idle)
 end
 
+local function EjectOccupant(inst, ent, radius)
+	ent:PushEventImmediate("knockback", { knocker = inst, radius = radius, strengthmult = 0.3 })
+end
+
 local function TurnToGlassed(inst, is_loading)
     inst._glassed = true
     inst:AddTag("moonglass")
     inst.components.watersource.available = false
 	inst.components.bathbombable:DisableBathBombing()
+	if inst.components.bathingpool then
+		inst.components.bathingpool:ForEachOccupant(EjectOccupant, inst.components.bathingpool:GetRadius())
+	end
+	EnableBathingPool(inst, false)
+	SetGlassedLayering(inst, true)
 
     inst.Light:Enable(false)
 
@@ -144,9 +232,15 @@ end
 --------------------------------------------------------------------------
 
 local function GetHeat(inst)
-    return (inst.components.bathbombable.is_bathbombed and TUNING.HOTSPRING_HEAT.ACTIVE)
-			or (inst.components.bathbombable.can_be_bathbombed and TUNING.HOTSPRING_HEAT.PASSIVE)
-			or 0
+	if inst.components.bathbombable.is_bathbombed then
+		inst.components.heater:SetThermics(true, false)
+		return TUNING.HOTSPRING_HEAT.ACTIVE
+	elseif inst.components.bathbombable.can_be_bathbombed then
+		inst.components.heater:SetThermics(true, false)
+		return TUNING.HOTSPRING_HEAT.PASSIVE
+	end
+	inst.components.heater:SetThermics(false, false)
+	return 0
 end
 
 --------------------------------------------------------------------------
@@ -166,6 +260,8 @@ local function OnBathBombed(inst)
         TurnToGlassed(inst)
     else
 		inst.Light:Enable(true)
+		EnableBathingPool(inst, true)
+		SetGlassedLayering(inst, false)
 
 		if not POPULATING then
 			inst.AnimState:PlayAnimation("bath_bomb", false)
@@ -245,8 +341,8 @@ local function hotspring()
     inst.AnimState:SetBank("crater_pool")
     inst.AnimState:PlayAnimation("idle", true)
 
-    --inst.AnimState:SetLayer(LAYER_BACKGROUND) -- TODO: these should be enabled but then the player will stand on top of the glass, so the glass needs to be seperated out in order for this to work.
-    --inst.AnimState:SetSortOrder(2)
+	inst.AnimState:SetLayer(LAYER_BACKGROUND) -- TODO: these should be enabled but then the player will stand on top of the glass, so the glass needs to be seperated out in order for this to work.
+	inst.AnimState:SetSortOrder(2)
 
     inst.MiniMapEntity:SetIcon("hotspring.png")
 
@@ -254,6 +350,9 @@ local function hotspring()
     inst:AddTag("watersource")
     inst:AddTag("antlion_sinkhole_blocker")
     inst:AddTag("birdblocker")
+
+    --HASHEATER (from heater component) added to pristine state for optimization
+	inst:AddTag("HASHEATER")
 
     inst.Light:Enable(false)
     inst.Light:SetRadius(TUNING.HOTSPRING_GLOW.RADIUS)

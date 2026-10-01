@@ -1,3 +1,4 @@
+--------------------------------------------------------------------------
 --this is called back by the engine side
 
 PhysicsCollisionCallbacks = {}
@@ -6,14 +7,58 @@ function OnPhysicsCollision(guid1, guid2, world_position_on_a_x, world_position_
     local i2 = Ents[guid2]
 
     local callback1 = PhysicsCollisionCallbacks[guid1]
-    if callback1 then
+    if callback1 and (not i2 or not i2:HasTag("no_collision_callback_for_other")) then
         callback1(i1, i2, world_position_on_a_x, world_position_on_a_y, world_position_on_a_z, world_position_on_b_x, world_position_on_b_y, world_position_on_b_z, world_normal_on_b_x, world_normal_on_b_y, world_normal_on_b_z, lifetime_in_frames)
     end
 
     local callback2 = PhysicsCollisionCallbacks[guid2]
-    if callback2 then
+    if callback2 and (not i1 or not i1:HasTag("no_collision_callback_for_other")) then
         callback2(i2, i1, world_position_on_b_x, world_position_on_b_y, world_position_on_b_z, world_position_on_a_x, world_position_on_a_y, world_position_on_a_z, -world_normal_on_b_x, -world_normal_on_b_y, -world_normal_on_b_z, lifetime_in_frames)
     end
+end
+
+--------------------------------------------------------------------------
+--Helper class so we don't make multiple calls to c++ Physics component when updating collision mask
+
+CollisionMaskBatcher = Class(function(self, entormask)
+	self.mask = EntityScript.is_instance(entormask) and entormask.Physics:GetCollisionMask() or mask or 0
+end)
+
+function CollisionMaskBatcher:ClearCollisionMask()
+	self.mask = 0
+	return self
+end
+
+function CollisionMaskBatcher:SetCollisionMask(...)
+	for i = 1, select('#', ...) do
+		self.mask = bit.bor(self.mask, select(i, ...))
+	end
+	return self
+end
+
+function CollisionMaskBatcher:CollidesWith(mask)
+	self.mask = bit.bor(self.mask, mask)
+	return self
+end
+
+function CollisionMaskBatcher:ClearCollidesWith(mask)
+	self.mask = bit.band(self.mask, bit.bnot(mask))
+	return self
+end
+
+function CollisionMaskBatcher:CommitTo(ent)
+	ent.Physics:SetCollisionMask(self.mask)
+end
+
+--------------------------------------------------------------------------
+
+function TryTeleportToLaunchPos(inst, x, y, z)
+	--Don't do the teleport if it would push us out into void in caves
+	if TheWorld.has_ocean or TheWorld.Map:IsLandTileAtPoint(x, y, z) then
+		inst.Physics:Teleport(x, y, z)
+		return true
+	end
+	return false
 end
 
 function Launch(inst, launcher, basespeed)
@@ -35,11 +80,11 @@ end
 function Launch2(inst, launcher, basespeed, speedmult, startheight, startradius, vertical_speed, force_angle)
     if inst ~= nil and inst.Physics ~= nil and inst.Physics:IsActive() and launcher ~= nil then
 	    local x, y, z = launcher.Transform:GetWorldPosition()
-		local x1, y1, z1 = inst.Transform:GetWorldPosition()
-		local dx, dz = x1 - x, z1 - z
-		local dsq = dx * dx + dz * dz
 		local angle = force_angle ~= nil and (force_angle*DEGREES) or nil
 		if not angle then
+			local x1, y1, z1 = inst.Transform:GetWorldPosition()
+			local dx, dz = x1 - x, z1 - z
+			local dsq = dx * dx + dz * dz
 			if dsq > 0 then
 				local dist = math.sqrt(dsq)
 				angle = math.atan2(dz / dist, dx / dist) + (math.random() * 20 - 10) * DEGREES
@@ -50,12 +95,10 @@ function Launch2(inst, launcher, basespeed, speedmult, startheight, startradius,
 		local sina, cosa = math.sin(angle), math.cos(angle)
 		local speed = basespeed + math.random() * speedmult
 		local vertical_speed = vertical_speed or (speed * 5 + math.random() * 2)
-		inst.Physics:Teleport(x + startradius * cosa, startheight, z + startradius * sina)
+		TryTeleportToLaunchPos(inst, x + startradius * cosa, startheight, z + startradius * sina)
 		inst.Physics:SetVel(cosa * speed, vertical_speed, sina * speed)
-
 		return angle
 	end
-
 	return 0
 end
 
@@ -73,8 +116,25 @@ function LaunchAt(inst, launcher, target, speedmult, startheight, startradius, r
         end
         local sina, cosa = math.sin(angle), math.cos(angle)
         local spd = (math.random() * 2 + 1) * (speedmult or 1)
-        inst.Physics:Teleport(x + (startradius or 0) * cosa, startheight or .1, z + (startradius or 0) * sina)
+		TryTeleportToLaunchPos(inst, x + (startradius or 0) * cosa, startheight or 0.1, z + (startradius or 0) * sina)
         inst.Physics:SetVel(spd * cosa, math.random() * 2 + 4 + 2 * (speedmult or 1), spd * sina)
+    end
+end
+
+function LaunchToXZ(inst, tox, toz)
+    if inst ~= nil and inst.Physics ~= nil and inst.Physics:IsActive() then
+        local x, y, z = inst.Transform:GetWorldPosition()
+        local vx, vz = tox - x, toz - z
+        local dist = math.sqrt(vx * vx + vz * vz)
+        if dist > 0 then
+            local angle = math.atan2(vz / dist, vx / dist)
+            local speed = math.sqrt(6.7 * dist) -- Magic constant approximated from inventoryitem tests and their friction to make it get to the destination on rest.
+            inst.Physics:Teleport(x, .1, z)
+            inst.Physics:SetVel(math.cos(angle) * speed, speed, math.sin(angle) * speed)
+        else
+            inst.Physics:Teleport(x, .1, z)
+            inst.Physics:SetVel(0, 2, 0)
+        end
     end
 end
 
@@ -93,6 +153,12 @@ local NON_COLLAPSIBLE_TAGS = { "antlion", "groundspike", "flying", "shadow", "gh
 
 function DestroyEntity(ent, destroyer, kill_all_creatures, remove_entity_as_fallback)
     if ent:IsValid() then
+        if ent.proxy_destroy_entity and ent.proxy_destroy_entity:IsValid() then
+            -- So that we can do recursive proxying if needed.
+            -- Don't recurse to each other... I'm putting trust in you....
+            return DestroyEntity(ent.proxy_destroy_entity, destroyer, kill_all_creatures, remove_entity_as_fallback)
+        end
+
         local isworkable = false
         if ent.components.workable ~= nil then
             local work_action = ent.components.workable:GetWorkAction()
@@ -132,6 +198,18 @@ end
 
 local TOSS_MUST_TAGS = { "_inventoryitem" }
 local TOSS_CANT_TAGS = { "locomotor", "INLIMBO" }
+function LaunchArea(inst, radius, launch_basespeed, launch_speedmult, launch_startheight, launch_startradius)
+    local x, y, z = inst.Transform:GetWorldPosition()
+
+    local totoss = TheSim:FindEntities(x, 0, z, radius, TOSS_MUST_TAGS, TOSS_CANT_TAGS)
+    for i, v in ipairs(totoss) do
+        DeactivateInventoryItemBeforeLaunch(v)
+        if not v.components.inventoryitem.nobounce and v.Physics ~= nil and v.Physics:IsActive() then
+			Launch2(v, inst, launch_basespeed, launch_speedmult, launch_startheight, launch_startradius)
+        end
+    end
+end
+
 function LaunchAndClearArea(inst, radius, launch_basespeed, launch_speedmult, launch_startheight, launch_startradius)
     local x, y, z = inst.Transform:GetWorldPosition()
 
@@ -140,13 +218,5 @@ function LaunchAndClearArea(inst, radius, launch_basespeed, launch_speedmult, la
 		DestroyEntity(v, inst)
     end
 
-    local totoss = TheSim:FindEntities(x, 0, z, radius, TOSS_MUST_TAGS, TOSS_CANT_TAGS)
-    for i, v in ipairs(totoss) do
-        if v.components.mine ~= nil then
-            v.components.mine:Deactivate()
-        end
-        if not v.components.inventoryitem.nobounce and v.Physics ~= nil and v.Physics:IsActive() then
-			Launch2(v, inst, launch_basespeed, launch_speedmult, launch_startheight, launch_startradius)
-        end
-    end
+    LaunchArea(inst, radius, launch_basespeed, launch_speedmult, launch_startheight, launch_startradius)
 end

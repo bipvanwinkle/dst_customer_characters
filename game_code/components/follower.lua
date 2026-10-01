@@ -1,11 +1,17 @@
 local function onattacked(inst, data)
-    if inst.components.follower.leader == data.attacker then
-        inst.components.follower:SetLeader(nil)
+    local self = inst.components.follower
+    local leader = self.leader -- Getting leader directly special case.
+    if leader == data.attacker then
+        self:SetLeader(nil)
     end
 end
 
 local function onleader(self, leader)
     self.inst.replica.follower:SetLeader(leader)
+end
+
+local function onitemowner(self, owner)
+    self.inst.replica.follower:SetItemOwner(owner)
 end
 
 --both of these are defined lower in the file where it makes more sense.
@@ -16,12 +22,14 @@ local Follower = Class(function(self, inst)
     self.inst = inst
 
     self.leader = nil
+    self.itemowner = nil
     self.targettime = nil
     self.maxfollowtime = nil
     self.canaccepttarget = true
     --self.keepdeadleader = nil
     --self.keepleaderonattacked = nil
 	--self.noleashing = nil
+    --self.canberollcalledfn = nil
 
     self.inst:ListenForEvent("attacked", onattacked)
     self.OnLeaderRemoved = function()
@@ -34,10 +42,14 @@ end,
 nil,
 {
     leader = onleader,
+    itemowner = onitemowner,
 })
 
 function Follower:GetDebugString()
     local str = "Following "..tostring(self.leader)
+    if self.itemowner then
+        str = str .. string.format(" Item owner: %s", tostring(self.itemowner))
+    end
     if self.targettime ~= nil then
         str = str..string.format(" Stop in %2.2fs, %2.2f%%", self.targettime - GetTime(), 100 * self:GetLoyaltyPercent())
     end
@@ -45,7 +57,7 @@ function Follower:GetDebugString()
 end
 
 function Follower:GetLeader()
-    return self.leader
+    return self.itemowner or self.leader
 end
 
 local function DoPortNearLeader(inst, pos)
@@ -63,23 +75,21 @@ end
 local function TryPorting(inst, self)
 	self.porttask = nil
 
+    if inst.ghost_babysitter then
+        return
+    end
+
     if inst.components.hitchable and not inst.components.hitchable.canbehitched then
         return
     end
 
-    if self.leader == nil or self.leader:IsAsleep() or not inst:IsAsleep() then
+    local leader = self:GetLeader()
+    if leader == nil or leader:IsAsleep() or not inst:IsAsleep() or leader:HasTag("pocketdimension_container") then
         return
     end
 
-    if self.leader.components.inventoryitem ~= nil then
-        local owner = self.leader.components.inventoryitem:GetGrandOwner()
-        if owner ~= nil and owner:HasTag("pocketdimension_container") then
-            return
-        end
-    end
-
     local init_pos = inst:GetPosition()
-    local leader_pos = self.leader:GetPosition()
+    local leader_pos = leader:GetPosition()
 
     if distsq(leader_pos, init_pos) > 1600 then
         if inst.components.combat ~= nil then
@@ -93,7 +103,7 @@ local function TryPorting(inst, self)
             allow_ocean = inst.components.locomotor:CanPathfindOnWater()
         end
 
-        local angle = self.leader:GetAngleToPoint(init_pos) * DEGREES
+        local angle = leader:GetAngleToPoint(init_pos) * DEGREES
         if allow_ocean then
             local offset = FindSwimmableOffset(leader_pos, angle, 30, 10, false, true, NoHoles, false)
             if offset ~= nil then
@@ -165,6 +175,41 @@ function Follower:StopLeashing()
 	end
 end
 
+function Follower:DisableLeashing()
+	if not self.noleashing then
+        self.noleashing = true
+        self:StopLeashing()
+    end
+end
+
+function Follower:EnableLeashing()
+    if not self.noleashing then
+        return
+    end
+
+    self.noleashing = nil
+
+    if self.leader ~= nil and (self.leader:HasTag("player") or self.leader.components.inventoryitem ~= nil) then
+        self:StartLeashing()
+
+        if self.inst:IsAsleep() then
+            OnEntitySleep(self.inst)
+        end
+    end
+end
+
+function Follower:SetCanBeRollCalledFn(fn)
+    self.canberollcalledfn = fn
+end
+
+function Follower:CanBeRollCalled(leader)
+    if leader.components.leaderrollcall and not leader.components.leaderrollcall:IsEnabled() then
+        return false
+    end
+
+    return self.canberollcalledfn == nil or self.canberollcalledfn(self.inst, leader)
+end
+
 OnPlayerJoined = function(self, player)
     if self.cached_player_leader_userid == player.userid then
         local current_time = GetTime()
@@ -231,6 +276,20 @@ function Follower:ClearCachedPlayerLeader()
     end
 end
 
+function Follower:OnItemSourceNewOwner(owner)
+    self.itemowner = owner
+    if owner.components.leader then
+        owner.components.leader:AddItemFollower(self.inst)
+    end
+end
+
+function Follower:OnItemSourceRemoved(owner)
+    self.itemowner = nil
+    if owner.components.leader then
+        owner.components.leader:RemoveItemFollower(self.inst)
+    end
+end
+
 function Follower:SetLeader(new_leader)
 	local prev_leader = self.leader
 	local changed_leader = prev_leader ~= new_leader
@@ -248,12 +307,20 @@ function Follower:SetLeader(new_leader)
         self:CancelLoyaltyTask()
 
         self.leader = nil
+        if self.hasitemsource then
+            self.hasitemsource = nil
+            RemoveComponentInventoryItemSource(self, prev_leader) -- Clears self.itemowner.
+        end
     end
 
     if new_leader and self.leader ~= new_leader then
         self:ClearCachedPlayerLeader()
 
         self.leader = new_leader
+        if new_leader.components.inventoryitem then
+            self.hasitemsource = true -- Workaround flag because SetLeader(nil) will call leader:RemoveFollower which calls SetLeader(nil) a second time.
+            MakeComponentAnInventoryItemSource(self, new_leader) -- Sets self.itemowner.
+        end
 
         local leader = new_leader.components.leader
         if leader then
@@ -262,14 +329,24 @@ function Follower:SetLeader(new_leader)
 
         self.inst:ListenForEvent("onremove", self.OnLeaderRemoved, new_leader)
 
-        if new_leader:HasTag("player") or new_leader.components.inventoryitem ~= nil then
-            --Special case for pets leashed to players or inventory items
+        if (leader and leader.forceleash) or new_leader:HasTag("player") or new_leader.components.inventoryitem ~= nil then
+            --Special case for pets leashed to players or inventory items or things that explicitly force leash
             self:StartLeashing()
         end
     end
 
-	if changed_leader and self.OnChangedLeader ~= nil then
-		self.OnChangedLeader(self.inst, new_leader, prev_leader)
+	if changed_leader then
+		if self.inst.components.followermemory then
+			self.inst.components.followermemory:OnChangedLeader(new_leader)
+		end
+		if self.OnChangedLeader then
+			self.OnChangedLeader(self.inst, new_leader, prev_leader)
+		end
+		local target = self.inst.components.combat and self.inst.components.combat.target
+		if target and self.inst.components.combat:CanBeAlly(target) then
+			self.inst.components.combat:DropTarget()
+		end
+		self.inst:PushEvent("leaderchanged", { new = new_leader, old = prev_leader })
 	end
 end
 
@@ -368,17 +445,17 @@ function Follower:OnLoad(data)
     end
 end
 
-function Follower:IsLeaderSame(otherfollower)
-    if self.leader == nil then
+function Follower:IsLeaderSame(guy)
+    local leader = self:GetLeader()
+    if leader == nil then
         return false
     end
-    local othercmp = otherfollower.components.follower
-    if othercmp == nil or othercmp.leader == nil then
+    local otherfollower = guy.components.follower
+    if otherfollower == nil then
         return false
     end
-    --Special case for pets leashed to inventory items
-    return (self.leader.components.inventoryitem ~= nil and self.leader.components.inventoryitem:GetGrandOwner() or self.leader)
-        == (othercmp.leader.components.inventoryitem ~= nil and othercmp.leader.components.inventoryitem:GetGrandOwner() or othercmp.leader)
+
+    return leader == otherfollower:GetLeader()
 end
 
 function Follower:KeepLeaderOnAttacked()
@@ -438,6 +515,17 @@ function Follower:OnRemoveFromEntity()
     self.inst:RemoveEventCallback("ms_playerjoined", self.cached_player_join_fn, TheWorld)
     if self.leader ~= nil then
         self.inst:RemoveEventCallback("onremove", self.OnLeaderRemoved, self.leader)
+    end
+    if self.hasitemsource then
+        self.hasitemsource = nil
+        RemoveComponentInventoryItemSource(self, self.leader) -- Clears self.itemowner.
+    end
+end
+
+function Follower:OnRemoveEntity()
+    if self.hasitemsource then
+        self.hasitemsource = nil
+        RemoveComponentInventoryItemSource(self, self.leader) -- Clears self.itemowner.
     end
 end
 

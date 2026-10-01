@@ -8,6 +8,7 @@ local prefabs =
     "fishmeat_small",
     "lightbulb",
     "slurtle_shellpieces",
+    "lightcrabcorpse",
 }
 
 local brain = require("brains/lightcrabbrain")
@@ -18,7 +19,7 @@ end
 
 local function OnCookedFn(inst)
     if inst.components.health then
-        inst.SoundEmitter:PlaySound("dontstarve_DLC001/creatures/mole/death")
+        inst.SoundEmitter:PlaySound("monkeyisland/lightcrab/death")
     end
 end
 

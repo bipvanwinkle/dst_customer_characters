@@ -60,7 +60,7 @@ local function onhammered(inst, worker)
 
     if not inst:HasTag("burnt") then
         inst.components.lootdropper:DropLoot()
-        if math.random() < 0.3 then
+        if TryLuckRoll(worker, TUNING.SPAWN_GINGERDEADPIG_CHANCE, LuckFormulas.LootDropperChance) then
             local gingerdeadman = SpawnPrefab("gingerdeadpig")
             gingerdeadman.Transform:SetPosition(x, y, z)
             inst.components.lootdropper:SpawnLootPrefab("wintersfeastfuel", Point(x,y,z))
@@ -129,6 +129,7 @@ local function fn()
     inst:AddComponent("inspectable")
 
     MakeSnowCovered(inst)
+    SetLunarHailBuildupAmountSmall(inst)
 
     MakeSmallBurnable(inst, nil, nil, true)
     MakeMediumPropagator(inst)

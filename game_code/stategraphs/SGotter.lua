@@ -23,6 +23,10 @@ local events =
     CommonHandlers.OnDeath(),
     CommonHandlers.OnHop(),
     CommonHandlers.OnFreezeEx(),
+	CommonHandlers.OnElectrocute(),
+
+	-- Corpse handlers
+	CommonHandlers.OnCorpseChomped(),
 }
 
 local function go_to_idle(inst)
@@ -183,8 +187,16 @@ local COMBAT_TIMELINES = {
     },
 }
 local COMBAT_ANIMS = { attack = "bite" }
-local COMBAT_FNS = { }
-CommonStates.AddCombatStates(states, COMBAT_TIMELINES, COMBAT_ANIMS, COMBAT_FNS)
+local COMBAT_FNS = {
+    deathenter = function(inst)
+        local amphibiouscreature = inst.components.amphibiouscreature
+        if amphibiouscreature and amphibiouscreature.in_water then
+            inst.AnimState:PushAnimation("death_idle", true)
+        end
+    end,
+}
+local EXTRA_COMBAT_DATA = { has_corpse_handler = true }
+CommonStates.AddCombatStates(states, COMBAT_TIMELINES, COMBAT_ANIMS, COMBAT_FNS, EXTRA_COMBAT_DATA)
 
 CommonStates.AddSleepExStates(states,
 {
@@ -231,5 +243,17 @@ CommonStates.AddAmphibiousCreatureHopStates(states,
 })
 
 CommonStates.AddFrozenStates(states)
+CommonStates.AddElectrocuteStates(states)
 
-return StateGraph("otter", states, events, "idle", actionhandlers)
+CommonStates.AddInitState(states, "idle")
+CommonStates.AddCorpseStates(states,
+{ -- anims
+    corpse = function(inst)
+        local amphibiouscreature = inst.components.amphibiouscreature
+        if amphibiouscreature and amphibiouscreature.in_water then
+            return "death_idle", true
+        end
+    end,
+})
+
+return StateGraph("otter", states, events, "init", actionhandlers)

@@ -82,8 +82,11 @@ local function OnHaunt(inst, haunter)
                 old ~= v and
                 (old == nil or old.tab == v.tab) and
                 CanBlueprintRandomRecipe(v) and
-                not haunter.components.builder:KnowsRecipe(v) and
-                haunter.components.builder:CanLearn(v.name) then
+                (
+                    haunter.components.builder == nil or
+                    (not haunter.components.builder:KnowsRecipe(v) and haunter.components.builder:CanLearn(v.name))
+                )
+            then
                 table.insert(recipes, v)
             end
         end
@@ -119,6 +122,7 @@ local function fn(is_rare)
     MakeInventoryFloatable(inst, "med", nil, 0.75)
 
     inst.scrapbook_proxy = "blueprint"
+    inst.pickupsound = "paper"
 
     inst.entity:SetPristine()
 
@@ -170,6 +174,8 @@ local function MakeAnyBlueprint()
     if not TheWorld.ismastersim then
         return inst
     end
+
+	inst.scrapbook_speechstatus = "COMMON"
 
     local unknownrecipes = {}
     local knownrecipes = {}

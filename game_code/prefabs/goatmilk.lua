@@ -22,6 +22,7 @@ local function fn()
     MakeInventoryPhysics(inst)
 
     inst:AddTag("catfood")
+    inst:AddTag("fooddrink")
 
     MakeInventoryFloatable(inst, "small", 0.15, 0.6)
 
@@ -35,7 +36,7 @@ local function fn()
     inst.components.edible.healthvalue = TUNING.HEALING_SMALL
     inst.components.edible.hungervalue = TUNING.CALORIES_SMALL
     inst.components.edible.sanityvalue = TUNING.SANITY_SMALL
-    -- inst.components.edible.foodtype = "MEAT"
+    inst.components.edible.chargevalue = TUNING.WX78_CHARGE_SMALL
 
     inst:AddComponent("tradable")
 

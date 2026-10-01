@@ -169,6 +169,7 @@ local MainSounds =
 
     "WX_rework.fev",
     "WX_rework.fsb",
+	"WX_rework_music.fsb",
 
     "monkeyisland.fev",
     "monkeyisland.fsb",
@@ -181,8 +182,8 @@ local MainSounds =
     "wickerbottom_rework.fev",
     "wickerbottom_rework.fsb",
 
-    --"skin_sfx.fev",
-    --"skin_sfx.fsb",
+    "skin_sfx.fev",
+    "skin_sfx.fsb",
 
     "stageplay_set.fev",
     "stageplay_set.fsb",
@@ -230,7 +231,34 @@ local MainSounds =
     "rifts4.fsb",
 
 	"hallowednights2024.fev",
-    "hallowednights2024.fsb",    
+    "hallowednights2024.fsb",   
+
+    "meta5.fev",
+    "meta5.fsb", 
+
+    "balatro.fev",
+    "balatro.fsb",     
+
+    "rifts5.fev",
+    "rifts5.fsb",
+
+    "lunarhail_event.fev",
+    "lunarhail_event.fsb",
+
+    "rifts6.fev",
+    "rifts6.fsb",
+
+    "hallowednights2025.fev",
+    "hallowednights2025.fsb",
+
+    "winter2025.fev",
+    "winter2025.fsb",
+
+    "yoth_2026.fev",
+    "yoth_2026.fsb",
+
+    "rifts7.fev",
+    "rifts7.fsb",
 }
 
 function PreloadSoundList(list)
@@ -250,8 +278,9 @@ function PreloadSounds()
     --      but preloadsounds.lua is loaded first, so we only
     --      access the constants within function calls.
     PreloadSoundList({
-        (FESTIVAL_EVENT_MUSIC[WORLD_FESTIVAL_EVENT] ~= nil and FESTIVAL_EVENT_MUSIC[WORLD_FESTIVAL_EVENT].bank) or
-        (SPECIAL_EVENT_MUSIC[WORLD_SPECIAL_EVENT] ~= nil and SPECIAL_EVENT_MUSIC[WORLD_SPECIAL_EVENT].bank) or
-        "music_frontend.fsb",
+		(	FESTIVAL_EVENT_MUSIC[WORLD_FESTIVAL_EVENT] or
+			SPECIAL_EVENT_MUSIC[WORLD_SPECIAL_EVENT] or
+			DEFAULT_FE_MUSIC
+		).bank,
     })
 end

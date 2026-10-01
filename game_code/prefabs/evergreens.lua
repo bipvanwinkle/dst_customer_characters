@@ -139,12 +139,20 @@ local function dig_up_stump(inst, chopper)
     inst:Remove()
 end
 
+local function PlayChopSound(inst, chopper)
+    if not (chopper ~= nil and chopper:HasTag("playerghost")) then
+        inst.SoundEmitter:PlaySound(
+            chopper ~= nil and chopper:HasTag("beaver") and
+            "dontstarve/characters/woodie/beaver_chop_tree" or
+            "dontstarve/wilson/use_axe_tree"
+        )
+    end
+end
+
 local function chop_down_burnt_tree(inst, chopper)
     inst:RemoveComponent("workable")
     inst.SoundEmitter:PlaySound("dontstarve/forest/treeCrumble")
-    if not (chopper ~= nil and chopper:HasTag("playerghost")) then
-        inst.SoundEmitter:PlaySound("dontstarve/wilson/use_axe_tree")
-    end
+    PlayChopSound(inst, chopper)
     inst.AnimState:PlayAnimation(inst.anims.chop_burnt)
     RemovePhysicsColliders(inst)
     inst:ListenForEvent("animover", inst.Remove)
@@ -241,6 +249,7 @@ local function SetShort(inst)
     if inst.components.workable then
         inst.components.workable:SetWorkLeft(TUNING.EVERGREEN_CHOPS_SMALL)
     end
+    SetLunarHailBuildupAmountSmall(inst)
 
     inst.components.lootdropper:SetLoot(GetBuild(inst).short_loot)
 
@@ -264,6 +273,7 @@ local function SetNormal(inst)
     if inst.components.workable then
         inst.components.workable:SetWorkLeft(TUNING.EVERGREEN_CHOPS_NORMAL)
     end
+    SetLunarHailBuildupAmountMedium(inst)
 
     inst.components.lootdropper:SetLoot(GetBuild(inst).normal_loot)
 
@@ -285,6 +295,7 @@ local function SetTall(inst)
     if inst.components.workable then
         inst.components.workable:SetWorkLeft(TUNING.EVERGREEN_CHOPS_TALL)
     end
+    SetLunarHailBuildupAmountLarge(inst)
 
     inst.components.lootdropper:SetLoot(GetBuild(inst).tall_loot)
 
@@ -378,12 +389,16 @@ end
 
 local LEIF_TAGS = { "leif" }
 local function chop_tree(inst, chopper, chopsleft, numchops)
-    if not (chopper ~= nil and chopper:HasTag("playerghost")) then
-        inst.SoundEmitter:PlaySound(
-            chopper ~= nil and chopper:HasTag("beaver") and
-            "dontstarve/characters/woodie/beaver_chop_tree" or
-            "dontstarve/wilson/use_axe_tree"
-        )
+	if inst.components.growable == nil or inst:IsAsleep() then
+		return --likely partially re-configured for burnt when off-screen
+	end
+
+    PlayChopSound(inst, chopper)
+
+    local growth_stage = GetGrowthStages(inst)[inst.components.growable.stage]
+    local growth_stage_name = growth_stage ~= nil and growth_stage.name or nil
+    if growth_stage_name == "old" then -- Don't run rest of callback for old trees, it could be a less than 1 work.
+        return
     end
 
     inst.AnimState:PlayAnimation(inst.anims.chop)
@@ -447,6 +462,7 @@ local function make_stump(inst)
     inst:RemoveComponent("propagator")
     MakeSmallPropagator(inst)
     inst:RemoveComponent("workable")
+    RemoveLunarHailBuildup(inst)
     inst:RemoveTag("shelter")
     inst:RemoveComponent("hauntable")
     MakeHauntableIgnite(inst)
@@ -520,7 +536,7 @@ local function chop_down_tree(inst, chopper)
             elseif chopper:HasTag("woodcutter") then
                 chance = chance * TUNING.WOODCUTTER_LEIF_CHANCE_MOD
             end
-            if math.random() < chance then
+            if TryLuckRoll(chopper, chance, LuckFormulas.SpawnLeif) then
                 for k = 1, (days_survived <= 30 and 1) or math.random(days_survived <= 80 and 2 or 3) do
                     local target = FindEntity(inst, TUNING.LEIF_MAXSPAWNDIST, find_leif_spawn_target, LEIFTARGET_MUST_TAGS, LEIFTARGET_CANT_TAGS)
                     if target ~= nil then
@@ -588,9 +604,11 @@ local function onload(inst, data)
             inst.AnimState:PlayAnimation(inst.anims.stump)
             if data.burnt or inst:HasTag("burnt") then
                 DefaultBurntFn(inst)
+                RemoveLunarHailBuildup(inst)
             end
         elseif data.burnt and not inst:HasTag("burnt") then
             OnBurnt(inst, true)
+            RemoveLunarHailBuildup(inst)
         end
 
         if not inst:IsValid() then
@@ -940,6 +958,7 @@ local function tree(name, build, stage, data)
             inst:RemoveComponent("burnable")
             MakeSmallBurnable(inst)
             inst:RemoveComponent("workable")
+            RemoveLunarHailBuildup(inst)
             inst:RemoveComponent("propagator")
             MakeSmallPropagator(inst)
             inst:RemoveComponent("growable")

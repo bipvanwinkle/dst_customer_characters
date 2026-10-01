@@ -7,6 +7,9 @@ local UIAnim = require "widgets/uianim"
 
 local CraftingMenuIngredients = require "widgets/redux/craftingmenu_ingredients"
 
+--For access to RecipeTile.sSetImageFromRecipe
+local RecipeTile = require("widgets/recipetile")
+
 require "widgets/widgetutil"
 
 local PinSlot = Class(Widget, function(self, owner, craftingmenu, slot_num, pin_data)
@@ -60,6 +63,28 @@ local PinSlot = Class(Widget, function(self, owner, craftingmenu, slot_num, pin_
 		end
 	end)
 	self.craft_button:SetOnClick(function()
+        local recipe = AllRecipes[self.recipe_name]
+        if recipe and recipe.unlocks_from_skin then
+            local has_unlocked_skin = false
+            if self.owner.isplayer then
+                local prefabskins = PREFAB_SKINS[recipe.product]
+                if prefabskins ~= nil then
+                    for _, skin in ipairs(prefabskins) do
+                        if TheInventory:CheckOwnership(skin) then
+                            has_unlocked_skin = true
+                            break
+                        end
+                    end
+                end
+            end
+            if not has_unlocked_skin then
+                self:SetRecipe(nil, nil)
+                if not self.craftingmenu:IsCraftingOpen() then
+                    self:OnCraftingMenuClose()
+                end
+                return
+            end
+        end
 		if self.craftingmenu:IsCraftingOpen() then
 			if self.unpin_button.focus then
 				self:SetRecipe(nil, nil)
@@ -140,35 +165,39 @@ local PinSlot = Class(Widget, function(self, owner, craftingmenu, slot_num, pin_
 								return true
 							end
 						end
-					elseif control == CONTROL_INVENTORY_USEONSELF or control == CONTROL_INVENTORY_USEONSCENE then
-						-- if it is selected, pass the controls off to the details panel skin spinner to update the skin, otherwise it will be done here
-						local recipe_name, skin_name = self.craftingmenu:GetCurrentRecipeName()
-						if self.recipe_name ~= nil and self.recipe_name == recipe_name and self.craftingmenu.craftingmenu.details_root.skins_spinner:OnControl(control, down) then 
-							recipe_name, skin_name = self.craftingmenu:GetCurrentRecipeName()
-							self:SetRecipe(recipe_name, skin_name)
-							self.craftingmenu.craftingmenu.details_root:UpdateBuildButton(self)
-							return true 
-						elseif control == CONTROL_INVENTORY_USEONSELF then
-							if self.recipe_name ~= nil then
-								local new_skin = self:GetPrevSkin(self.skin_name)
-								if new_skin ~= self.skin_name then
-									self:SetRecipe(self.recipe_name, new_skin)
-									TheFrontEnd:GetSound():PlaySound("dontstarve/HUD/click_move")
-								else
-									TheFrontEnd:GetSound():PlaySound("dontstarve/HUD/click_negative", nil, .1)
+					else
+						local prev_ctrl = TheInput:ResolveVirtualControls(VIRTUAL_CONTROL_INV_ACTION_LEFT)
+						local next_ctrl = TheInput:ResolveVirtualControls(VIRTUAL_CONTROL_INV_ACTION_RIGHT)
+						if control == next_ctrl or control == prev_ctrl then
+							-- if it is selected, pass the controls off to the details panel skin spinner to update the skin, otherwise it will be done here
+							local recipe_name, skin_name = self.craftingmenu:GetCurrentRecipeName()
+							if self.recipe_name ~= nil and self.recipe_name == recipe_name and self.craftingmenu.craftingmenu.details_root.skins_spinner:OnControl(control, down) then 
+								recipe_name, skin_name = self.craftingmenu:GetCurrentRecipeName()
+								self:SetRecipe(recipe_name, skin_name)
+								self.craftingmenu.craftingmenu.details_root:UpdateBuildButton(self)
+								return true 
+							elseif control == prev_ctrl then
+								if self.recipe_name ~= nil then
+									local new_skin = self:GetPrevSkin(self.skin_name)
+									if new_skin ~= self.skin_name then
+										self:SetRecipe(self.recipe_name, new_skin)
+										TheFrontEnd:GetSound():PlaySound("dontstarve/HUD/click_move")
+									else
+										TheFrontEnd:GetSound():PlaySound("dontstarve/HUD/click_negative", nil, .1)
+									end
+									return true
 								end
-								return true
-							end
-						elseif control == CONTROL_INVENTORY_USEONSCENE then
-							if self.recipe_name ~= nil then
-								local new_skin = self:GetNextSkin(self.skin_name)
-								if new_skin ~= self.skin_name then
-									self:SetRecipe(self.recipe_name, new_skin)
-									TheFrontEnd:GetSound():PlaySound("dontstarve/HUD/click_move")
-								else
-									TheFrontEnd:GetSound():PlaySound("dontstarve/HUD/click_negative", nil, .1)
+							elseif control == next_ctrl then
+								if self.recipe_name ~= nil then
+									local new_skin = self:GetNextSkin(self.skin_name)
+									if new_skin ~= self.skin_name then
+										self:SetRecipe(self.recipe_name, new_skin)
+										TheFrontEnd:GetSound():PlaySound("dontstarve/HUD/click_move")
+									else
+										TheFrontEnd:GetSound():PlaySound("dontstarve/HUD/click_negative", nil, .1)
+									end
+									return true
 								end
-								return true
 							end
 						end
 					end
@@ -234,6 +263,8 @@ local PinSlot = Class(Widget, function(self, owner, craftingmenu, slot_num, pin_
     self.fg = self.craft_button.image:AddChild(Image("images/global.xml", "square.tex"))
 	self.fg:SetScale(0.92)
 	self.fg:Hide()
+    self.fgcount = self.craft_button.image:AddChild(Text(NUMBERFONT, 32/self.base_scale))
+    self.fgcount:Hide()
 
 	----------------
 	self:Hide()
@@ -249,6 +280,10 @@ function PinSlot:GetNextSkin(cur_skin)
 	local data = self.craftingmenu:GetRecipeState(self.recipe_name)
 	local prefab = data ~= nil and data.recipe ~= nil and data.recipe.product or self.recipe_name
 	return GetNextOwnedSkin(prefab, cur_skin)
+end
+
+function PinSlot:HasSkins()
+	return self.recipe_name ~= nil and self:GetNextSkin(self.skin_name) ~= self.skin_name
 end
 
 function PinSlot:Highlight() -- called from inventorybar
@@ -287,8 +322,12 @@ function PinSlot:MakeRecipePopup(is_left)
 
 			local hint_x = x * popup_self._scale * 0.5 + 6/self.base_scale
 			popup_self.openhint:SetPosition(is_left and hint_x or -hint_x, 0)
+			if popup_self.openhint.shown then
+				popup_self.openhint:StartUpdating()
+			end
 		else
 			popup_self:Hide()
+			popup_self.openhint:StopUpdating()
 		end
 	end
 
@@ -298,11 +337,16 @@ function PinSlot:MakeRecipePopup(is_left)
 			popup_self.ingredients = nil
 		end
 		popup_self:Hide()
+		popup_self.openhint:StopUpdating()
 	end
 
 	root.background = root:AddChild(ThreeSlice(atlas, "popup_end.tex", "popup_short.tex"))
 
 	root.openhint = root:AddChild(Text(UIFONT, 32))
+	root.openhint.OnUpdate = function(openhint, dt)
+		local ctrl = TheInput:ResolveVirtualControls(VIRTUAL_CONTROL_INV_ACTION_DOWN)
+		openhint:SetString(ctrl and TheInput:GetLocalizedControl(TheInput:GetControllerID(), ctrl) or "")
+	end
 
 	root:SetScale(root._scale)
 
@@ -341,6 +385,20 @@ function PinSlot:OnPageChanged(data)
 	self:Refresh()
 end
 
+local FGCOUNT_OFFSET_X = 25
+local FGCOUNT_OFFSET_Y = 5
+local function UpdateFGCount(fgcount, meta)
+    if meta.limitedamount then
+        fgcount:SetString(tostring(meta.limitedamount))
+        local parentwidth, parentheight = fgcount.parent:GetSize()
+        local fgwidth, fgheight = fgcount:GetRegionSize()
+        fgcount:SetPosition((fgwidth - parentwidth) * 0.5 + FGCOUNT_OFFSET_X, (parentheight - fgheight) * 0.5 - FGCOUNT_OFFSET_Y)
+        fgcount:Show()
+    else
+        fgcount:Hide()
+    end
+end
+
 function PinSlot:Refresh()
 	local data = self.craftingmenu:GetRecipeState(self.recipe_name) 
 
@@ -357,79 +415,63 @@ function PinSlot:Refresh()
 			self.recipe_popup:ShowPopup(recipe)
 		end
 
-		local inv_image
-		if self.skin_name ~= nil then
-			inv_image = GetSkinInvIconName(self.skin_name)..".tex"
-		else
-			inv_image = recipe.imagefn ~= nil and recipe.imagefn() or recipe.image
-		end
-		local inv_atlas = GetInventoryItemAtlas(inv_image, true) or recipe:GetAtlas()
-
-		self.item_img:SetTexture(inv_atlas, inv_image or "default.tex", "default.tex")
-		self.item_img:ScaleToSize(is_left and item_size or -item_size, item_size)
-
 		local tint = 1
 
 		if meta.build_state == "buffered" then
 			self.craft_button:SetTextures(atlas, "pinslot_bg_buffered.tex", nil, nil, nil, "pinslot_bg_buffered.tex")
 			self.fg:Hide()
+            UpdateFGCount(self.fgcount, meta)
 		elseif meta.build_state == "prototype" and meta.can_build then
 			self.craft_button:SetTextures(atlas, "pinslot_bg_prototype.tex", nil, nil, nil, "pinslot_bg_prototype.tex")
 			self.fg:SetTexture(atlas, "pinslot_fg_prototype.tex")
 			self.fg:Show()
+            self.fgcount:Hide()
 		elseif meta.can_build then
 			self.craft_button:SetTextures(atlas, "pinslot_bg.tex", nil, nil, nil, "pinslot_bg.tex")
 			self.fg:Hide()
+            UpdateFGCount(self.fgcount, meta)
 		elseif meta.build_state == "hint" then
 			self.craft_button:SetTextures(atlas, "pinslot_bg_missing_mats.tex", nil, nil, nil, "pinslot_bg_missing_mats.tex")
 			tint = .7
 			self.fg:SetTexture(atlas, "pinslot_fg_lock.tex")
             self.fg:Show()
+            self.fgcount:Hide()
 		elseif meta.build_state == "no_ingredients" or meta.build_state == "prototype" then
 			self.craft_button:SetTextures(atlas, "pinslot_bg_missing_mats.tex", nil, nil, nil, "pinslot_bg_missing_mats.tex")
 			tint = .7
             self.fg:Hide()
+            UpdateFGCount(self.fgcount, meta)
 		else
 			self.craft_button:SetTextures(atlas, "pinslot_bg_missing_mats.tex", nil, nil, nil, "pinslot_bg_missing_mats.tex")
 			tint = .7
 			self.fg:SetTexture(atlas, "pinslot_fg_lock.tex")
             self.fg:Show()
+            self.fgcount:Hide()
 		end
 
-		self.item_img:SetTint(tint, tint, tint, 1)
-
-		if recipe.fxover ~= nil then
-			if self.fxover == nil then
-				self.fxover = self.item_img:AddChild(UIAnim())
-				self.fxover:SetClickable(false)
-				self.fxover:SetScale(.25)
-				self.fxover:GetAnimState():AnimateWhilePaused(false)
-			end
-			self.fxover:GetAnimState():SetBank(recipe.fxover.bank)
-			self.fxover:GetAnimState():SetBuild(recipe.fxover.build)
-			self.fxover:GetAnimState():PlayAnimation(recipe.fxover.anim, true)
-			self.fxover:GetAnimState():SetMultColour(tint, tint, tint, 1)
-		elseif self.fxover ~= nil then
-			self.fxover:Kill()
-			self.fxover = nil
-		end
+		RecipeTile.sSetImageFromRecipe(self.item_img, recipe, self.skin_name, tint)
+		self.item_img:ScaleToSize(is_left and item_size or -item_size, item_size)
 
 		local details_recipe_name, details_skin_name = self.craftingmenu:GetCurrentRecipeName()
 		self.craft_button:SetHelpTextMessage(details_recipe_name ~= self.recipe_name and STRINGS.UI.HUD.SELECT
 											 or meta.build_state == "buffered" and STRINGS.UI.HUD.DEPLOY 
 											 or STRINGS.UI.HUD.BUILD)
+		self.craft_button.GetHelpText = function(craft_button)
+			return self.craftingmenu:IsVisible() and craft_button._base.GetHelpText(craft_button) or nil
+		end
 
 		self:Show()
 	else
 		self.craft_button:SetTextures(atlas, "pinslot_bg_missing_mats.tex", nil, nil, nil, "pinslot_bg_missing_mats.tex")
         self.fg:Hide()
+        self.fgcount:Hide()
 		self.item_img:SetTexture(atlas, "pinslot_fg_pin.tex")
 		self.item_img:ScaleToSize(is_left and item_size or -item_size, item_size)
 
-		if self.fxover ~= nil then
-			self.fxover:Kill()
-			self.fxover = nil
-		end
+		--Remove layers added by RecipeTile.sSetImageFromRecipe
+		self.item_img:KillAllChildren()
+		self.item_img.layers = nil
+		self.item_img.fxover = nil
 
 		self.craft_button:SetHelpTextMessage(STRINGS.UI.CRAFTING_MENU.PIN)
 	end
@@ -506,6 +548,8 @@ function PinSlot:RefreshControllers(controller_mode, for_open_crafting_menu)
 			self.craft_button:SetControl(CONTROL_ACCEPT)
 
 			self.recipe_popup.openhint:Hide()
+			self.recipe_popup.openhint:SetString("")
+			self.recipe_popup.openhint:StopUpdating()
 			self.unpin_button:Hide()
 			if self.focus then
 				self.unpin_button_bg:Show()
@@ -513,15 +557,19 @@ function PinSlot:RefreshControllers(controller_mode, for_open_crafting_menu)
 			end
 			self:SetUnpinControllerHintString()
 		else
-			self.craft_button:SetControl(CONTROL_INVENTORY_DROP)
+			self.craft_button:SetControl(VIRTUAL_CONTROL_INV_ACTION_DOWN)
 
 			self.recipe_popup.openhint:Show()
-			self.recipe_popup.openhint:SetString(TheInput:GetLocalizedControl(TheInput:GetControllerID(), CONTROL_INVENTORY_DROP))
+			if self.recipe_popup.shown then
+				self.recipe_popup.openhint:StartUpdating()
+			end
 			self.unpin_controllerhint:Hide()
 		end
     else
 		self.craft_button:SetControl(CONTROL_PRIMARY)
         self.recipe_popup.openhint:Hide()
+		self.recipe_popup.openhint:SetString("")
+		self.recipe_popup.openhint:StopUpdating()
 
 		if self.craftingmenu:IsCraftingOpen() then
 			if self.recipe_name ~= nil and self.focus then

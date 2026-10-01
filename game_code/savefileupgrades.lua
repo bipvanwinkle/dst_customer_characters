@@ -1301,6 +1301,118 @@ t = {
                 FlagForRetrofitting_Forest(savedata, "retrofit_otterdens")
             end,
         },
+        
+        {
+            version = 5.155, -- Add Balatro Machine to the world.
+            fn = function(savedata)
+                FlagForRetrofitting_Forest(savedata, "retrofit_balatro_content")
+            end,
+        },
+        {
+            version = 5.156, -- Remove ice off of the world's edge.
+            fn = function(savedata)
+                FlagForRetrofitting_Forest(savedata, "sharkboi_ice_hazard_fix")
+            end,
+        },
+        {
+            version = 5.157, -- Add the big whirlpool.
+            fn = function(savedata)
+                FlagForRetrofitting_Forest(savedata, "rifts6_add_whirlpool")
+            end,
+        },
+        {
+            version = 5.158, -- Fixup for Pearl's drops for a time period where everything was being eaten.
+            fn = function(savedata)
+                FlagForRetrofitting_Forest(savedata, "fix_pearl_eating_everything")
+            end,
+        },
+        {
+            version = 5.159, -- Add Fumarole area
+            fn = function(savedata)
+                if savedata and savedata.map and savedata.map.topology and savedata.map.prefab == "cave" then
+                    local hascentipedetask = false
+                    local topology = savedata.map.topology
+                    for i, node in ipairs(topology.nodes) do
+                        local idname = topology.ids[i]
+                        if idname and idname:find("CentipedeCaveTask") then
+                            hascentipedetask = true
+                            break
+                        end
+                    end
+                    if not hascentipedetask then
+                        FlagForRetrofitting_Cave(savedata, "retrofit_rifts6_add_fumarole")
+                        savedata.retrofit_rifts6_add_fumarole = true -- static layouts need to be done before the map is finalized
+                    end
+                end
+            end,
+        },
+		{
+			version = 5.16, -- Deprecate floating heavyobstaclephysics exploit
+			fn = function(savedata)
+				FlagForRetrofitting_Forest(savedata, "floating_heavyobstaclephysics_fix")
+				FlagForRetrofitting_Cave(savedata, "floating_heavyobstaclephysics_fix")
+			end,
+		},
+        {
+            version = 5.17,
+            fn = function(savedata)
+                FlagForRetrofitting_Forest(savedata, "retrofit_missing_retrofits_generated_densities")
+                FlagForRetrofitting_Cave(savedata, "retrofit_missing_retrofits_generated_densities")
+
+                --FlagForRetrofitting_Cave(savedata, "retrofit_fix_mismatched_fumarole_node_id_map")
+            end,
+        },
+        {
+            version = 5.18,
+            fn = function(savedata)
+                if savedata and savedata.map and savedata.map.topology and savedata.map.prefab == "cave" then
+                    local topology = savedata.map.topology
+                    for i, node in ipairs(topology.nodes) do
+                        local idname = topology.ids[i]
+                        if node.tags and idname and (idname:find("CentipedeCaveTask") or idname:find("FumaroleRetrofit")) then
+                            if not table.contains(node.tags, "fumarolearea") then -- Patch up existing areas with fumarolearea tag
+                                table.insert(node.tags, "fumarolearea")
+                            end
+                        end
+                    end
+                end
+
+                FlagForRetrofitting_Cave(savedata, "retrofit_cave_mite_spawners")
+            end,
+        },
+
+        {
+            version = 5.19,
+            fn = function(savedata)
+                FlagForRetrofitting_Forest(savedata, "retrofit_enable_pearl_score")
+            end,
+        },
+        {
+            version = 5.20, -- Pearl relocation recipe change.
+            fn = function(savedata)
+                FlagForRetrofitting_Forest(savedata, "hermitcrab_relocation_change")
+            end,
+        },
+        {
+            version = 5.21, -- Redo 5.19 patch, there was a case where pearl scoring didn't activate due to being moved before upgraded to house with decoration score component
+            fn = function(savedata)
+                FlagForRetrofitting_Forest(savedata, "retrofit_enable_pearl_score")
+            end,
+        },
+        {
+            version = 5.22, -- Repopulate Node Id Tile Map due to change of removing land restriction from engine functionality
+            fn = function(savedata)
+                if savedata ~= nil and savedata.map ~= nil then
+					savedata.retrofit_nodeidtilemap = true
+				end
+            end,
+        },
+        {
+            version = 5.23, -- Add 1 vault_orb to maps due to irreplaceable tags being added and reset method changing needing one.
+            fn = function(savedata)
+                FlagForRetrofitting_Cave(savedata, "retrofit_add_one_vault_orb")
+            end,
+        },
     },
 }
 

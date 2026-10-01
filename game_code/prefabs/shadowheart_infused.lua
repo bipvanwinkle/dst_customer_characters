@@ -1,3 +1,5 @@
+local WX78Common = require("prefabs/wx78_common")
+
 local assets =
 {
     Asset("ANIM", "anim/shadowheart_infused.zip"),
@@ -40,8 +42,9 @@ local function OnDropped(inst)
 end
 
 local function OnLanded(inst)
-    if inst.components.drownable:ShouldDrown() then
-        inst:PushEvent("onsink")
+    local drownable = inst.components.drownable
+    if drownable then
+        drownable:CheckDrownable()
     end
 end
 
@@ -99,6 +102,8 @@ local function fn()
     inst:AddTag("canbetrapped")
     inst:AddTag("shadowheart")
 
+    MakeItemSocketable_Client(inst, SOCKETNAMES.SHADOW)
+
     inst.Transform:SetFourFaced()
 
     if not TheNet:IsDedicated() then
@@ -110,6 +115,9 @@ local function fn()
     if not TheWorld.ismastersim then
         return inst
     end
+
+    WX78Common.MakeItemSocketable(inst)
+    inst.components.socketable:SetSocketQuality(SOCKETQUALITY.PERFECT)
 
     inst.scrapbook_anim = "scrapbook"
 

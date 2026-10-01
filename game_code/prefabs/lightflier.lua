@@ -263,12 +263,6 @@ local function OnDropped(inst)
     if inst.components.workable ~= nil then
         inst.components.workable:SetWorkLeft(1)
     end
-    if inst.brain ~= nil then
-        inst.brain:Start()
-    end
-    if inst.sg ~= nil then
-        inst.sg:Start()
-    end
     if inst.components.stackable ~= nil and inst.components.stackable:IsStack() then
         local x, y, z = inst.Transform:GetWorldPosition()
         while inst.components.stackable:IsStack()do
@@ -397,6 +391,21 @@ local function OnEntityWake(inst)
     end
 end
 
+local function OnEntity_Init(inst)
+    -- Called once after the inst is initialized.
+    inst.SoundEmitter:PlaySound("grotto/creatures/light_bug/fly_LP", "loop")
+    inst.OnEntitySleep = OnEntitySleep
+    inst.OnEntityWake = OnEntityWake
+end
+local function OnEntitySleep_Init(inst)
+    OnEntity_Init(inst)
+    inst:OnEntitySleep()
+end
+local function OnEntityWake_Init(inst)
+    OnEntity_Init(inst)
+    inst:OnEntityWake()
+end
+
 local function fn()
     local inst = CreateEntity()
 
@@ -456,6 +465,7 @@ local function fn()
     inst.components.locomotor.pathcaps = { allowocean = true }
 
     inst:SetStateGraph("SGlightflier")
+	inst.sg.mem.burn_on_electrocute = true
     inst:SetBrain(brain)
 
     inst:AddComponent("stackable")
@@ -494,6 +504,8 @@ local function fn()
 
     MakeSmallBurnableCharacter(inst, "lightbulb")
     MakeSmallFreezableCharacter(inst, "lightbulb")
+    inst.components.burnable:SetBurnTime(6 * TUNING.PLANTMOB_BURNTIME_MULT)
+    inst.components.health.fire_damage_scale = TUNING.PLANTMOB_FIRE_DAMAGE_SCALE
 
     inst:AddComponent("follower")
 
@@ -514,13 +526,11 @@ local function fn()
     MakeFeedableSmallLivestock(inst, TUNING.LIGHTFLIER.STARVE_TIME, OnPutInInventory, OnDropped)
 
     inst.incineratesound = "grotto/creatures/light_bug/death"
-    
-    inst.SoundEmitter:PlaySound("grotto/creatures/light_bug/fly_LP", "loop")
 
     inst.EnableBuzz = EnableBuzz
 
-    inst.OnEntitySleep = OnEntitySleep
-    inst.OnEntityWake = OnEntityWake
+    inst.OnEntitySleep = OnEntitySleep_Init
+    inst.OnEntityWake = OnEntityWake_Init
 
     return inst
 end

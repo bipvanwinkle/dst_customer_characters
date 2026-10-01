@@ -1,3 +1,30 @@
+--global
+function ShouldPlayDangerMusic(player, target)
+	if target.replica.combat == nil then
+		return false
+	elseif (target:HasTag("prey") and not target:HasTag("hostile")) then
+		return false
+	elseif target:HasAnyTag(
+		"bird",
+		"butterfly",
+		"shadow",
+		"shadowchesspiece",
+		"noepicmusic",
+		"thorny",
+		"smashable",
+		"wall",
+		"engineering",
+		"smoldering",
+		"veggie")
+	then
+		return false
+	elseif target:HasAnyTag("shadowminion", "abigail", "possessedbody") then
+		local follower = target.replica.follower
+		return not (follower and follower:GetLeader() == player)
+	end
+	return true
+end
+
 --------------------------------------------------------------------------
 --[[ DynamicMusic class definition ]]
 --------------------------------------------------------------------------
@@ -115,7 +142,7 @@ local TRIGGERED_DANGER_MUSIC =
 
     eyeofterror =
     {
-        "terraria1/common/music_epicfight_eot",
+		"dontstarve/music/music_epicfight_eot",
     },
 
     piratemonkeyraid = 
@@ -148,6 +175,25 @@ local TRIGGERED_DANGER_MUSIC =
         "dontstarve/music/music_epicfight_worm",
     },
 
+	wagboss =
+	{
+		"dontstarve/music/music_epicfight_wagboss_1",
+		"", --silence
+		"dontstarve/music/music_epicfight_wagboss_2",
+	},
+
+	vault =
+	{
+		"dontstarve/music/music_cavepuzzle",
+		"", --silence
+		"dontstarve/music/music_epicfight_pillarguard",
+	},
+
+    knight_yoth =
+    {
+        "dontstarve/music/music_epicfight_yothknights",
+    },
+
     default =
     {
         "dontstarve/music/music_epicfight_ruins",
@@ -174,6 +220,8 @@ local BUSYTHEMES = {
     PILLOWFIGHT = 16,
     RIDEOFTHEVALKYRIE = 17,
     BOATRACE = 18,
+	BALATRO = 19,
+    STAGEPLAY_CONFESSION = 20,
 }
 
 --------------------------------------------------------------------------
@@ -191,7 +239,6 @@ local _dangertask = nil
 local _pirates_near = nil
 local _triggeredlevel = nil
 local _isday = nil
-local _isbusydirty = nil
 local _isbusyruins = nil
 local _busytheme = nil
 local _extendtime = nil
@@ -214,6 +261,14 @@ local function IsOnLunarIsland(player)
         and player.components.areaaware:CurrentlyInTag("lunacyarea")
 end
 
+local function IsBusyThemeStageplay()
+    return _busytask ~= nil --_busytheme isn't cleared so make sure the task exists.
+        and (_busytheme == BUSYTHEMES.STAGEPLAY_HAPPY
+        or _busytheme == BUSYTHEMES.STAGEPLAY_MYSTERIOUS
+        or _busytheme == BUSYTHEMES.STAGEPLAY_DRAMATIC
+        or _busytheme == BUSYTHEMES.STAGEPLAY_CONFESSION)
+end
+
 local function StopBusy(inst, istimeout)
     if _busytask ~= nil then
         if not istimeout then
@@ -226,9 +281,14 @@ local function StopBusy(inst, istimeout)
                 return
             end
         end
+		if IsBusyThemeStageplay() then
+			_soundemitter:KillSound("busy")
+			_busytheme = nil
+		else
+			_soundemitter:SetParameter("busy", "intensity", 0)
+		end
         _busytask = nil
         _extendtime = 0
-        _soundemitter:SetParameter("busy", "intensity", 0)
     end
 end
 
@@ -391,12 +451,27 @@ local function StartFarming(player)
 end
 
 local function StartCarnivalMusic(player, is_game_active)
+    -- is_game_active
+        -- false = ambient carnival music - BUSYTHEMES.CARNIVAL_AMBIENT
+        -- true = regular carnival game music - BUSYTHEMES.CARNIVAL_MINIGAME
+        -- "GOLF" = play golf music - BUSYTHEMES.CARNIVAL_MINIGAME
 	if _dangertask ~= nil or _pirates_near ~= nil or (_busytask ~= nil and _busytheme == BUSYTHEMES.CARNIVAL_MINIGAME and not is_game_active) then
 		return
 	end
 
-	local theme = is_game_active and BUSYTHEMES.CARNIVAL_MINIGAME or BUSYTHEMES.CARNIVAL_AMBIENT
-	StartBusyTheme(player, theme, theme == BUSYTHEMES.CARNIVAL_MINIGAME and "summerevent/music/2" or "summerevent/music/1", 2)
+    local theme, sound = nil, nil
+    if is_game_active == "GOLF" then
+        theme = BUSYTHEMES.CARNIVAL_MINIGAME
+        sound = "dontstarve/music/music_minigolf"
+    elseif is_game_active then
+        theme = BUSYTHEMES.CARNIVAL_MINIGAME
+        sound = "summerevent/music/2"
+    else
+        theme = BUSYTHEMES.CARNIVAL_AMBIENT
+        sound = "summerevent/music/1"
+    end
+
+	StartBusyTheme(player, theme, sound, 2)
 end
 
 local function StartStageplayMusic(player, mood_index)
@@ -414,6 +489,9 @@ local function StartStageplayMusic(player, mood_index)
     elseif mood_index == 3 then
         theme = BUSYTHEMES.STAGEPLAY_DRAMATIC
         sound = "stageplay_set/bgm_moods/music_drama"
+    elseif mood_index == 4 then
+        theme = BUSYTHEMES.STAGEPLAY_CONFESSION
+        sound = "dontstarve/music/music_cavepuzzle"
     end
 
     StartBusyTheme(player, theme, sound, 2)
@@ -441,6 +519,14 @@ local function StartBoatRaceMusic(player)
     end
 
     StartBusyTheme(player, BUSYTHEMES.BOATRACE, "dontstarve/music/music_boatrace", 2)
+end
+
+local function StartBalatroMusic(player)
+	if _dangertask or _pirates_near then
+		return
+	end
+
+	StartBusyTheme(player, BUSYTHEMES.BALATRO, "dontstarve/music/music_balatro", 2)
 end
 
 local function ExtendBusy()
@@ -593,30 +679,9 @@ end
 local function CheckAction(player)
     if player:HasTag("attack") then
         local target = player.replica.combat:GetTarget()
-        if target ~= nil and
-            target:HasTag("_combat") and
-            not ((target:HasTag("prey") and not target:HasTag("hostile")) or
-                target:HasTag("bird") or
-                target:HasTag("butterfly") or
-                target:HasTag("shadow") or
-                target:HasTag("shadowchesspiece") or
-                target:HasTag("noepicmusic") or
-                target:HasTag("thorny") or
-                target:HasTag("smashable") or
-                target:HasTag("wall") or
-                target:HasTag("engineering") or
-                target:HasTag("smoldering") or
-                target:HasTag("veggie")) then
-            if target:HasTag("shadowminion") or target:HasTag("abigail") then
-                local follower = target.replica.follower
-                if not (follower ~= nil and follower:GetLeader() == player) then
-                    StartDanger(player)
-                    return
-                end
-            else
-                StartDanger(player)
-                return
-            end
+		if target and ShouldPlayDangerMusic(player, target) then
+			StartDanger(player)
+			return
         end
     end
     if player:HasTag("working") then
@@ -624,18 +689,24 @@ local function CheckAction(player)
     end
 end
 
+local function Wx_CheckSpinAction(player, isattack)
+	if isattack then
+		StartDanger(player)
+	else
+		StartBusy(player)
+	end
+end
+
+-- Keep NON_DANGER_TAGS in sync with player_classified NON_DANGER_TAGS
+local NON_DANGER_TAGS = {"noepicmusic", "shadow", "shadowchesspiece", "smolder", "thorny", "nodangermusic"}
 local function OnAttacked(player, data)
     if data ~= nil and
-        --For a valid client side check, shadowattacker must be
-        --false and not nil, pushed from player_classified
-        (data.isattackedbydanger == true or
-        --For a valid server side check, attacker must be non-nil
-        (data.attacker ~= nil and
-        not (data.attacker:HasTag("shadow") or
-            data.attacker:HasTag("shadowchesspiece") or
-            data.attacker:HasTag("noepicmusic") or
-            data.attacker:HasTag("thorny") or
-            data.attacker:HasTag("smolder")))) then
+            --For a valid client side check, shadowattacker must be
+            --false and not nil, pushed from player_classified
+            (data.isattackedbydanger == true or
+            --For a valid server side check, attacker must be non-nil
+            (data.attacker ~= nil and
+            not data.attacker:HasAnyTag(NON_DANGER_TAGS))) then
 
         StartDanger(player)
     end
@@ -685,6 +756,8 @@ local function StartPlayerListeners(player)
     inst:ListenForEvent("playpillowfightmusic", StartPillowFightMusic, player)
     inst:ListenForEvent("playrideofthevalkyrie", StartRideoftheValkyrieMusic, player)
     inst:ListenForEvent("playboatracemusic", StartBoatRaceMusic, player)
+	inst:ListenForEvent("playbalatromusic", StartBalatroMusic, player)
+	inst:ListenForEvent("wx_performedspinaction", Wx_CheckSpinAction, player)
 end
 
 local function StopPlayerListeners(player)
@@ -708,11 +781,13 @@ local function StopPlayerListeners(player)
     inst:RemoveEventCallback("playpillowfightmusic", StartPillowFightMusic, player)
     inst:RemoveEventCallback("playrideofthevalkyrie", StartRideoftheValkyrieMusic, player)
     inst:RemoveEventCallback("playboatracemusic", StartBoatRaceMusic, player)
+	inst:RemoveEventCallback("playbalatromusic", StartBalatroMusic, player)
+	inst:RemoveEventCallback("wx_performedspinaction", Wx_CheckSpinAction, player)
 end
 
 local function OnPhase(inst, phase)
     _isday = phase == "day"
-    if _dangertask ~= nil or not _isenabled then
+    if _dangertask ~= nil or not _isenabled or IsBusyThemeStageplay() then
         return
     end
     --Don't want to play overlapping stingers
@@ -743,7 +818,6 @@ local function StartSoundEmitter()
     if _soundemitter == nil then
         _soundemitter = TheFocalPoint.SoundEmitter
         _extendtime = 0
-        _isbusydirty = true
         if not _iscave then
             _isday = inst.state.isday
             inst:WatchWorldState("phase", OnPhase)
@@ -761,7 +835,6 @@ local function StopSoundEmitter()
         inst:StopWatchingWorldState("season", OnSeason)
         _isday = nil
 		_busytheme = nil
-        _isbusydirty = nil
         _extendtime = nil
         _soundemitter = nil
 		_hasinspirationbuff = nil
@@ -799,7 +872,6 @@ local function OnEnableDynamicMusic(inst, enable)
             StopBusy()
             _soundemitter:KillSound("busy")
             _busytheme = nil
-            _isbusydirty = true
         end
         _isenabled = enable
     end

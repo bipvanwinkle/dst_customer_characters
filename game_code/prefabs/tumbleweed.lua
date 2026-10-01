@@ -111,7 +111,7 @@ local function onpickup(inst, picker)
     inst:PushEvent("detachchild")
 
 	if IsSpecialEventActive(SPECIAL_EVENTS.HALLOWED_NIGHTS) then
-		if math.random() < TUNING.HALLOWEEN_ORNAMENT_TUMBLEWEED_CHANCE then
+		if TryLuckRoll(picker, TUNING.HALLOWEEN_ORNAMENT_TUMBLEWEED_CHANCE, LuckFormulas.LootDropperChance) then
             table.insert(inst.loot, "halloween_ornament_" ..tostring(math.random(NUM_HALLOWEEN_ORNAMENTS)))
             table.insert(inst.lootaggro, false)
 		end
@@ -240,10 +240,10 @@ local function DoDirectionChange(inst, data)
     if data and data.angle and data.velocity and inst.components.blowinwind then
         if inst.angle == nil then
             inst.angle = math.clamp(GetRandomWithVariance(data.angle, ANGLE_VARIANCE), 0, 360)
-            inst.components.blowinwind:Start(inst.angle, data.velocity)
+            inst.components.blowinwind:Start(inst.angle * DEGREES, data.velocity)
         else
             inst.angle = math.clamp(GetRandomWithVariance(data.angle, ANGLE_VARIANCE), 0, 360)
-            inst.components.blowinwind:ChangeDirection(inst.angle, data.velocity)
+            inst.components.blowinwind:ChangeDirection(inst.angle * DEGREES, data.velocity)
         end
     end
 end
@@ -315,7 +315,7 @@ end
 
 local function OnLoad(inst, data)
     if data ~= nil and data.burnt then
-        onburnt(inst)
+        inst.components.burnable.onburnt(inst)
     end
 end
 
@@ -408,6 +408,14 @@ local function burntfxfn()
     return inst
 end
 
+local function OnHaunt(inst)
+    if math.random() <= TUNING.HAUNT_CHANCE_OCCASIONAL then
+        onpickup(inst, nil)
+        inst:Remove()
+    end
+    return true
+end
+
 local function fn()
     local inst = CreateEntity()
 
@@ -447,7 +455,7 @@ local function fn()
     end, TheWorld)
     if inst.angle ~= nil then
         inst.angle = math.clamp(GetRandomWithVariance(inst.angle, ANGLE_VARIANCE), 0, 360)
-        inst.components.blowinwind:Start(inst.angle)
+        inst.components.blowinwind:Start(inst.angle * DEGREES)
     else
         inst.components.blowinwind:StartSoundLoop()
     end
@@ -489,13 +497,7 @@ local function fn()
     inst.OnLoad = OnLoad
 
     inst:AddComponent("hauntable")
-    inst.components.hauntable:SetOnHauntFn(function(inst, haunter)
-        if math.random() <= TUNING.HAUNT_CHANCE_OCCASIONAL then
-            onpickup(inst, nil)
-			inst:Remove()
-        end
-        return true
-    end)
+    inst.components.hauntable:SetOnHauntFn(OnHaunt)
 
     return inst
 end

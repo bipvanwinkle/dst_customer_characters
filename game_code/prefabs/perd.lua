@@ -9,6 +9,7 @@ local prefabs =
 {
     "drumstick",
     "redpouch",
+    "perdcorpse",
 }
 
 local brain = require "brains/perdbrain"
@@ -90,6 +91,8 @@ end
 
 --------------------------------------------------------------------------
 
+local SCRAPBOOK_HIDE_SYMBOLS = { "hat" }
+
 local function fn()
     local inst = CreateEntity()
 
@@ -119,6 +122,10 @@ local function fn()
     if not TheWorld.ismastersim then
         return inst
     end
+
+    inst.scrapbook_hide = SCRAPBOOK_HIDE_SYMBOLS
+
+	inst.override_combat_fx_height = "high"
 
     inst:AddComponent("locomotor")
     inst.components.locomotor.runspeed = TUNING.PERD_RUN_SPEED

@@ -15,6 +15,7 @@ local events =
     CommonHandlers.OnLocomote(true, true),
     CommonHandlers.OnSleep(),
     CommonHandlers.OnFreeze(),
+	CommonHandlers.OnElectrocute(),
     CommonHandlers.OnAttack(),
     CommonHandlers.OnAttacked(nil, TUNING.BUNNYMAN_MAX_STUN_LOCKS),
     CommonHandlers.OnDeath(),
@@ -26,6 +27,9 @@ local events =
             inst.sg:GoToState("cheer")
         end
     end),
+
+	-- Corpse handlers
+	CommonHandlers.OnCorpseChomped(),
 }
 
 local states =
@@ -37,16 +41,18 @@ local states =
         onenter = function(inst)
             inst.Physics:Stop()
 
+            local leader = inst.components.follower:GetLeader()
+            local is_roll_called = leader ~= nil and leader.components.leader ~= nil and leader.components.leader:IsRollCalling() or nil
             if inst.components.health:GetPercent() < TUNING.BUNNYMAN_PANIC_THRESH then
                 inst.AnimState:PlayAnimation("idle_angry")
                 inst.SoundEmitter:PlaySound("dontstarve/creatures/bunnyman/angry_idle")
-            elseif inst.components.follower:GetLeader() ~= nil and inst.components.follower:GetLoyaltyPercent() < .05 then
+            elseif leader ~= nil and inst.components.follower:GetLoyaltyPercent() < .05 and not is_roll_called then
                 inst.AnimState:PlayAnimation("hungry")
                 inst.SoundEmitter:PlaySound("dontstarve/wilson/hungry")
             elseif inst.components.combat:HasTarget() then
                 inst.AnimState:PlayAnimation("idle_angry")
                 inst.SoundEmitter:PlaySound("dontstarve/creatures/bunnyman/angry_idle")
-            elseif inst.components.follower:GetLeader() ~= nil and inst.components.follower:GetLoyaltyPercent() > .3 then
+            elseif leader ~= nil and (inst.components.follower:GetLoyaltyPercent() > .3 or is_roll_called) then
                 inst.AnimState:PlayAnimation("idle_happy")
                 inst.SoundEmitter:PlaySound("dontstarve/creatures/bunnyman/happy")
             else
@@ -75,8 +81,8 @@ local states =
 
             if not inst.shadowthrall_parasite_hosted_death or not TheWorld.components.shadowparasitemanager then
                 RemovePhysicsColliders(inst)
-                inst.components.lootdropper:DropLoot(inst:GetPosition())
-            end            
+                inst:DropDeathLoot()
+            end
         end,
 
         events =
@@ -84,6 +90,8 @@ local states =
             EventHandler("animover", function(inst)
                 if inst.shadowthrall_parasite_hosted_death and TheWorld.components.shadowparasitemanager then
                     TheWorld.components.shadowparasitemanager:ReviveHosted(inst)
+                elseif inst.AnimState:AnimDone() then
+                    inst.sg:GoToState("corpse")
                 end
             end),
         },        
@@ -200,21 +208,6 @@ local states =
             end),
         },
     },
-
-    State{
-        name = "parasite_revive",
-        tags = {"busy"},
-
-        onenter = function(inst)
-            inst.AnimState:PlayAnimation("parasite_death_pst")
-            inst.Physics:Stop()
-        end,
-
-        events=
-        {
-            EventHandler("animover", function(inst) inst.sg:GoToState("idle") end ),
-        },
-    },    
 }
 
 CommonStates.AddWalkStates(states, {
@@ -256,10 +249,15 @@ CommonStates.AddSleepStates(states,
 CommonStates.AddIdle(states, "funnyidle")
 CommonStates.AddSimpleState(states, "refuse", "pig_reject", { "busy" })
 CommonStates.AddFrozenStates(states)
+CommonStates.AddElectrocuteStates(states)
 CommonStates.AddSimpleActionState(states, "pickup", "pig_pickup", 10 * FRAMES, { "busy" })
 CommonStates.AddSimpleActionState(states, "gohome", "pig_pickup", 4 * FRAMES, { "busy" })
 CommonStates.AddHopStates(states, true, { pre = "boat_jump_pre", loop = "boat_jump_loop", pst = "boat_jump_pst"})
 CommonStates.AddSinkAndWashAshoreStates(states)
 CommonStates.AddVoidFallStates(states)
+CommonStates.AddParasiteReviveState(states)
 
-return StateGraph("bunnyman", states, events, "idle", actionhandlers)
+CommonStates.AddInitState(states, "idle")
+CommonStates.AddCorpseStates(states)
+
+return StateGraph("bunnyman", states, events, "init", actionhandlers)

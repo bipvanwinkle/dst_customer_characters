@@ -366,7 +366,6 @@ local PREFABS =
     ["marble"] = true,
     ["mastupgrade_lamp_item"] = true,
     ["chesspiece_twinsofterror"] = true,
-    --["playbill_the_doll"] = true,
     ["bonestew"] = true,
     ["abigail_flower"] = true,
     ["book_moon"] = true,
@@ -1810,12 +1809,67 @@ local PREFABS =
     ["pumpkincarver1"] = true,
     ["pumpkincarver2"] = true,
     ["pumpkincarver3"] = true,
-
     ["mask_sagehat"] = true,
     ["mask_toadyhat"] = true,
     ["mask_halfwithat"] = true,
-
     ["shadowthrall_parasite"] = true,
+
+    -- Winter's Feast 2024
+    ["chesspiece_wormboss"] = true,
+    ["chesspiece_daywalker2"] = true,
+
+    ["winter_ornament_boss_daywalker2"] = true,
+    ["winter_ornament_boss_sharkboi"] = true,
+    ["winter_ornament_boss_wormboss"] = true,
+
+    ["snowball_item"] = true,
+    ["snowman"] = true,
+
+    -- Meta 5
+
+    ["bandage_butterflywings"] = true,
+    ["elixir_container"] = true,
+    ["ghostflowerhat"] = true,
+    ["ghostlyelixir_lunar"] = true,
+    ["ghostlyelixir_revive"] = true,
+    ["ghostlyelixir_shadow"] = true,
+    ["graveguard_ghost"] = true,
+    ["graveurn"] = true,
+    ["portablefirepit_item"] = true,
+    ["shallow_grave"] = true,
+    ["slingshot_band_mimic"] = true,
+    ["slingshot_band_pigskin"] = true,
+    ["slingshot_band_tentacle"] = true,
+    ["slingshot_frame_bone"] = true,
+    ["slingshot_frame_gems"] = true,
+    ["slingshot_frame_wagpunk_0"] = true,
+    ["slingshot_frame_wagpunk"] = true,
+    ["slingshot_handle_jelly"] = true,
+    ["slingshot_handle_silk"] = true,
+    ["slingshot_handle_sticky"] = true,
+    ["slingshot_handle_voidcloth"] = true,
+    ["slingshotammo_container"] = true,
+    ["slingshotammo_dreadstone"] = true,
+    ["slingshotammo_gelblob"] = true,
+    ["slingshotammo_gunpowder"] = true,
+    ["slingshotammo_honey"] = true,
+    ["slingshotammo_horrorfuel"] = true,
+    ["slingshotammo_lunarplanthusk"] = true,
+    ["slingshotammo_moonglass"] = true,
+    ["slingshotammo_purebrilliance"] = true,
+    ["slingshotammo_scrapfeather"] = true,
+    ["slingshotammo_stinger"] = true,
+    ["slingshotmodkit"] = true,
+    ["thulecitebugnet"] = true,
+    ["wendy_resurrectiongrave"] = true,
+    ["woby_treat"] = true,
+    ["wortox_nabbag"] = true,
+    ["wortox_reviver"] = true,
+    ["wortox_souljar"] = true,
+
+    -- Balatro
+    ["deck_of_cards"] = true,
+    ["playing_card"] = true,
 
     --[[POI]]
     ["charlie_stage_post"] = true,
@@ -1834,6 +1888,205 @@ local PREFABS =
     ["atrium_gate"] = true,
     ["archive_orchestrina_main"] = true,
     ["multiplayer_portal"] = true,
+    ["balatro_machine"] = true,
+
+    -- [[Rifts 5]]
+    ["gestalt_cage"] = true,
+    ["wagboss_robot"] = true,
+    ["wagboss_robot_leg"] = true,
+    ["wagboss_missile"] = true,
+    ["alterguardian_phase1_lunarrift"] = true,
+    ["alterguardian_phase1_lunarrift_gestalt"] = true,
+    ["alterguardian_phase4_lunarrift"] = true,
+    ["wagdrone_rolling"] = true,
+    ["wagdrone_flying"] = true,
+    ["wagdrone_parts"] = true,
+    ["wagpunk_cagewall"] = true,
+    ["wagpunk_floor_kit"] = true,
+    ["wagpunk_lever"] = true,
+    ["wagpunk_workstation"] = true,
+    ["wagstaff_item_1"] = true,
+    ["wagstaff_item_2"] = true,
+    ["hermitcrab_relocation_kit"] = true,
+    ["wanderingtrader"] = true,
+    ["flotationcushion"] = true,
+    ["gestalt_guard_evolved"] = true,
+    ["lunar_seed"] = true,
+
+    ["wagstaff_containment_note"] = true,
+    ["wagstaff_electricity_note"] = true,
+    ["wagstaff_energy_note"] = true,
+    ["wagstaff_materials_note"] = true,
+    ["wagstaff_thermal_note"] = true,
+
+    -- [[ Electrocute ]]
+    ["wagboss_robot_constructionsite"] = true,
+    ["wagboss_robot_constructionsite_kit"] = true,
+    ["wagboss_robot_creation_parts"] = true,
+    ["chesspiece_wagboss_robot"] = true,
+    ["chesspiece_wagboss_lunar"] = true,
+
+    ["moonstorm_static_catcher"] = true,
+    ["moonstorm_static_roamer"] = true,
+    ["coolant"] = true,
+
+    ["fence_electric"] = true,
+    ["fence_electric_item"] = true,
+
+    ["mutatedbird"] = true,
+
+    -- [[ Missed Prefabs ]]
+
+    ["shadowhand"] = true,
+    ["waveyjones"] = true,
+    ["ruins_shadeling"] = true,
+    ["gestalt"] = true,
+    ["lunarthrall_plant_gestalt"] = true,
+    ["wobysmall"] = true,
+    ["deer_red"] = true,
+    ["deer_blue"] = true,
+    ["gingerbreadpig"] = true,
+    ["gingerbreadwarg"] = true,
+    --["dreadstone_stack"] = true, --Not a seperate prefab
+
+    -- [[ Rifts 6 and Rifts 6.1 ]]
+
+    -- fumarole biome
+    ["tree_rock"] = true,
+    ["shadowthrall_centipede_head"] = true,
+    ["cave_vent_rock"] = true,
+    ["cave_vent_mite"] = true,
+    ["cave_fern_withered"] = true,
+    ["flower_cave_withered"] = true,
+
+    -- sanctum
+    ["oceanwhirlbigportal"] = true,
+    ["oceanwhirlbigportalexit"] = true, -- Item collector for the big whirlpool.
+    ["vault_lobby_exit"] = true, -- Hole to jump in.
+    ["vault_teleporter"] = true,
+    ["vault_orb"] = true,
+    ["vault_chandelier_broken"] = true,
+    ["vault_rune"] = true, -- Lore stones.
+    ["vault_statue"] = true,
+    ["vault_torch"] = true,
+    ["ancient_husk"] = true, -- Skeleton remains.
+	--["vaultrelic_bowl"] = true,
+	--["vaultrelic_vase"] = true,
+	--["vaultrelic_planter"] = true,
+
+    ["abysspillar_minion"] = true,
+    ["abysspillar_trial"] = true,
+
+    ["mask_ancient_handmaidhat"] = true,
+    ["mask_ancient_architecthat"] = true,
+    ["mask_ancient_masonhat"] = true,
+
+    ["playbill_the_doll"] = true,
+    ["playbill_the_veil"] = true,
+    ["playbill_the_vault"] = true,
+
+    -- Hallowed Nights 2025
+    ["mutatedbuzzard_gestalt"] = true,
+    ["pumpkinhat"] = true,
+
+    -- Winter's Feast 2025
+
+    ["hermitcrab_teashop"] = true,
+    ["hermitcrab_lightpost"] = true,
+
+    ["hermitcrabtea_petals"] = true,
+    ["hermitcrabtea_petals_evil"] = true,
+    ["hermitcrabtea_foliage"] = true,
+    ["hermitcrabtea_succulent_picked"] = true,
+    ["hermitcrabtea_firenettles"] = true,
+    ["hermitcrabtea_tillweed"] = true,
+    ["hermitcrabtea_moon_tree_blossom"] = true,
+    ["hermitcrabtea_forgetmelots"] = true,
+
+    ["petals_dried"] = true,
+    ["petals_evil_dried"] = true,
+    ["foliage_dried"] = true,
+    ["succulent_picked_dried"] = true,
+    ["firenettles_dried"] = true,
+    ["tillweed_dried"] = true,
+    ["moon_tree_blossom_dried"] = true,
+    ["forgetmelots_dried"] = true,
+
+    ["fishmeat_dried"] = true,
+    ["fishmeat_small_dried"] = true,
+
+    ["shellweaver"] = true,
+    ["nonslipgrit"] = true,
+    ["nonslipgritboosted"] = true,
+    ["desiccant"] = true,
+    ["desiccantboosted"] = true,
+    ["salty_doghat"] = true,
+    ["salty_dog"] = true,
+    ["hermitcrab_shell"] = true,
+
+    ["hermithotspring"] = true,
+    ["meatrack_hermit_multi"] = true,
+    ["hermithouse_ornament"] = true,
+    ["hermithouse_laundry_socks"] = true,
+    ["hermithouse_laundry_shorts"] = true,
+    ["hermit_chair_rocking"] = true,
+
+    -- [[ Meta 6 ]]
+
+    ["wx78_drone_scout"] = true,
+    ["wx78_drone_delivery"] = true,
+    ["wx78_drone_delivery_small"] = true,
+    ["wx78_drone_zap"] = true,
+    ["wx78_drone_zap_remote"] = true,
+
+    ["wx78module_radar"] = true,
+    ["wx78module_stacksize"] = true,
+    ["wx78module_light2"] = true,
+    ["wx78module_digestion"] = true,
+    ["wx78module_screech"] = true,
+    ["wx78module_spin"] = true,
+    ["wx78module_shielding"] = true,
+	["wx78module_chess"] = true,
+
+    ["wx78_backupbody_inventory"] = true,
+
+    ["wx78_foodbrick"] = true,
+    ["wx78_gestalttrapper"] = true,
+
+    ["wx78_shadowdrone_debuffer"] = true,
+    ["wx78_shadowdrone_harvester"] = true,
+
+    -- [[ Rifts 7 ]]
+
+    ["mitegland"] = true,
+    ["mitegland_cooked"] = true,
+
+    ["fumaroleaxe"] = true,
+    ["fumarolepickaxe"] = true,
+    ["fumaroleshovel"] = true,
+    ["fumarolehammer"] = true,
+    ["fumarole_farm_hoe"] = true,
+
+    ["trap_fumarole"] = true,
+
+    ["vault_key"] = true,
+    ["vault_decon_door"] = true,
+    ["vault_decon_mister"] = true,
+    ["vault_crawler"] = true,
+    ["vault_crawler_socket"] = true,
+    ["vault_pillar_guard"] = true,
+    ["vault_key_activator"] = true,
+    ["vault_crawler_lever"] = true,
+    ["vault_compass"] = true,
+    ["vault_key_pedestal"] = true,
+    ["vault_refiner_pedestal"] = true,
+    ["vault_orb_refined"] = true,
+    ["vault_pillar_guard_piece_1"] = true,
+    ["vault_pillar_guard_piece_2"] = true,
+    ["vault_pillar_guard_piece_3"] = true,
+
+    ["healingsalve_fumarole"] = true,
+    ["chesspiece_vault_pillar_guard"] = true,
 
     -----------------------------------------------
 

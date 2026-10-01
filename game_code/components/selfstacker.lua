@@ -33,9 +33,15 @@ function SelfStacker:OnRemoveEntity()
     self.inst:RemoveTag("selfstacker")
 end
 
-local SELFSTACKER_MUST_TAGS = {"selfstacker"}
+local SELFSTACKER_MUST_TAGS = { "selfstacker" }
+local SELFSTACKER_CANT_TAGS = { "outofreach"  }
+local function IsValidPartnerFn(item, inst)
+    return inst.components.stackable:CanStackWith(item)
+end
+
 function SelfStacker:FindItemToStackWith()
-	self.stackpartner = FindEntity(self.inst, self.searchradius, function(item) return item.prefab == self.inst.prefab and item.skinname == self.inst.skinname and item.components.selfstacker:CanSelfStack() end, SELFSTACKER_MUST_TAGS)
+	self.stackpartner = FindEntity(self.inst, self.searchradius, IsValidPartnerFn, SELFSTACKER_MUST_TAGS, SELFSTACKER_CANT_TAGS)
+
 	if self.stackpartner then
 		self.stackpartner.components.selfstacker.stackpartner = self.inst
 	end

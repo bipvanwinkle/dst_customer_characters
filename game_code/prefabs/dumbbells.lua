@@ -61,28 +61,6 @@ local function ReticuleShouldHideFn(inst)
 	return not inst:HasTag("projectile")
 end
 
-local function HasFriendlyLeader(inst, target, attacker)
-    local target_leader = (target.components.follower ~= nil) and target.components.follower.leader or nil
-    
-    if target_leader ~= nil then
-
-        if target_leader.components.inventoryitem then
-            target_leader = target_leader.components.inventoryitem:GetGrandOwner()
-        end
-
-        local PVP_enabled = TheNet:GetPVPEnabled()
-        return (target_leader ~= nil 
-                and (target_leader:HasTag("player") 
-                and not PVP_enabled)) or
-                (target.components.domesticatable and target.components.domesticatable:IsDomesticated() 
-                and not PVP_enabled) or
-                (target.components.saltlicker and target.components.saltlicker.salted
-                and not PVP_enabled)
-    end
-
-    return false
-end
-
 local function CanDamage(inst, target, attacker)
     if target.components.minigame_participator ~= nil or target.components.combat == nil then
 		return false
@@ -92,35 +70,28 @@ local function CanDamage(inst, target, attacker)
     --    return true
     --end
 
-    if target:HasTag("player") and not TheNet:GetPVPEnabled() then
+	if target.isplayer and not TheNet:GetPVPEnabled() then
         return false
     end
 
-    if target:HasTag("playerghost") and not target:HasTag("INLIMBO") then
+	if not target:IsInLimbo() and target:HasTag("playerghost") then
         return false
     end
 
-    if target:HasTag("monster") and not TheNet:GetPVPEnabled() and 
-       ((target.components.follower and target.components.follower.leader ~= nil and 
-         target.components.follower.leader:HasTag("player")) or target.bedazzled) then
-        return false
-    end
-
-    if HasFriendlyLeader(inst, target, attacker) then
-        return false
-    end
-
-    return true
+	return attacker ~= nil and attacker:IsValid()
+		and attacker.components.combat ~= nil
+		and not attacker.components.combat:IsAlly(target)
 end
 
 local function ResetPhysics(inst)
 	inst.Physics:SetFriction(0.1)
 	inst.Physics:SetRestitution(0.5)
 	inst.Physics:SetCollisionGroup(COLLISION.ITEMS)
-	inst.Physics:ClearCollisionMask()
-	inst.Physics:CollidesWith(COLLISION.WORLD)
-	inst.Physics:CollidesWith(COLLISION.OBSTACLES)
-	inst.Physics:CollidesWith(COLLISION.SMALLOBSTACLES)
+	inst.Physics:SetCollisionMask(
+		COLLISION.WORLD,
+		COLLISION.OBSTACLES,
+		COLLISION.SMALLOBSTACLES
+	)
 end
 
 local function onthrown(inst)
@@ -139,10 +110,11 @@ local function onthrown(inst)
     inst.Physics:SetFriction(0)
     inst.Physics:SetDamping(0)
     inst.Physics:SetCollisionGroup(COLLISION.CHARACTERS)
-    inst.Physics:ClearCollisionMask()
-    inst.Physics:CollidesWith(COLLISION.GROUND)
-    inst.Physics:CollidesWith(COLLISION.OBSTACLES)
-    inst.Physics:CollidesWith(COLLISION.ITEMS)
+	inst.Physics:SetCollisionMask(
+		COLLISION.GROUND,
+		COLLISION.OBSTACLES,
+		COLLISION.ITEMS
+	)
 end
 
 local AOE_ATTACK_MUST_TAGS = {"_combat", "_health"}
@@ -348,7 +320,7 @@ end
 local emitted_temperatures = { -10, 10, 25, 40, 60 }
 
 local function HeatFn(inst, observer)
-    local range = GetRangeForTemperature(inst.components.temperature:GetCurrent(), TheWorld.state.temperature)
+	local range = GetRangeForTemperature(inst.components.temperature:GetCurrent(), GetLocalTemperature(inst))
     if range <= 2 then
         inst.components.heater:SetThermics(false, true)
     elseif range >= 4 then
@@ -416,7 +388,7 @@ local function UpdateImages(inst, range)
 end
 
 local function TemperatureChange(inst, data)
-    local ambient_temp = TheWorld.state.temperature
+	local ambient_temp = GetLocalTemperature(inst)
     local cur_temp = inst.components.temperature:GetCurrent()
     local range = GetRangeForTemperature(cur_temp, ambient_temp)
 
@@ -443,8 +415,9 @@ local function TemperatureChange(inst, data)
     if range ~= inst.currentTempRange then
         UpdateImages(inst, range)
 
-        if (inst.lowTemp ~= nil and range >= 3) or
-            (inst.highTemp ~= nil and range <= 3) then
+        local hasrate = data and data.hasrate or false
+        if hasrate and ((inst.lowTemp ~= nil and range >= 3) or
+            (inst.highTemp ~= nil and range <= 3)) then
             inst.lowTemp = nil
             inst.highTemp = nil
             inst.components.finiteuses:SetPercent(inst.components.finiteuses:GetPercent() - 1 / TUNING.HEATROCK_NUMUSES)
@@ -536,6 +509,9 @@ local function MakeDumbbell(name, consumption, efficiency, damage, impact_sound,
         inst:AddComponent("reticule")
         inst.components.reticule.targetfn = ReticuleTargetFn
 		inst.components.reticule.shouldhidefn = ReticuleShouldHideFn
+		inst.components.reticule.twinstickcheckscheme = true
+		inst.components.reticule.twinstickmode = 1
+		inst.components.reticule.twinstickrange = 8
         inst.components.reticule.ease = true
 
         inst.entity:SetPristine()
@@ -561,11 +537,13 @@ local function MakeDumbbell(name, consumption, efficiency, damage, impact_sound,
 
         inst:AddComponent("finiteuses")
         inst.components.finiteuses:SetOnFinished(function() 
-            if inst.components.inventoryitem:GetGrandOwner() == nil then
+			if not inst.components.inventoryitem:IsHeld() then
                 inst.components.inventoryitem.canbepickedup = false
+				inst.persists = false
+				inst:AddTag("NOCLICK")
                 inst:DoTaskInTime(1, ErodeAway)
             else
-                inst:Remove()        
+                inst:Remove()
             end
         end)
 
@@ -586,6 +564,7 @@ local function MakeDumbbell(name, consumption, efficiency, damage, impact_sound,
             inst:AddComponent("heater")
             inst.components.heater.heatfn = HeatFn
             inst.components.heater.carriedheatfn = HeatFn
+            inst.components.heater.equippedheatfn = HeatFn
             inst.components.heater.carriedheatmultiplier = TUNING.HEAT_ROCK_CARRIED_BONUS_HEAT_FACTOR
             inst.components.heater:SetThermics(false, false)
 

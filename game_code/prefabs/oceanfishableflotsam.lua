@@ -191,7 +191,7 @@ local function OnPicked(inst, picker)
 		local loot = weighted_random_choice(weighted_loot)
 		SpawnPrefab(loot).Transform:SetPosition(x, y, z)
 	end
-	if IsSpecialEventActive(SPECIAL_EVENTS.HALLOWED_NIGHTS) and math.random() < TUNING.HALLOWEEN_ORNAMENT_FLOTSAM_CHANCE then
+	if IsSpecialEventActive(SPECIAL_EVENTS.HALLOWED_NIGHTS) and TryLuckRoll(picker, TUNING.HALLOWEEN_ORNAMENT_FLOTSAM_CHANCE, LuckFormulas.LootDropperChance) then
 		SpawnPrefab("halloween_ornament_"..tostring(math.random(NUM_HALLOWEEN_ORNAMENTS))).Transform:SetPosition(x, y, z)
 	end
 
@@ -283,6 +283,14 @@ local function waterfn(data)
     return inst
 end
 
+local function OnHaunt(inst)
+	if math.random() <= TUNING.HAUNT_CHANCE_OCCASIONAL then
+		OnPicked(inst, nil)
+		inst.components.hauntable.hauntvalue = TUNING.HAUNT_MEDIUM
+	end
+	return true
+end
+
 local function OnSink(inst)
 	SpawnPrefab("oceanfishableflotsam_water").Transform:SetPosition(inst.Transform:GetWorldPosition())
 	inst:Remove()
@@ -336,13 +344,7 @@ local function landfn(data)
 	inst.components.symbolswapdata:SetData("flotsam", "swap_body")
 
     inst:AddComponent("hauntable")
-    inst.components.hauntable:SetOnHauntFn(function(inst, haunter)
-        if math.random() <= TUNING.HAUNT_CHANCE_OCCASIONAL then
-            OnPicked(inst, nil)
-            inst.components.hauntable.hauntvalue = TUNING.HAUNT_MEDIUM
-        end
-        return true
-	end)
+    inst.components.hauntable:SetOnHauntFn(OnHaunt)
 
 	inst:ListenForEvent("onsink", OnSink)
 	inst:ListenForEvent("on_landed", OnLanded)

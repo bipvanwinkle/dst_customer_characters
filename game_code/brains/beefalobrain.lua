@@ -186,6 +186,10 @@ local function InState(inst, state)
     end
 end
 
+local function GetLeader(inst)
+    return inst.components.follower and inst.components.follower:GetLeader()
+end
+
 local BeefaloBrain = Class(Brain, function(self, inst)
     Brain._ctor(self, inst)
 end)
@@ -194,6 +198,7 @@ function BeefaloBrain:OnStart()
     local root = PriorityNode(
     {
 		BrainCommon.PanicTrigger(self.inst),
+        BrainCommon.ElectricFencePanicTrigger(self.inst),
         BrainCommon.IpecacsyrupPanicTrigger(self.inst),
         IfNode(function() return self.inst.components.combat.target ~= nil end, "hastarget",
             AttackWall(self.inst)),
@@ -210,17 +215,16 @@ function BeefaloBrain:OnStart()
             DoAction(self.inst, gottohitchspot, "hitchup",true)),
 
         Follow(self.inst, function()
-                local bell_owner = self.inst:GetBeefBellOwner() or self.inst.components.follower:GetLeader()
+                local bell_owner = self.inst:GetBeefBellOwner() or GetLeader(self.inst)
                 return (bell_owner ~= nil and bell_owner:IsOnValidGround() and not bell_owner:HasTag("pocketdimension_container") and bell_owner)
                         or nil
             end, MIN_BUDDY_DIST, TARGET_BUDDY_DIST, MAX_BUDDY_DIST, true),
         Follow(self.inst, function()
-                local follower = self.inst.components.follower
-                return (follower ~= nil
-                    and follower.leader ~= nil
-                    and not follower.leader:HasTag("bell")
-                    and follower.leader:IsOnValidGround()
-                    and follower.leader)
+                local leader = GetLeader(self.inst)
+                return (leader ~= nil
+                    and not leader:HasTag("bell")
+                    and leader:IsOnValidGround()
+                    and leader)
                     or nil
             end, MIN_FOLLOW_DIST, TARGET_FOLLOW_DIST, MAX_FOLLOW_DIST, false),
         FaceEntity(self.inst, GetFaceTargetFn, KeepFaceTargetFn),

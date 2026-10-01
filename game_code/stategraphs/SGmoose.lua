@@ -11,8 +11,9 @@ local actionhandlers =
 }
 
 local function onattackfn(inst)
-	if inst.components.health and not inst.components.health:IsDead()
-	   and (inst.sg:HasStateTag("hit") or not inst.sg:HasStateTag("busy")) then
+	if inst.components.health and not inst.components.health:IsDead() and
+		((inst.sg:HasStateTag("hit") and not inst.sg:HasStateTag("electrocute")) or not inst.sg:HasStateTag("busy"))
+	then
 		if inst.CanDisarm then
 			inst.sg:GoToState("disarm")
 		else
@@ -40,6 +41,7 @@ local events=
 
 	CommonHandlers.OnSleep(),
 	CommonHandlers.OnFreeze(),
+	CommonHandlers.OnElectrocute(),
 	EventHandler("doattack", onattackfn),
 	CommonHandlers.OnAttacked(),
 	CommonHandlers.OnDeath(),
@@ -51,6 +53,9 @@ local events=
 			inst.sg:GoToState("flyaway")
 		end
 	end),
+
+	-- Corpse handlers
+	CommonHandlers.OnCorpseChomped(),
 }
 
 local function DisarmTarget(inst, target)
@@ -268,7 +273,7 @@ local states =
 
 	State{
 		name = "glide",
-		tags = {"flight", "busy"},
+		tags = { "flight", "busy", "noelectrocute" },
 
 		onenter= function(inst)
 			inst.AnimState:PlayAnimation("glide", true)
@@ -310,7 +315,7 @@ local states =
 
 	State{
 		name = "flyaway",
-		tags = {"flight", "busy"},
+		tags = { "flight", "busy", "noelectrocute" },
 
 		onenter = function(inst)
 			inst.Physics:Stop()
@@ -522,9 +527,15 @@ CommonStates.AddCombatStates(states,
 
 		TimeEvent(20*FRAMES, DeathCollapseShake),
 	},
+},
+nil,
+nil,
+{
+    has_corpse_handler = true,
 })
 
 CommonStates.AddFrozenStates(states)
+CommonStates.AddElectrocuteStates(states)
 CommonStates.AddSleepStates(states,
 {
 	sleeptimeline =
@@ -537,4 +548,7 @@ CommonStates.AddSleepStates(states,
 CommonStates.AddSinkAndWashAshoreStates(states)
 CommonStates.AddVoidFallStates(states)
 
-return StateGraph("moose", states, events, "idle", actionhandlers)
+CommonStates.AddInitState(states, "idle")
+CommonStates.AddCorpseStates(states)
+
+return StateGraph("moose", states, events, "init", actionhandlers)

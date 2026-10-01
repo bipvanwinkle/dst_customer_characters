@@ -47,6 +47,7 @@ LOADING_IMAGES =
         { atlas = "images/bg_loading_yotcc1.xml", tex = "bg_image1.tex" },
     },
 
+
     [SPECIAL_EVENTS.NONE] =
     {
         { atlas = "images/bg_spiral_fill1.xml", tex = "bg_image1.tex", spiral = true },
@@ -69,7 +70,9 @@ local SPECIAL_EVENT_DEPS =
         {
             assets =
             {
-                Asset("ANIM", "anim/dst_menu_halloween3.zip"),
+				Asset("ANIM", "anim/dst_menu_halloween4.zip"),
+				Asset("PKGREF", "sound/music_frontend_hallowednights2024.fsb"),
+				Asset("PKGREF", "anim/dst_menu_halloween3.zip"),
                 Asset("PKGREF", "anim/dst_menu_rift4.zip"),
                 Asset("PKGREF", "anim/dst_menu_rift3.zip"),
                 Asset("PKGREF", "anim/dst_menu_rift3_bg.zip"),
@@ -89,13 +92,16 @@ local SPECIAL_EVENT_DEPS =
         {
             assets =
             {
-                Asset("ANIM", "anim/dst_menu_meta3.zip"),
+				Asset("ANIM", "anim/dst_menu_winter2025.zip"),
+				Asset("PKGREF", "anim/dst_menu_meta5.zip"),
+				Asset("PKGREF", "anim/dst_menu_winter2024.zip"),
                 Asset("PKGREF", "anim/dst_menu_waxwell.zip"),
 	            Asset("PKGREF", "anim/dst_menu_feast.zip"),
                 Asset("PKGREF", "anim/dst_menu_feast_bg.zip"),
                 Asset("PKGREF", "sound/music_frontend_winters_feast.fsb"),
                 Asset("PKGREF", "anim/dst_menu_inker_winter.zip"),
                 Asset("PKGREF", "anim/dst_menu_farming_winter.zip"),
+				Asset("PKGREF", "sound/music_frontend_wintersfeast2025.fsb"),
             },
         },
     },
@@ -106,10 +112,13 @@ local SPECIAL_EVENT_DEPS =
         {
             assets =
             {
+                Asset("SOUND", "sound/music_frontend_cawnival2026.fsb"),
+                Asset("ANIM", "anim/dst_menu_minigolf_carnival.zip"),
                 Asset("PKGREF", "anim/dst_menu_carnival.zip"),
+				Asset("PKGREF", "anim/dst_menu_rift5.zip"),
                 Asset("PKGREF", "anim/dst_menu_webber_carnival.zip"),
-                Asset("ANIM", "anim/dst_menu_winona_wurt_carnival_foreground.zip"),
-                Asset("ANIM", "anim/dst_menu_winona_wurt.zip"),
+				Asset("PKGREF", "anim/dst_menu_winona_wurt_carnival_foreground.zip"),
+				Asset("PKGREF", "anim/dst_menu_winona_wurt.zip"),
             },
         },
         backend =
@@ -176,7 +185,7 @@ local SPECIAL_EVENT_DEPS =
                 Asset("ANIM", "anim/dst_menu_carrat_bg.zip"),
                 Asset("ANIM", "anim/dst_menu_carrat.zip"),
                 Asset("ANIM", "anim/dst_menu_carrat_swaps.zip"),
-                Asset("SOUND", "sound/music_frontend_yotc.fsb"),
+				Asset("PKGREF", "sound/music_frontend_yotc.fsb"),
             },
         },
     },
@@ -204,6 +213,18 @@ local SPECIAL_EVENT_DEPS =
         },
     },
 
+    [SPECIAL_EVENTS.YOTS] =
+    {
+        frontend =
+        {
+            assets =
+            {
+                Asset("ANIM", "anim/dst_menu_yots.zip"),
+            },
+        },
+    },
+
+
     [SPECIAL_EVENTS.YOTR] =
     {
         frontend =
@@ -224,7 +245,19 @@ local SPECIAL_EVENT_DEPS =
             {
                 Asset("ANIM", "anim/dst_menu_beefalo.zip"),
                 Asset("ANIM", "anim/dst_menu_beefalo_bg.zip"),
-                Asset("SOUND", "sound/music_frontend_yotb.fsb"),
+				Asset("PKGREF", "sound/music_frontend_yotb.fsb"),
+            },
+        },
+    },
+
+    [SPECIAL_EVENTS.YOTH] =
+    {
+        frontend =
+        {
+            assets =
+            {
+				Asset("ANIM", "anim/dst_menu_yoth.zip"),
+				Asset("PKGREF", "sound/music_frontend_yoth2026.fsb"),
             },
         },
     },
@@ -235,8 +268,17 @@ local SPECIAL_EVENT_DEPS =
         {
             assets =
             {
-                Asset("ANIM", "anim/dst_menu_rift4.zip"),
-                
+                Asset("ANIM", "anim/dst_menu_rift7.zip"),
+
+				Asset("PKGREF", "sound/music_frontend_rifts7.fsb"),
+				Asset("PKGREF", "sound/music_frontend_WX.fsb"),
+
+                Asset("PKGREF", "anim/dst_menu_meta6.zip"),
+                Asset("PKGREF", "anim/dst_menu_rift6.zip"),
+				Asset("PKGREF", "anim/dst_menu_rift5.zip"),
+				Asset("PKGREF", "anim/dst_menu_meta5.zip"),
+                Asset("PKGREF", "anim/dst_menu_halloween3.zip"),
+				Asset("PKGREF", "anim/dst_menu_rift4.zip"),
                 Asset("PKGREF", "anim/dst_menu_winona_wurt.zip"),
                 Asset("PKGREF", "anim/dst_menu_riftsqol.zip"),
                 Asset("PKGREF", "anim/dst_menu_meta3.zip"),

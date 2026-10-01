@@ -130,11 +130,8 @@ function Eater:SetStrongStomach(is_strong)
     if is_strong then
         self.inst:AddTag("strongstomach")
         self.strongstomach = true
-    else
-        if self.inst:HasTag("strongstomach") then
-            self.inst:RemoveTag("strongstomach")
-        end
-
+    elseif self.strongstomach then
+        self.inst:RemoveTag("strongstomach")
         self.strongstomach = false
     end
 end
@@ -143,11 +140,8 @@ function Eater:SetCanEatRawMeat(can_eat)
     if can_eat then
         self.inst:AddTag("eatsrawmeat")
         self.eatsrawmeat = true
-    else
-        if self.inst:HasTag("eatsrawmeat") then
-            self.inst:RemoveTag("eatsrawmeat")
-        end
-
+    elseif self.eatsrawmeat then
+        self.inst:RemoveTag("eatsrawmeat")
         self.eatsrawmeat = false
     end
 end
@@ -156,11 +150,8 @@ function Eater:SetIgnoresSpoilage(ignores)
     if ignores then
         self.inst:AddTag("ignoresspoilage")
         self.ignoresspoilage = true
-    else
-        if self.inst:HasTag("ignoresspoilage") then
-            self.inst:RemoveTag("ignoresspoilage")
-        end
-
+    elseif self.ignoresspoilage then
+        self.inst:RemoveTag("ignoresspoilage")
         self.ignoresspoilage = false
     end
 end
@@ -169,13 +160,39 @@ function Eater:SetRefusesSpoiledFood(refuses)
     if refuses then
         self.inst:AddTag("nospoiledfood")
         self.nospoiledfood = true
-    else
-        if self.inst:HasTag("nospoiledfood") then
-            self.inst:RemoveTag("nospoiledfood")
-        end
-        
+    elseif self.nospoiledfood then
+        self.inst:RemoveTag("nospoiledfood")
         self.nospoiledfood = false
     end
+end
+
+function Eater:SetSpoiledProcessor(processor, allspoiled)
+    if processor then
+        self.inst:AddTag("spoiledprocessor")
+        self.spoiledprocessor = true
+        if allspoiled then -- perishables in spoiled state, instead of just rot.
+            self.inst:AddTag("allspoiledprocessor")
+            self.allspoiledprocessor = true
+        else
+            self.inst:RemoveTag("allspoiledprocessor")
+            self.allspoiledprocessor = false
+        end
+    elseif self.spoiledprocessor then
+        self.inst:RemoveTag("spoiledprocessor")
+        self.spoiledprocessor = false
+        self.inst:RemoveTag("allspoiledprocessor")
+        self.allspoiledprocessor = false
+    end
+end
+
+function Eater:IsSpoiledProcessor()
+    return self.spoiledprocessor
+end
+
+function Eater:CanProcessSpoiledItem(food)
+    return self:IsSpoiledProcessor() and
+        (food.components.edible:IsSpoiledFood() or
+        (self.allspoiledprocessor and food.components.perishable and food.components.perishable:IsSpoiled()))
 end
 
 function Eater:SetOnEatFn(fn)
@@ -184,7 +201,7 @@ end
 
 function Eater:DoFoodEffects(food)
     return not ((self.strongstomach and food:HasTag("monstermeat")) or
-                (self.eatsrawmeat and food:HasTag("rawmeat")) or 
+                (self.eatsrawmeat and food:HasTag("rawmeat")) or
                 (self.inst.components.foodaffinity and self.inst.components.foodaffinity:HasPrefabAffinity(food)))
 end
 
@@ -216,7 +233,7 @@ function Eater:Eat(food, feeder)
     -- wigfrid) can TRY to eat all foods (they get the actions for it) but upon actually put it in
     -- their mouth, they bail and "spit it out" so to speak.
     if self:PrefersToEat(food) then
-        local stack_mult = self.eatwholestack and food.components.stackable ~= nil and food.components.stackable:StackSize() or 1
+        local stack_mult = self.eatwholestack and food.components.edible:GetStackMultiplier() or 1
         local base_mult = self.inst.components.foodmemory ~= nil and self.inst.components.foodmemory:GetFoodMultiplier(food.prefab) or 1
 
 		local health_delta = 0
@@ -270,29 +287,25 @@ function Eater:Eat(food, feeder)
             self.inst.components.sanity:DoDelta(sanity_delta * stack_mult)
         end
 
-        if feeder ~= self.inst and self.inst.components.inventoryitem ~= nil then
-            local owner = self.inst.components.inventoryitem:GetGrandOwner()
-            if owner ~= nil and (owner == feeder or (owner.components.container ~= nil and owner.components.container:IsOpenedBy(feeder))) then
-                feeder:PushEvent("feedincontainer")
-            end
-        end
+		if feeder ~= self.inst then
+			if self.inst.components.inventoryitem then
+				local owner = self.inst.components.inventoryitem:GetGrandOwner()
+				if owner and (owner == feeder or (owner.components.container and owner.components.container:IsOpenedBy(feeder))) then
+					feeder:PushEvent("feedincontainer")
+				end
+			end
+			if self.inst.components.rideable and feeder == self.inst.components.rideable:GetRider() then
+				feeder:PushEvent("feedmount", { food = food, eater = self.inst })
+			end
+		end
 
         self.inst:PushEvent("oneat", { food = food, feeder = feeder })
         if self.oneatfn ~= nil then
             self.oneatfn(self.inst, food, feeder)
         end
 
-        if food.components.edible ~= nil then
-            food.components.edible:OnEaten(self.inst)
-        end
-
-        if food:IsValid() then --might get removed in OnEaten...
-            if not self.eatwholestack and food.components.stackable ~= nil then
-                food.components.stackable:Get():Remove()
-            else
-                food:Remove()
-            end
-        end
+        food.components.edible:OnEaten(self.inst)
+        food.components.edible:HandleEatRemove(self.eatwholestack)
 
         self.lasteattime = GetTime()
 
@@ -328,13 +341,7 @@ function Eater:PrefersToEat(food)
         return false
     elseif self.preferseatingtags ~= nil then
         --V2C: now it has the warly hack for only eating prepared foods ;-D
-        local preferred = false
-        for i, v in ipairs(self.preferseatingtags) do
-            if food:HasTag(v) then
-                preferred = true
-                break
-            end
-        end
+        local preferred = food:HasAnyTag(self.preferseatingtags)
         if not preferred then
             return false
         end
@@ -344,6 +351,21 @@ end
 
 function Eater:CanEat(food)
     return self:TestFood(food, self.caneat)
+end
+
+function Eater:IsTryingToFeedMe(inst)
+	local target
+    local act = inst:GetBufferedAction()
+	if act then
+		target = act.target
+		act = act.action
+	elseif inst.components.playercontroller then
+		act, target = inst.components.playercontroller:GetRemoteInteraction()
+	end
+	return target == self.inst
+		and (	act == ACTIONS.FEED or
+				act == ACTIONS.FEEDPLAYER
+			)
 end
 
 return Eater

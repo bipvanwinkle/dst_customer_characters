@@ -112,7 +112,7 @@ function self:FindWalkableOffsetInArena(sharkboi)
         return nil
     end
 
-    if sharkboi and self.arena.sharkbois[sharkboi] == nil then
+    if sharkboi and (self.arena.sharkbois == nil or self.arena.sharkbois[sharkboi] == nil) then
         return nil
     end
 
@@ -469,7 +469,7 @@ self.OnPlayerFishingTick = function(inst)
         oddsoverride = TUNING.ICEFISHING_HOLE_ODDS_TO_HOOK_FISH / 4
     end
 
-    if math.random() < (oddsoverride or TUNING.ICEFISHING_HOLE_ODDS_TO_HOOK_FISH) then
+    if TryLuckRoll(inst, oddsoverride or TUNING.ICEFISHING_HOLE_ODDS_TO_HOOK_FISH, LuckFormulas.SharkBoiSpawn) then
         local rod = inst.components.inventory:GetEquippedItem(EQUIPSLOTS.HANDS)
         rod = (rod ~= nil and rod.components.oceanfishingrod ~= nil) and rod or nil
         local target = rod ~= nil and rod.components.oceanfishingrod.target or nil
@@ -617,7 +617,7 @@ function self:ArenaFinishCreating()
             local theta = math.random() * PI2
             local rad = r + math.random() * TILE_SCALE
             local ex, ez = x + rad * math.cos(theta), z + rad * math.sin(theta)
-            if TheSim:FindEntities(ex, y, ez, MAX_PHYSICS_RADIUS)[1] == nil then
+            if TheSim:FindEntities(ex, y, ez, MAX_PHYSICS_RADIUS)[1] == nil and _map:IsOceanAtPoint(ex, y, ez, false) then
                 local ice = SpawnPrefab("sharkboi_ice_hazard")
                 ice.Transform:SetPosition(ex, y, ez)
                 if r < self.MAX_ARENA_SIZE * 2 then
@@ -729,9 +729,9 @@ function self:FindAndPlaceOceanArenaOverTime()
     local _, count = _map:GetGoodOceanArenaPoints()
     if count == 0 then
         if _map._GoodOceanArenaPoints_Task == nil then
-            _map:StartFindingGoodOceanArenaPoints(self.TEMP_DEBUG_RATE)
+            _map:StartFindingGoodOceanArenaPoints()
         end
-        self.findoceanarenatask = self.inst:DoTaskInTime(self.TEMP_DEBUG_RATE and 0 or 5, FindAndPlaceOceanArenaOverTime_Bridge)
+        self.findoceanarenatask = self.inst:DoTaskInTime(5, FindAndPlaceOceanArenaOverTime_Bridge)
         return
     end
 

@@ -45,8 +45,9 @@ local function PlayAction(inst)
 					or "catfood"
 
 		if cattoyairborne and not (target.sg and (target.sg:HasStateTag("landing") or target.sg:HasStateTag("landed"))) then
-			if inst.last_play_air_time and (GetTime() - inst.last_play_air_time) < 15 then
-				return 
+			if (not target.components.cattoy or not target.components.cattoy:ShouldBypassLastAirTime())
+                and inst.last_play_air_time and (GetTime() - inst.last_play_air_time) < 15 then
+				return
 			end
 			action = BufferedAction(inst, target, ACTIONS.CATPLAYAIR)
 		else
@@ -67,23 +68,24 @@ local function HasValidHome(inst)
         and not home:HasTag("burnt")
 end
 
+local function GetLeader(inst)
+    return inst.components.follower and inst.components.follower:GetLeader()
+end
+
 local function GetNoLeaderHomePos(inst)
-    if inst.components.follower and inst.components.follower.leader then
+    local leader = GetLeader(inst)
+    if leader then
         return nil
     end
     return HasValidHome(inst) and inst.components.homeseeker:GetHomePos()
 end
 
-local function GetLeader(inst)
-    return inst.components.follower.leader
-end
-
 local function GetFaceTargetFn(inst)
-    return inst.components.follower.leader
+    return GetLeader(inst)
 end
 
 local function KeepFaceTargetFn(inst, target)
-    return inst.components.follower.leader == target
+    return GetLeader(inst) == target
 end
 
 local function GoHomeAction(inst)
@@ -97,7 +99,8 @@ local function GoHomeAction(inst)
 end
 
 local function ShouldHairball(inst)
-    if inst.components.follower and inst.components.follower.leader then
+    local leader = GetLeader(inst)
+    if leader then
         if GetTime() - inst.last_hairball_time >= inst.hairball_friend_interval then
             inst.hairball_friend_interval = math.random(TUNING.MIN_HAIRBALL_FRIEND_INTERVAL, TUNING.MAX_HAIRBALL_FRIEND_INTERVAL)
             return true
@@ -112,8 +115,9 @@ end
 
 local function HairballAction(inst)
     if inst.sg:HasStateTag("busy") then return end
-    if inst.components.follower and inst.components.follower.leader then
-        return BufferedAction(inst, inst.components.follower.leader, ACTIONS.HAIRBALL)
+    local leader = GetLeader(inst)
+    if leader then
+        return BufferedAction(inst, leader, ACTIONS.HAIRBALL)
     else
         return BufferedAction(inst, nil, ACTIONS.HAIRBALL)
     end
@@ -121,8 +125,9 @@ end
 
 local function WhineAction(inst)
     if inst.sg:HasStateTag("busy") then return end
-    if inst.components.follower and inst.components.follower.leader and inst.components.follower:GetLoyaltyPercent() < .03 then
-        return BufferedAction(inst, inst.components.follower.leader, ACTIONS.CATPLAYGROUND)
+    local leader = GetLeader(inst)
+    if leader and inst.components.follower:GetLoyaltyPercent() < .03 then
+        return BufferedAction(inst, leader, ACTIONS.CATPLAYGROUND)
     end
 end
 
@@ -132,6 +137,7 @@ function CatcoonBrain:OnStart()
     {
         BrainCommon.PanicWhenScared(self.inst, 1),
 		BrainCommon.PanicTrigger(self.inst),
+        BrainCommon.ElectricFencePanicTrigger(self.inst),
         IfNode(function() return ShouldHairball(self.inst) end, "hairball",
             DoAction(self.inst, HairballAction, "hairballact", true)),
         ChaseAndAttack(self.inst, MAX_CHASE_TIME, MAX_CHASE_DIST),

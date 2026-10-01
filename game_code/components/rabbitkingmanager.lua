@@ -287,6 +287,10 @@ function self:CreateRabbitKingForPlayer(player, pt_override, forcedstate_string,
 end
 function self:RemoveRabbitKing(rabbitking)
     rabbitking = rabbitking or self.rabbitkingdata.rabbitking
+    if not rabbitking.persists then
+        return
+    end
+
     if self.rabbitkingdata and self.rabbitkingdata.introtask ~= nil then
         self.rabbitkingdata.introtask:Cancel()
         self.rabbitkingdata.introtask = nil
@@ -300,7 +304,10 @@ function self:RemoveRabbitKing(rabbitking)
 end
 function self:TryForceRabbitKing_Internal(rabbitking) -- Used from c_spawn or other debug commands.
     if self.pendingplayerload then -- Reschedule if there are pending loads to keep trying until it is done loading.
-        self.inst:DoTaskInTime(0, function() self:TryForceRabbitKing_Internal(rabbitking) end)
+		--V2C: -put the task on rabbitking if it's untracked
+		--     -rabbitking can be removed b4 the task runs
+		--     -self (aka rabbitkingmanager) should never be removed
+		rabbitking:DoTaskInTime(0, function() self:TryForceRabbitKing_Internal(rabbitking) end)
         return
     end
 
@@ -437,7 +444,7 @@ self.OnPlayerKilledOther = function(player, data)
         return
     end
 
-    if victim:HasAnyTag("rabbit", "manrabbit") then
+    if victim:HasAnyTag("rabbit", "manrabbit") and not victim:HasTag("shadowthrall_parasite_hosted") and not victim.was_shadowthrall_parasited then
         local naughtiness = FunctionOrValue(NAUGHTY_VALUE[victim.prefab] or 1, player, data)
         self:AddNaughtinessFromPlayer(player, naughtiness)
     end

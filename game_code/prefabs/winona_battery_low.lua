@@ -24,14 +24,16 @@ local prefabs_item =
 
 --------------------------------------------------------------------------
 
+local NUM_LEVELS = 6
+
 local function CalcFuelRateRescale(inst)
 	return (inst._horror_level > 0 or inst._nightmare_level > 0)
 		and TUNING.WINONA_BATTERY_LOW_SHADOW_FUEL_RATE_MULT
 		or TUNING.WINONA_BATTERY_LOW_FUEL_RATE_MULT
 end
 
-local function CalcEfficiencyMult(inst)
-	return TUNING.SKILLS.WINONA.BATTERY_EFFICIENCY_RATE_MULT[inst._efficiency] or 1
+local function CalcEfficiencyMult(inst, override)
+	return TUNING.SKILLS.WINONA.BATTERY_EFFICIENCY_RATE_MULT[override or inst._efficiency] or 1
 end
 
 local function ApplyEfficiencyBonus(inst)
@@ -172,8 +174,7 @@ end
 
 --------------------------------------------------------------------------
 
-local BATTERY_COST = TUNING.WINONA_BATTERY_LOW_MAX_FUEL_TIME * 0.9
-local function CanBeUsedAsBattery(inst, user)
+local function CalcActualFuel(inst, user)
 	if inst.components.fueled then
 		local efficiency_mult
 		if not (user and user:HasTag("handyperson")) and IsEngineerOnline(inst) then
@@ -192,26 +193,54 @@ local function CanBeUsedAsBattery(inst, user)
 			(inst._horror_level + inst._nightmare_level) / TUNING.WINONA_BATTERY_LOW_SHADOW_FUEL_RATE_MULT +
 			inst._chemical_level / TUNING.WINONA_BATTERY_LOW_FUEL_RATE_MULT
 
-		if actual_fuel >= BATTERY_COST / TUNING.WINONA_BATTERY_LOW_FUEL_RATE_MULT * efficiency_mult then
-			return true
+		return actual_fuel, efficiency_mult
+	end
+end
+
+local function CanBeUsedAsBattery(inst, user, mult)
+	local actual_fuel, efficiency_mult = CalcActualFuel(inst, user)
+	if actual_fuel then
+		local fuel_cost = TUNING.WINONA_WXBATTERY_COST.fuel
+		if mult then
+			if actual_fuel >= fuel_cost * mult * efficiency_mult then
+				return true
+			end
+		else
+			local fuelperbar = TUNING.WINONA_BATTERY_LOW_MAX_FUEL_TIME / TUNING.WINONA_BATTERY_LOW_FUEL_RATE_MULT / NUM_LEVELS
+			local numbars = math.floor(fuel_cost * efficiency_mult / fuelperbar + 0.5)
+			--Allow one more charge if we have at least this much fuel remaining, because
+			--visually, the number of bars remaining will look like it has enough charge.
+			--NOTE: (>= 1 * fuelperbar) --> shows two bars
+			--      (> 0 * fuelperbar) --> shows one bar
+			fuel_cost = math.max(0, numbars - 1) * fuelperbar
+			if actual_fuel > 0 and actual_fuel >= fuel_cost * efficiency_mult then
+				return true
+			end
 		end
 	end
 	return false, "NOT_ENOUGH_CHARGE"
 end
 
-local function UseAsBattery(inst, user)
+local function UseAsBattery(inst, user, mult)
 	if not (user and user:HasTag("handyperson")) and IsEngineerOnline(inst) then
 		--original winona still online, don't de-level
 	elseif ConfigureSkillTreeUpgrades(inst, user) then
 		ApplyEfficiencyBonus(inst)
 		UpdateCircuitPower(inst)
 	end
-	inst:ConsumeBatteryAmount({ fuel = BATTERY_COST / TUNING.WINONA_BATTERY_LOW_FUEL_RATE_MULT }, 1, user)
+	local cost = TUNING.WINONA_WXBATTERY_COST
+	if mult and mult ~= 1 then
+		cost = { fuel = cost.fuel * mult, shard = cost.shard * mult }
+	end
+	inst:ConsumeBatteryAmount(cost, 1, user)
+end
+
+local function ResolvePartialChargeMult(inst, user, mult)
+	local actual_fuel, efficiency_mult = CalcActualFuel(inst, user)
+	return actual_fuel and math.min(mult, actual_fuel / (TUNING.WINONA_WXBATTERY_COST.fuel * efficiency_mult)) or mult
 end
 
 --------------------------------------------------------------------------
-
-local NUM_LEVELS = 6
 
 local function UpdateSoundLoop(inst, level)
     if inst.SoundEmitter:PlayingSound("loop") then
@@ -553,7 +582,7 @@ end
 
 local function OnUsedIndirectly(inst, doer)
 	if doer and doer.userid == inst._engineerid then
-		if doer:HasTag("engineerid") then
+		if doer:HasTag("handyperson") then
 			--skip if this is already mine and I'm still an engineer (didn't swap chars)
 			return
 		end
@@ -912,8 +941,9 @@ local function fn()
 	inst.components.circuitnode.rangeincludesfootprint = true
 
     inst:AddComponent("battery")
-    inst.components.battery.canbeused = CanBeUsedAsBattery
-    inst.components.battery.onused = UseAsBattery
+	inst.components.battery:SetCanBeUsedFn(CanBeUsedAsBattery)
+	inst.components.battery:SetOnUsedFn(UseAsBattery)
+	inst.components.battery:SetResolvePartialChargeMultFn(ResolvePartialChargeMult)
 
     inst:ListenForEvent("onbuilt", OnBuilt)
     inst:ListenForEvent("engineeringcircuitchanged", OnCircuitChanged)
@@ -1103,4 +1133,4 @@ end
 
 return Prefab("winona_battery_low", fn, assets, prefabs),
 	MakePlacer("winona_battery_low_item_placer", "winona_battery_placement", "winona_battery_placement", "idle", true, nil, nil, nil, nil, nil, placer_postinit_fn),
-	Prefab("winona_battery_low_item", itemfn, assets_item)
+	Prefab("winona_battery_low_item", itemfn, assets_item, prefabs_item)

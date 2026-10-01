@@ -4,8 +4,12 @@ SGCritterStates = {}
 
 
 --------------------------------------------------------------------------
+
+local function OnEat(inst, data)
+	inst.sg:GoToState("eat", data)
+end
 SGCritterEvents.OnEat = function()
-    return EventHandler("oneat", function(inst) inst.sg:GoToState("eat") end)
+    return EventHandler("oneat", OnEat)
 end
 
 SGCritterEvents.OnAvoidCombat = function()
@@ -72,7 +76,13 @@ SGCritterStates.AddIdle = function(states, num_emotes, timeline, idle_anim_fn)
 						inst.sg:GoToState("combat_pre")
 					else
 						local choice = math.random(inst.components.crittertraits:IsDominantTrait("playful") and (num_emotes + 1) or num_emotes) -- if playful, then add a chance to play the cute emote instead of normal emotes
-						inst.sg:GoToState("emote_"..((choice <= num_emotes) and tostring(choice) or "cute"))
+						local emote_suffix = ((choice <= num_emotes) and tostring(choice) or "cute")
+						inst.sg:GoToState("emote_"..emote_suffix)
+
+						local leader = inst.components.follower and inst.components.follower:GetLeader()
+						if leader then
+							leader:PushEvent("critter_doemote", { critter = inst })
+						end
 					end
 
 				else
@@ -99,12 +109,12 @@ SGCritterStates.AddIdle = function(states, num_emotes, timeline, idle_anim_fn)
 end
 
 --------------------------------------------------------------------------
-SGCritterStates.AddEat = function(states, timeline, fns)
+SGCritterStates.AddEat = function(states, timeline, fns, queuestate)
     table.insert(states, State{
         name = "eat",
         tags = { "busy" },
 
-        onenter = function(inst, pushanim)
+        onenter = function(inst, data)
             if inst.components.locomotor ~= nil then
                 inst.components.locomotor:StopMoving()
             end
@@ -112,6 +122,8 @@ SGCritterStates.AddEat = function(states, timeline, fns)
             inst.AnimState:PlayAnimation("eat_pre")
             inst.AnimState:PushAnimation("eat_loop", false)
             inst.AnimState:PushAnimation("eat_pst", false)
+
+			inst.sg.statemem.food = data ~= nil and data.food or nil
 
             if fns ~= nil and fns.onenter ~= nil then
                 fns.onenter(inst)
@@ -124,7 +136,9 @@ SGCritterStates.AddEat = function(states, timeline, fns)
         {
             EventHandler("animqueueover", function(inst)
                 if inst.AnimState:AnimDone() then
-					local dest_state = inst.sg.mem.queuethankyou and "emote_cute" or "idle"
+					local dest_state = inst.sg.mem.queuethankyou and "emote_cute"
+						or FunctionOrValue(queuestate, inst, inst.sg.statemem.food)
+						or "idle"
 					inst.sg.mem.queuethankyou = nil
                     inst.sg:GoToState(dest_state)
                 end
@@ -206,17 +220,19 @@ SGCritterStates.AddRandomEmotes = function(states, emotes)
 	for i,v in ipairs(emotes) do
 		table.insert(states, State{
 			name = "emote_"..i,
-			tags = { "busy", "canrotate" },
+			tags = v.tags or { "busy", "canrotate" },
 
-			onenter = function(inst, pushanim)
-				if inst.components.locomotor ~= nil then
-					inst.components.locomotor:StopMoving()
-				end
+			onenter = function(inst, data)
+                if not v.ignorestandardonenter then
+                    if inst.components.locomotor ~= nil then
+                        inst.components.locomotor:StopMoving()
+                    end
 
-				inst.AnimState:PlayAnimation(v.anim)
+    				inst.AnimState:PlayAnimation(v.anim)
+                end
 
                 if v.fns ~= nil and v.fns.onenter ~= nil then
-                    v.fns.onenter(inst)
+                    v.fns.onenter(inst, data)
                 end
 			end,
 
@@ -225,7 +241,9 @@ SGCritterStates.AddRandomEmotes = function(states, emotes)
 			events =
 			{
 				EventHandler("animover", function(inst)
-					if inst.AnimState:AnimDone() then
+                    if v.fns and v.fns.animover then
+                        v.fns.animover(inst, "emote_"..i)
+                    elseif inst.AnimState:AnimDone() then
 						inst.sg:GoToState("idle")
 					end
 				end),
@@ -266,6 +284,10 @@ SGCritterStates.AddPetEmote = function(states, timeline, onexit)
 		tags = {"busy"},
 
 		onenter = function(inst)
+			if inst.components.locomotor ~= nil then
+				inst.components.locomotor:StopMoving()
+			end
+
             inst.AnimState:PlayAnimation("emote_pet")
 		end,
 

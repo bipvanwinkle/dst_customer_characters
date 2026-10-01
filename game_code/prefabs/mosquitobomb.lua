@@ -56,10 +56,11 @@ local function SpawnMosquitos(inst, attacker)
             mosquito.Physics:Teleport(x + dist * math.cos(angle), 0, z + dist * math.sin(angle))
 
             if mosquito.components.combat ~= nil then
+                local leader = mosquito.components.follower and mosquito.components.follower:GetLeader()
                 for _, target in ipairs(targets) do
                     if mosquito.components.combat:CanTarget(target) and
                         not mosquito.components.combat:IsAlly(target) and
-                        (not mosquito.components.follower.leader or not mosquito.components.follower.leader.components.combat:IsAlly(target) ) and                     
+                        (not leader or not leader.components.combat or not leader.components.combat:IsAlly(target)) and                     
                         (target.components.inventory == nil or not target.components.inventory:FindItem(IsMosquitoMusk)) then
                         mosquito.components.combat:SuggestTarget(target)
 
@@ -142,10 +143,11 @@ local function OnThrown(inst, attacker)
     inst.Physics:SetFriction(0)
     inst.Physics:SetDamping(0)
     inst.Physics:SetCollisionGroup(COLLISION.CHARACTERS)
-    inst.Physics:ClearCollisionMask()
-    inst.Physics:CollidesWith(COLLISION.GROUND)
-    inst.Physics:CollidesWith(COLLISION.OBSTACLES)
-    inst.Physics:CollidesWith(COLLISION.ITEMS)
+	inst.Physics:SetCollisionMask(
+		COLLISION.GROUND,
+		COLLISION.OBSTACLES,
+		COLLISION.ITEMS
+	)
     inst.Physics:SetCapsule(.2, .2)
 end
 
@@ -253,6 +255,9 @@ local function fn()
 
     inst:AddComponent("reticule")
     inst.components.reticule.targetfn = ReticuleTargetFn
+	inst.components.reticule.twinstickcheckscheme = true
+	inst.components.reticule.twinstickmode = 1
+	inst.components.reticule.twinstickrange = 8
     inst.components.reticule.ease = true
 
     MakeInventoryFloatable(inst, "small", 0.23, 1.15)
@@ -262,6 +267,7 @@ local function fn()
 
     -- Projectile (from complexprojectile component) added to pristine state for optimization.
     inst:AddTag("projectile")
+	inst:AddTag("complexprojectile")
 
     inst.entity:SetPristine()
 

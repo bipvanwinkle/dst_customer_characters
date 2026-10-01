@@ -31,6 +31,10 @@ local function ConfigurePlayerLocomotor(inst)
 	inst.components.locomotor:EnableHopDelay(true)
 	inst.components.locomotor.hop_distance_fn = GetHopDistance
 	inst.components.locomotor.pusheventwithdirection = true
+
+    if inst.ExtraConfigurePlayerLocomotor ~= nil then
+        inst.ExtraConfigurePlayerLocomotor(inst)
+    end
 end
 
 local function ConfigureGhostLocomotor(inst)
@@ -61,7 +65,7 @@ end
 
 local function ConfigureGhostActions(inst)
     if inst.components.playeractionpicker ~= nil then
-        inst.components.playeractionpicker:PushActionFilter(GhostActionFilter, 99)
+		inst.components.playeractionpicker:PushActionFilter(GhostActionFilter, ACTION_FILTER_PRIORITIES.ghost)
     end
 end
 
@@ -78,7 +82,7 @@ end
 local function PausePlayerActions(inst)
     if inst.components.playeractionpicker ~= nil then
         inst.components.playeractionpicker:PopActionFilter(PausedActionFilter) --always pop the filter in case one is already there.
-        inst.components.playeractionpicker:PushActionFilter(PausedActionFilter, 999)
+		inst.components.playeractionpicker:PushActionFilter(PausedActionFilter, ACTION_FILTER_PRIORITIES.paused)
     end
 end
 
@@ -90,21 +94,62 @@ local function OnWorldPaused(inst)
     end
 end
 
-local function RemoveDeadPlayer(inst, spawnskeleton)
-    if spawnskeleton and TheSim:HasPlayerSkeletons() and inst.skeleton_prefab ~= nil then
-        local x, y, z = inst.Transform:GetWorldPosition()
+-- might be a corpse, skeleton, or grave
+local DEATH_PRODUCTS =
+{
+    SKELETON = 0,
+    SHALLOW_GRAVE = 1,
+    CORPSE = 2,
+}
+local function SpawnDeathProduct(inst)
+    if inst.wx78_backupbody_save_inst then
+        local body = inst.wx78_backupbody_save_inst
+        if body:IsValid() then
+            body:ReturnToScene()
+            body.Light:Enable(body._Light_value)
+            body._Light_value = nil
+        end
+        inst.wx78_backupbody_save_inst = nil
+        return
+    end
+    -- sg.mem.nocorpse is set in player constructor when HasPlayerSkeletons is false
+    local x, y, z = inst.Transform:GetWorldPosition()
+    local can_corpse = CanEntityBecomeCorpse(inst)
+    if can_corpse then
+        local corpse = SpawnPrefab("playercorpse")
+        corpse.Transform:SetPosition(x, y, z)
+        corpse.Transform:SetRotation(inst.Transform:GetRotation())
+        corpse.Transform:SetScale(inst.Transform:GetScale())
+        --corpse.AnimState:SetScale(inst.AnimState:GetScale())
+        corpse.AnimState:SetBank(inst.AnimState:GetBankHash())
+        corpse.AnimState:MakeFacingDirty()
 
-        -- Spawn a skeleton
-        local skel = SpawnPrefab(inst.skeleton_prefab)
+        corpse.skeleton_prefab = inst.skeleton_prefab
+        corpse.no_destroy_on_burn = (inst.components.health.fire_damage_scale == 0) -- For Willow!
+        corpse.components.skinner:CopySkinsFromPlayer(inst)
+
+        corpse:SetCorpseDescription(inst.prefab, inst:GetDisplayName(), inst.deathcause, inst.deathpkname, inst.userid)
+        corpse:SetCorpseAvatarData(inst.deathclientobj)
+
+        return DEATH_PRODUCTS.CORPSE
+    else
+        local has_skeletons = TheSim:HasPlayerSkeletons()
+        local skel = SpawnPrefab(has_skeletons and inst.skeleton_prefab or "shallow_grave_player")
         if skel ~= nil then
             skel.Transform:SetPosition(x, y, z)
             -- Set the description
             skel:SetSkeletonDescription(inst.prefab, inst:GetDisplayName(), inst.deathcause, inst.deathpkname, inst.userid)
             skel:SetSkeletonAvatarData(inst.deathclientobj)
         end
+        return has_skeletons and DEATH_PRODUCTS.SKELETON or DEATH_PRODUCTS.SHALLOW_GRAVE
+    end
+end
 
-        -- Death FX
-        SpawnPrefab("die_fx").Transform:SetPosition(x, y, z)
+local function RemoveDeadPlayer(inst, spawnskeleton)
+    if spawnskeleton and inst.skeleton_prefab ~= nil then
+        local x, y, z = inst.Transform:GetWorldPosition()
+        SpawnDeathProduct(inst)
+        SpawnPrefab("die_fx").Transform:SetPosition(x, y, z) -- Death FX
     end
 
     if not GetGhostEnabled() and not GetGameModeProperty("revivable_corpse") then
@@ -115,6 +160,12 @@ local function RemoveDeadPlayer(inst, spawnskeleton)
 			elseif k.components.container ~= nil then
 				k.components.container:DropEverything()
 			end
+            if k.components.socketholder then
+                local items = k.components.socketholder:UnsocketEverything()
+                for _, item in ipairs(items) do
+                    Launch2(item, k, 1, 1, 0.2, 0, 4)
+                end
+            end
 		end
 	end
 
@@ -163,6 +214,10 @@ local function OnPlayerDeath(inst, data)
 				end
 				inst.charlie_vinesave = true
 			end
+        elseif inst.components.skilltreeupdater:IsActivated("wx78_ghostrevive_2") then
+            if inst.components.upgrademoduleowner and inst.components.upgrademoduleowner:IsChargeMaxed() then
+                inst.wx78_backupbody_save = true
+            end
 		end
 		if inst.charlie_vinesave then
 			inst.components.inventory:Hide()
@@ -270,16 +325,13 @@ local function CommonActualRez(inst)
 end
 
 local function DoActualRez(inst, source, item)
-    local x, y, z
-    if source ~= nil then
-        x, y, z = source.Transform:GetWorldPosition()
-    else
-        x, y, z = inst.Transform:GetWorldPosition()
-    end
+    local x, y, z = (source or inst).Transform:GetWorldPosition()
 
-    local diefx = SpawnPrefab("die_fx")
-    if diefx and x and y and z then
-        diefx.Transform:SetPosition(x, y, z)
+    if x and y and z then
+        local diefx = SpawnPrefab("die_fx")
+        if diefx then
+            diefx.Transform:SetPosition(x, y, z)
+        end
     end
 
     -- inst.AnimState:SetBank("wilson")
@@ -297,6 +349,7 @@ local function DoActualRez(inst, source, item)
     inst:Show()
 
     inst:SetStateGraph("SGwilson")
+    inst.sg.mem.nocorpse = not TheSim:HasPlayerSkeletons()
 
     inst.Physics:Teleport(x, y, z)
 
@@ -321,13 +374,21 @@ local function DoActualRez(inst, source, item)
             inst.sg:GoToState("wakeup")
         elseif source.prefab == "resurrectionstatue" then
             inst.sg:GoToState("rebirth", source)
+        elseif source.prefab == "wendy_resurrectiongrave" then
+            if inst.prefab == "wendy" then
+                inst.sg:GoToState("wendy_gravestone_rebirth", source)
+            else
+                inst.sg:GoToState("gravestone_rebirth", source)
+            end
+        elseif source.prefab == "wx78_backupbody" then
+            inst.sg:GoToState("respawn_wx_poweron")
         elseif source:HasTag("multiplayer_portal") then
             inst.components.health:DeltaPenalty(TUNING.PORTAL_HEALTH_PENALTY)
 
             source:PushEvent("rez_player")
             inst.sg:GoToState("portal_rez")
         end
-    else 
+    else
 		if item ~= nil and (item.prefab == "pocketwatch_revive" or item.prefab == "pocketwatch_revive_reviver") then
 			inst.DynamicShadow:Enable(true)
 			inst.AnimState:SetBank("wilson")
@@ -359,6 +420,7 @@ local function DoActualRez(inst, source, item)
     inst.Light:Enable(false)
 
     MakeCharacterPhysics(inst, 75, .5)
+    inst.Physics:Stop() -- Resolve any physics movement from changing physics.
 
     CommonActualRez(inst)
 
@@ -396,12 +458,13 @@ local function DoActualRezFromCorpse(inst, source)
     end
 
     --V2C: Let stategraph do it
-    --[[inst.Physics:ClearCollisionMask()
-    inst.Physics:CollidesWith(COLLISION.WORLD)
-    inst.Physics:CollidesWith(COLLISION.OBSTACLES)
-    inst.Physics:CollidesWith(COLLISION.SMALLOBSTACLES)
-    inst.Physics:CollidesWith(COLLISION.CHARACTERS)
-    inst.Physics:CollidesWith(COLLISION.GIANTS)]]
+	--[[inst.Physics:SetCollisionMask(
+		COLLISION.WORLD,
+		COLLISION.OBSTACLES,
+		COLLISION.SMALLOBSTACLES,
+		COLLISION.CHARACTERS,
+		COLLISION.GIANTS
+	)]]
 
     CommonActualRez(inst)
 
@@ -527,7 +590,7 @@ local function OnRespawnFromGhost(inst, data) -- from ListenForEvent "respawnfro
         inst:DoTaskInTime(0, DoActualRez)
     elseif inst.sg.currentstate.name == "remoteresurrect" then
         inst:DoTaskInTime(0, DoMoveToRezSource, data.source, 24 * FRAMES)
-    elseif data.source.prefab == "reviver" then
+    elseif data.source:HasTag("reviver") then
         inst:DoTaskInTime(0, DoActualRez, nil, data.source)
     elseif data.source.prefab == "pocketwatch_revive" then
         if not data.from_haunt then
@@ -539,6 +602,8 @@ local function OnRespawnFromGhost(inst, data) -- from ListenForEvent "respawnfro
 		end
     elseif data.source.prefab == "pocketwatch_revive_reviver" then
         inst:DoTaskInTime(0, DoActualRez, nil, data.source)
+    elseif data.source.prefab == "wx78_backupbody" then
+        inst:DoTaskInTime(0, DoActualRez, data.source, nil)
     elseif data.source.prefab == "amulet"
         or data.source.prefab == "resurrectionstone"
         or data.source.prefab == "resurrectionstatue"
@@ -551,7 +616,7 @@ local function OnRespawnFromGhost(inst, data) -- from ListenForEvent "respawnfro
 
     inst.rezsource =
         data ~= nil and (
-            (data.source ~= nil and data.source.prefab ~= "reviver" and data.source:GetBasicDisplayName()) or
+            (data.source ~= nil and not data.source:HasTag("reviver") and data.source:GetBasicDisplayName()) or
             (data.user ~= nil and data.user:GetDisplayName())
         ) or
         STRINGS.NAMES.SHENANIGANS
@@ -560,7 +625,8 @@ local function OnRespawnFromGhost(inst, data) -- from ListenForEvent "respawnfro
         data ~= nil and
         data.source ~= nil and
         data.source.components.attunable ~= nil and
-        data.source.components.attunable:GetAttunableTag() == "remoteresurrector"
+        (data.source.components.attunable:GetAttunableTag() == "remoteresurrector"
+        or data.source.components.attunable:GetAttunableTag() == "gravestoneresurrector")
 end
 
 local function CommonPlayerDeath(inst)
@@ -610,16 +676,11 @@ local function OnMakePlayerGhost(inst, data)
     end
 
     local x, y, z = inst.Transform:GetWorldPosition()
+    local death_product_type
 
-    -- Spawn a skeleton
-    if inst.skeleton_prefab ~= nil and data ~= nil and data.skeleton and TheSim:HasPlayerSkeletons() then
-        local skel = SpawnPrefab(inst.skeleton_prefab)
-        if skel ~= nil then
-            skel.Transform:SetPosition(x, y, z)
-            -- Set the description
-            skel:SetSkeletonDescription(inst.prefab, inst:GetDisplayName(), inst.deathcause, inst.deathpkname, inst.userid)
-            skel:SetSkeletonAvatarData(inst.deathclientobj)
-        end
+    -- Spawn post death item
+    if inst.skeleton_prefab ~= nil and data ~= nil and data.skeleton then
+        death_product_type = SpawnDeathProduct(inst)
     end
 
     if data ~= nil and data.loading then
@@ -633,7 +694,9 @@ local function OnMakePlayerGhost(inst, data)
         end
 
         -- Death FX
-        SpawnPrefab("die_fx").Transform:SetPosition(x, y, z)
+        if death_product_type ~= DEATH_PRODUCTS.CORPSE then
+            SpawnPrefab("die_fx").Transform:SetPosition(x, y, z)
+        end
     end
 
     inst.AnimState:SetBank("ghost")
@@ -701,7 +764,7 @@ local function OnRespawnFromPlayerCorpse(inst, data)
 
     inst.rezsource =
         data ~= nil and (
-            (data.source ~= nil and data.source.prefab ~= "reviver" and data.source.name) or
+            (data.source ~= nil and not data.source:HasTag("reviver") and data.source.name) or
             (data.user ~= nil and data.user:GetDisplayName())
         ) or
         STRINGS.NAMES.SHENANIGANS
@@ -830,7 +893,7 @@ local function DoSpookedSanity(inst)
 end
 
 local function OnSpooked(inst)
-    if not GetGameModeProperty("no_sanity") then
+	if not (GetGameModeProperty("no_sanity") or inst.components.inventory:EquipHasTag("spook_protection")) then
         --Delay to match bat overlay timing
         inst:DoTaskInTime(1.35, DoSpookedSanity)
     end
@@ -887,6 +950,16 @@ end
 local function CanSeePointOnMiniMap(inst, px, py, pz) -- Convenience wrapper.
     local tx, ty = TheWorld.Map:GetTileXYAtPoint(px, py, pz)
     return inst.player_classified.MapExplorer:IsTileSeeable(tx, ty)
+end
+
+local function GetSeeableTilePercent(inst)
+    local total = TheWorld.Map:CalcTotalSeeableTiles() -- This is cached on the engine side so performance is hit once.
+    if total == 0 then
+        return 1 -- We see everything because this is infinitely seeable.
+    end
+    local current = inst.player_classified.MapExplorer:GetSeeableTileCount()
+    local percent = (current / total) * TUNING.PLAYER_MAP_LANDSEEN_FUDGE_FACTOR
+    return math.min(percent, 1) -- Clamp from overshooting.
 end
 
 local function GenericCommander_OnAttackOther(inst, data)
@@ -1000,6 +1073,7 @@ local function OnPostActivateHandshake_Client(inst, state) -- NOTES(JBK): Use Po
         inst:PostActivateHandshake(POSTACTIVATEHANDSHAKE.READY)
     elseif state == POSTACTIVATEHANDSHAKE.READY then
         TheSkillTree:OPAH_Ready()
+		inst:PushEvent("skilltreeinitialized_client")
     else
         print("OnPostActivateHandshake_Client got a bad state:", inst, state)
     end
@@ -1052,13 +1126,221 @@ local function UpdateScrapbook(inst)
     local x, y, z = inst.Transform:GetWorldPosition()
     local ents = TheSim:FindEntities(x, y, z, TUNING.SCRAPBOOK_UPDATERADIUS, nil, SCRAPBOOK_CANT_TAGS) 
     for _, ent in ipairs(ents) do
-        if IsEntityDead(ent) or ent.scrapbook_inspectonseen then 
-            TheScrapbookPartitions:SetInspectedByCharacter(ent, inst.prefab)
-        else
-            TheScrapbookPartitions:SetSeenInGame(ent)
-        end
+		if not ent.scrapbook_ignore then
+			if IsEntityDead(ent) or ent.scrapbook_inspectonseen then 
+				TheScrapbookPartitions:SetInspectedByCharacter(ent, inst.prefab)
+			else
+				TheScrapbookPartitions:SetSeenInGame(ent)
+			end
+		end
     end
 end
+
+local function MapRevealable_OnIconCreatedFn(inst, icon)
+	if icon.prefab == "globalmapiconnamed" then
+		icon._target_displayname:set(inst:GetDisplayName())
+    end
+end
+
+--------------------------------------------------------------------------
+
+local function EnableTargetLocking(inst, enable)
+	if inst.components.playercontroller ~= nil then
+		inst.components.playercontroller.controller_targeting_lock_available = enable
+	end
+end
+
+local function CommandWheelAllowsGameplay(inst, enable)
+	if inst.components.playercontroller ~= nil then
+		inst.components.playercontroller.command_wheel_allows_gameplay = enable
+	end
+	
+	if inst.HUD and inst.HUD.controls and inst.HUD.controls.commandwheel then
+		inst.HUD.controls.commandwheel.ignoreleftstick = enable
+	end
+end
+
+--------------------------------------------------------------------------
+-- Jousting.
+
+local function OnStartJoust(inst)
+    if inst.sg.mem.jousttrailtask then
+        inst.sg.mem.jousttrailtask:Cancel()
+        inst.sg.mem.jousttrailtask = nil
+    end
+
+    inst.sg.mem.jousttrailtask = inst:DoPeriodicTask(0, function(inst, data)
+        if data.delay > 0 then
+            data.delay = data.delay - 1
+        else
+            data.delay = math.random(4, 6)
+            local x, y, z = inst.Transform:GetWorldPosition()
+            local angle = inst.Transform:GetRotation() * DEGREES
+            local fx = SpawnPrefab("plant_dug_small_fx")
+            fx.Transform:SetPosition(x - math.cos(angle), 0, z + math.sin(angle))
+            if math.random() < .5 then
+                fx.AnimState:SetScale(-1, 1)
+            end
+            local scale = .5 + math.random() * .3
+            fx.Transform:SetScale(scale, scale, scale)
+        end
+    end,
+    nil,
+    { delay = 0 })
+
+    return true
+end
+
+local function OnEndJoust(inst)
+    if inst.sg.mem.jousttrailtask then
+        inst.sg.mem.jousttrailtask:Cancel()
+        inst.sg.mem.jousttrailtask = nil
+    end
+end
+
+--------------------------------------------------------------------------
+-- Gallop state updates shared by client & server
+
+local function CalcGallopSpeedMult(inst, time_moving)
+	--NOTE: 16 * FRAMES is "run_gallop_loop" anim length
+	local gallopcount =
+		time_moving > TUNING.YOTH_KNIGHTSTICK_TIME_TO_GALLOP and
+		math.min(TUNING.YOTH_KNIGHTSTICK_MAX_GALLOPS, math.floor((time_moving - TUNING.YOTH_KNIGHTSTICK_TIME_TO_GALLOP) / (16 * FRAMES))) or
+		0
+	return Remap(gallopcount, 0, TUNING.YOTH_KNIGHTSTICK_MAX_GALLOPS, TUNING.YOTH_KNIGHTSTICK_SPEED_MULT.min, TUNING.YOTH_KNIGHTSTICK_SPEED_MULT.max)
+end
+
+local function TryGallopTripUpdate(inst)
+	local rot = inst.Transform:GetRotation()
+	local lastrot = inst.sg.statemem.lastrotation or rot
+	inst.sg.statemem.lastrotation = rot
+
+	local rotation_tracker = inst.sg.statemem.rotation_tracker
+	local t = GetTime()
+	local j = 1
+	for i, v in ipairs(rotation_tracker) do -- Clear old entries
+		if v.t + TUNING.YOTH_KNIGHTSTICK_TRACK_ROTATION_TIME > t then
+			--keep all remaining entries only
+			if i == 1 then
+				j = #rotation_tracker + 1
+			else
+				for i = i, #rotation_tracker do
+					rotation_tracker[j] = rotation_tracker[i]
+					j = j + 1
+				end
+			end
+			break
+		end
+	end
+	for i = j, #rotation_tracker do
+		rotation_tracker[i] = nil
+	end
+
+	local diff = ReduceAngle(lastrot - rot)
+	if math.abs(diff) > TUNING.YOTH_KNIGHTSTICK_TRACK_ROTATION_MIN then
+		table.insert(rotation_tracker, { t = t, rot = diff })
+	end
+
+	local stressrotation = 0
+	for _, v in ipairs(rotation_tracker) do
+		stressrotation = stressrotation + v.rot
+	end
+	return math.abs(stressrotation) > TUNING.YOTH_KNIGHTSTICK_MAX_STRESS_ROTATION
+end
+
+--------------------------------------------------------------------------
+--[[Footstep and Foley sound overrides]]
+--  Needs to be client-safe.
+--  return true to block default sounds.
+--  You can also play sounds here AND return false to layer with default sounds.
+
+local function _can_use_sound(inst, soundpath)
+	if soundpath == nil then
+		return false
+	end
+	--Some player states already have horseshoe sounds baked in, so we do not want to double play it.
+	if soundpath == "dontstarve/movement/run_horseshoes" then
+		return not (inst.player_classified and (inst.player_classified.predict_horseshoesounds or inst.player_classified.playinghorseshoesounds:value()))
+	end
+	return true
+end
+
+local function FootstepOverrideFn(inst, volume, ispredicted)
+	local skin_sfx = CLOTHING_SFX[inst.AnimState and inst.AnimState:GetSymbolOverride("foot")]
+	if skin_sfx then
+		if _can_use_sound(inst, skin_sfx.footstep_layered) then
+			inst.SoundEmitter:PlaySound(skin_sfx.footstep_layered, nil, volume or 1, ispredicted)
+		end
+		if _can_use_sound(inst, skin_sfx.footstep_override) then
+			inst.SoundEmitter:PlaySound(skin_sfx.footstep_override, nil, volume or 1, ispredicted)
+			return true
+		end
+	end
+	return false
+end
+
+local function FoleyOverrideFn(inst, volume, ispredicted)
+	local skin_sfx --= CLOTHING_SFX[???]
+	if skin_sfx then
+		if _can_use_sound(inst, skin_sfx.foley_layered) then
+			inst.SoundEmitter:PlaySound(skin_sfx.foley_layered, nil, volume or 1, ispredicted)
+		end
+		if _can_use_sound(inst, skin_sfx.foley_override) then
+			inst.SoundEmitter:PlaySound(skin_sfx.foley_override, nil, volume or 1, ispredicted)
+			return true
+		end
+	end
+	return false
+end
+
+--------------------------------------------------------------------------
+
+local function SetupBaseSymbolVisibility(inst)
+    inst.AnimState:Hide("ARM_carry")
+    inst.AnimState:Hide("HAT")
+    inst.AnimState:Hide("HAIR_HAT")
+    inst.AnimState:Show("HAIR_NOHAT")
+    inst.AnimState:Show("HAIR")
+    inst.AnimState:Show("HEAD")
+    inst.AnimState:Hide("HEAD_HAT")
+    inst.AnimState:Hide("HEAD_HAT_NOHELM")
+    inst.AnimState:Hide("HEAD_HAT_HELM")
+end
+
+local function SetupOverrideBuilds(inst)
+    --Additional effects symbols for hit_darkness animation
+    inst.AnimState:AddOverrideBuild("player_hit_darkness")
+    inst.AnimState:AddOverrideBuild("player_receive_gift")
+    inst.AnimState:AddOverrideBuild("player_actions_uniqueitem")
+    inst.AnimState:AddOverrideBuild("player_actions_uniqueitem_2")
+    inst.AnimState:AddOverrideBuild("player_wrap_bundle")
+    inst.AnimState:AddOverrideBuild("player_lunge")
+    inst.AnimState:AddOverrideBuild("player_attack_leap")
+    inst.AnimState:AddOverrideBuild("player_superjump")
+    inst.AnimState:AddOverrideBuild("player_multithrust")
+    inst.AnimState:AddOverrideBuild("player_parryblock")
+    inst.AnimState:AddOverrideBuild("player_emote_extra")
+    inst.AnimState:AddOverrideBuild("player_boat_plank")
+    inst.AnimState:AddOverrideBuild("player_boat_net")
+    inst.AnimState:AddOverrideBuild("player_boat_sink")
+    inst.AnimState:AddOverrideBuild("player_oar")
+
+    inst.AnimState:AddOverrideBuild("player_actions_fishing_ocean_new")
+    inst.AnimState:AddOverrideBuild("player_actions_farming")
+    inst.AnimState:AddOverrideBuild("player_actions_cowbell")
+
+    inst.AnimState:AddOverrideBuild("player_shadow_thrall_parasite")
+end
+
+local function SetupOverrideSymbols(inst)
+    inst.AnimState:OverrideSymbol("fx_wipe", "wilson_fx", "fx_wipe")
+    inst.AnimState:OverrideSymbol("fx_liquid", "wilson_fx", "fx_liquid")
+    inst.AnimState:OverrideSymbol("shadow_hands", "shadow_hands", "shadow_hands")
+    inst.AnimState:OverrideSymbol("snap_fx", "player_actions_fishing_ocean_new", "snap_fx")
+    inst.AnimState:OverrideSymbol("chalice_swap_comp", "chalice_swap", "chalice_swap_comp")
+end
+
+--------------------------------------------------------------------------
 
 return
 {
@@ -1086,6 +1368,7 @@ return
 	GivePlayerStartingItems		= GivePlayerStartingItems,
     CanSeeTileOnMiniMap         = CanSeeTileOnMiniMap,
     CanSeePointOnMiniMap        = CanSeePointOnMiniMap,
+    GetSeeableTilePercent       = GetSeeableTilePercent,
     MakeGenericCommander        = MakeGenericCommander,
     OnMurderCheckForFishRepel   = OnMurderCheckForFishRepel,
     OnOnStageEvent              = OnOnStageEvent,
@@ -1099,4 +1382,16 @@ return
     PostActivateHandshake       = PostActivateHandshake,
     OnClosePopups               = OnClosePopups,
     UpdateScrapbook             = UpdateScrapbook,
+    MapRevealable_OnIconCreatedFn = MapRevealable_OnIconCreatedFn,
+    EnableTargetLocking			= EnableTargetLocking,
+	CommandWheelAllowsGameplay	= CommandWheelAllowsGameplay,
+    OnStartJoust                = OnStartJoust,
+    OnEndJoust                  = OnEndJoust,
+	CalcGallopSpeedMult			= CalcGallopSpeedMult,
+	TryGallopTripUpdate			= TryGallopTripUpdate,
+	FootstepOverrideFn			= FootstepOverrideFn,
+	FoleyOverrideFn				= FoleyOverrideFn,
+    SetupBaseSymbolVisibility   = SetupBaseSymbolVisibility,
+    SetupOverrideBuilds         = SetupOverrideBuilds,
+    SetupOverrideSymbols        = SetupOverrideSymbols,
 }

@@ -23,6 +23,7 @@ local prefabs =
     "mushroomsprout",
     "mushroombomb_projectile",
     "mushroom_light_blueprint",
+    "toadstoolcorpse",
 }
 
 local prefabs_dark =
@@ -30,6 +31,7 @@ local prefabs_dark =
     "mushroomsprout_dark",
     "mushroombomb_dark_projectile",
     "sleepbomb_blueprint",
+    "toadstoolcorpse",
 }
 
 for i, v in ipairs({
@@ -350,6 +352,7 @@ end
 local MUSHROOMSPROUT_BLOCKER_ONEOF_TAGS = { "mushroomsprout", "pond" } -- NOTES(JBK): Any of these tags will stop Toadstool from breaking things do not add tags from MUSHROOMSPROUT_BREAK_ONEOF_TAGS here.
 local MUSHROOMSPROUT_BLOCKER_CANT_TAGS = { "INLIMBO" }
 local MUSHROOMSPROUT_BREAK_ONEOF_TAGS = { "playerskeleton", "DIG_workable", "HAMMER_workable", "CHOP_WORKABLE", "soil" }
+local MUSHROOMSPROUT_BREAK_CANT_TAGS = { "INLIMBO" }
 local MUSHROOMSPROUT_TOSS_MUST_TAGS = { "_inventoryitem" }
 local MUSHROOMSPROUT_TOSS_CANT_TAGS = { "locomotor", "INLIMBO" }
 local MUSHROOMSPROUT_TOSSFLOWERS_MUST_TAGS = { "quickpick", "pickable" }
@@ -379,7 +382,7 @@ local function DoMushroomSprout(inst, angles)
             pt.z = pt.z + offset.z
             if TheSim:CountEntities(pt.x, 0, pt.z, min_spacing, nil, MUSHROOMSPROUT_BLOCKER_CANT_TAGS, MUSHROOMSPROUT_BLOCKER_ONEOF_TAGS) <= 0 then
                 --destroy skeletons and diggables and structures and trees
-                for i, v in ipairs(TheSim:FindEntities(pt.x, 0, pt.z, 1.2, nil, nil, MUSHROOMSPROUT_BREAK_ONEOF_TAGS)) do
+                for i, v in ipairs(TheSim:FindEntities(pt.x, 0, pt.z, 1.2, nil, MUSHROOMSPROUT_BREAK_CANT_TAGS, MUSHROOMSPROUT_BREAK_ONEOF_TAGS)) do
                     if v.components.workable then
                         v.components.workable:Destroy(inst)
                     else
@@ -406,9 +409,7 @@ local function DoMushroomSprout(inst, angles)
                 --toss stuff out of the way
                 for i, v in ipairs(totoss) do
                     if v:IsValid() then
-                        if v.components.mine ~= nil then
-                            v.components.mine:Deactivate()
-                        end
+                        DeactivateInventoryItemBeforeLaunch(v)
                         if not v.components.inventoryitem.nobounce and v.Physics ~= nil and v.Physics:IsActive() then
                             SproutLaunch(v, ent, 1.5)
                         end

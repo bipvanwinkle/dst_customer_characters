@@ -48,7 +48,7 @@ function StandAndAttack:Visit()
     end
 
     if self.status == RUNNING then
-        local is_attacking = self.inst.sg:HasStateTag("attack")
+        -- local is_attacking = self.inst.sg:HasStateTag("attack")
 
         if self.starttime == nil then
             self.starttime = GetTime()
@@ -64,6 +64,9 @@ function StandAndAttack:Visit()
             self.status = SUCCESS
             combat:SetTarget(nil)
         else
+            if self.inst.components.locomotor then
+                self.inst.components.locomotor:Stop()
+            end
             if self.inst.sg:HasStateTag("canrotate") then
                 self.inst:FacePoint(combat.target:GetPosition())
             end

@@ -3,8 +3,15 @@ require "prefabutil"
 local assets =
 {
     Asset("ANIM", "anim/charlie_lectern.zip"),
+    Asset("ANIM", "anim/charlie_lectern_ancient.zip"),
+    Asset("ANIM", "anim/charlie_lectern_void.zip"),
+    Asset("ANIM", "anim/charlie_lectern_princess.zip"),
     --Asset("ANIM", "anim/ui_board_5x3.zip"),
     Asset("MINIMAP_IMAGE", "charlie_lectern"),
+
+    -- Year of the Clockwork Knight
+    Asset("ANIM", "anim/charlie_lectern_yoth_build.zip"), -- build swap
+    Asset("ANIM", "anim/charlie_lectern_princess.zip"), -- build override
 }
 
 local prefabs =
@@ -13,7 +20,6 @@ local prefabs =
 }
 
 local function flippage(inst)
-    inst.entity:AddSoundEmitter()
     local anim = (math.random() < 0.5 and "pageturn_extra") or "pageturn"
     inst.AnimState:PlayAnimation(anim, false)
     inst.SoundEmitter:PlaySound("stageplay_set/stage/lecturn_pageturn")
@@ -54,7 +60,7 @@ local function fn()
     inst.MiniMapEntity:SetIcon("charlie_lectern.png")
 
     inst.AnimState:SetBank("charlie_lectern")
-    inst.AnimState:SetBuild("charlie_lectern")
+    inst.AnimState:SetBuild(IsSpecialEventActive(SPECIAL_EVENTS.YOTH) and "charlie_lectern_yoth_build" or "charlie_lectern")
     inst.AnimState:PlayAnimation("idle")
 
     MakeSnowCoveredPristine(inst)
@@ -85,6 +91,7 @@ local function fn()
     inst.components.playbill_lecturn.onstageset = on_playbill_stage_set
 
     MakeSnowCovered(inst)
+    SetLunarHailBuildupAmountSmall(inst)
 
     inst.checkidleanim = checkidleanim
 
@@ -101,4 +108,4 @@ local function fn()
     return inst
 end
 
-return Prefab("charlie_lecturn", fn, assets, prefabs)    
+return Prefab("charlie_lecturn", fn, assets, prefabs)

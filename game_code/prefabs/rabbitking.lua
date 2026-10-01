@@ -93,6 +93,7 @@ local assets_passive = {
 }
 local prefabs_passive = {
     "smallmeat",
+    "rabbitkingcorpse",
     -- shop
     "armor_carrotlure",
     "rabbitkinghorn",
@@ -103,10 +104,10 @@ local loot_passive = {
 }
 
 local function OnTurnOn_passive(inst)
-    inst.rabbitking_trading = true
+    inst.sg.mem.trading = true
 end
 local function OnTurnOff_passive(inst)
-    inst.rabbitking_trading = nil
+    inst.sg.mem.trading = nil
 end
 local function OnActivate_passive(inst)
     inst:PushEvent("dotrade")
@@ -115,6 +116,9 @@ local function fn_passive()
     local inst = fn_common("passive", "rabbitking_passive_build")
 
     inst:AddTag("companion")
+
+    --prototyper (from prototyper component) added to pristine state for optimization
+    inst:AddTag("prototyper")
 
     inst.AnimState:SetScale(KING_SCALE, KING_SCALE)
 
@@ -152,6 +156,7 @@ local prefabs_aggressive = {
     "beardhair",
     "rabbitkingminion_bunnyman",
     "rabbitkingspear",
+    "rabbitkingcorpse",
 }
 local loot_aggressive = {
     "monstermeat",
@@ -306,13 +311,14 @@ local prefabs_bunnyman = {
     "monstermeat",
     "meat",
     "manrabbit_tail",
+    "rabbitkingminion_bunnymancorpse",
 }
 local bunnyman_brain = require("brains/rabbitking_bunnymanbrain")
 local function OnTalk_Bunnyman(inst)
     inst.SoundEmitter:PlaySound("dontstarve/creatures/bunnyman/idle_med")
 end
 local function NormalLeaderRetargetFn(inst)
-    local leader = inst.components.follower and inst.components.follower.leader or nil
+    local leader = inst.components.follower and inst.components.follower:GetLeader()
     return leader and leader.components.combat.target or nil
 end
 local function NormalKeepTargetFn(inst, target)
@@ -499,6 +505,7 @@ local assets_lucky = {
 }
 local prefabs_lucky = {
     "smallmeat",
+    "rabbitkingcorpse",
 }
 local loot_lucky = {
     "smallmeat",

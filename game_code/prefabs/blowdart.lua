@@ -93,6 +93,7 @@ local function common(anim, tags, removephysicscolliders)
     inst:AddComponent("projectile")
     inst.components.projectile:SetSpeed(60)
     inst.components.projectile:SetOnHitFn(onhit)
+    inst.components.projectile:SetOnMissFn(inst.Remove)
     inst:ListenForEvent("onthrown", onthrown)
     -------
 
@@ -259,10 +260,7 @@ local function yellowthrown(inst)
 end
 
 local function yellowattack(inst, attacker, target)
-    --target could be killed or removed in combat damage phase
-    if target:IsValid() then
-        SpawnPrefab("electrichitsparks"):AlignToTarget(target, inst)
-    end
+    SpawnElectricHitSparks(inst, target)
 end
 
 local function yellow()

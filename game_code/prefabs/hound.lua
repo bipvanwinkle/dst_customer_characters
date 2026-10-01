@@ -12,7 +12,7 @@ local assets =
     Asset("SOUND", "sound/hound.fsb"),
 
 	--DEPRECATED builds!!!
-	Asset("PKGREF", "anim/hound.zip"), --NOTE: unfortunately houndcorpse still uses this
+	Asset("PKGREF", "anim/hound.zip"),
 	Asset("PKGREF", "anim/hound_red.zip"),
 	Asset("PKGREF", "anim/hound_ice.zip"),
 }
@@ -117,9 +117,6 @@ SetSharedLootTable('hound_fire',
 {
     {'monstermeat', 1.0},
     {'houndstooth', 1.0},
-    {'houndfire',   1.0},
-    {'houndfire',   1.0},
-    {'houndfire',   1.0},
     {'redgem',      0.2},
 })
 
@@ -153,7 +150,11 @@ local NO_TAGS = { "FX", "NOCLICK", "DECOR", "INLIMBO" }
 local FREEZABLE_TAGS = { "freezable" }
 
 local function ShouldWakeUp(inst)
-    return DefaultWakeTest(inst) or (inst.components.follower and inst.components.follower.leader and not inst.components.follower:IsNearLeader(WAKE_TO_FOLLOW_DISTANCE))
+    if DefaultWakeTest(inst) then
+        return true
+    end
+    local leader = inst.components.follower and inst.components.follower:GetLeader()
+    return leader and not inst.components.follower:IsNearLeader(WAKE_TO_FOLLOW_DISTANCE)
 end
 
 local function ShouldSleep(inst)
@@ -171,11 +172,21 @@ local function OnNewTarget(inst, data)
 end
 
 local RETARGET_CANT_TAGS = { "wall", "houndmound", "hound", "houndfriend" }
+local function IsValidTarget(guy, inst)
+    -- Horror hounds won't attack our reviver! (Crystal-Crested Buzzards)
+    if inst:HasTag("lunar_aligned") and guy:HasTag("mutantdominant") then
+        return false
+    end
+    --
+    local leader = inst.components.follower and inst.components.follower:GetLeader()
+    return guy ~= leader and inst.components.combat:CanTarget(guy)
+end
+
 local function retargetfn(inst)
     if inst.sg:HasStateTag("statue") then
         return
     end
-    local leader = inst.components.follower.leader
+    local leader = inst.components.follower and inst.components.follower:GetLeader()
     if leader ~= nil and leader.sg ~= nil and leader.sg:HasStateTag("statue") then
         return
     end
@@ -184,15 +195,7 @@ local function retargetfn(inst)
     return (leader == nil or
             (ispet and not playerleader) or
             inst:IsNear(leader, TUNING.HOUND_FOLLOWER_AGGRO_DIST))
-        and FindEntity(
-                inst,
-                (ispet or leader ~= nil) and TUNING.HOUND_FOLLOWER_TARGET_DIST or TUNING.HOUND_TARGET_DIST,
-                function(guy)
-                    return guy ~= leader and inst.components.combat:CanTarget(guy)
-                end,
-                nil,
-                RETARGET_CANT_TAGS
-            )
+        and FindEntity(inst, (ispet or leader ~= nil) and TUNING.HOUND_FOLLOWER_TARGET_DIST or TUNING.HOUND_TARGET_DIST, IsValidTarget, nil, RETARGET_CANT_TAGS)
         or nil
 end
 
@@ -200,7 +203,7 @@ local function KeepTarget(inst, target)
     if inst.sg:HasStateTag("statue") then
         return false
     end
-    local leader = inst.components.follower.leader
+    local leader = inst.components.follower and inst.components.follower:GetLeader()
     local playerleader = leader ~= nil and leader:HasTag("player")
     local ispet = inst:HasTag("pet_hound")
     return (leader == nil or
@@ -243,7 +246,7 @@ local function OnAttacked(inst, data)
         function(dude)
             return not (dude.components.health ~= nil and dude.components.health:IsDead())
                 and (dude:HasTag("hound") or dude:HasTag("houndfriend"))
-                and data.attacker ~= (dude.components.follower ~= nil and dude.components.follower.leader or nil)
+                and data.attacker ~= (dude.components.follower ~= nil and dude.components.follower:GetLeader() or nil)
         end, 5)
 end
 
@@ -252,7 +255,7 @@ local function OnAttackOther(inst, data)
         function(dude)
             return not (dude.components.health ~= nil and dude.components.health:IsDead())
                 and (dude:HasTag("hound") or dude:HasTag("houndfriend"))
-                and data.target ~= (dude.components.follower ~= nil and dude.components.follower.leader or nil)
+                and data.target ~= (dude.components.follower ~= nil and dude.components.follower:GetLeader() or nil)
         end, 5)
 end
 
@@ -293,6 +296,22 @@ end
 local function OnSpawnedFromHaunt(inst)
     if inst.components.hauntable ~= nil then
         inst.components.hauntable:Panic()
+    end
+end
+
+local function OnEnterWater(inst)
+    inst.landspeed = inst.components.locomotor.runspeed
+    inst.components.locomotor.runspeed = TUNING.HOUND_SWIM_SPEED
+    inst.hop_distance = inst.components.locomotor.hop_distance
+    inst.components.locomotor.hop_distance = 4
+end
+
+local function OnExitWater(inst)
+    if inst.landspeed then
+        inst.components.locomotor.runspeed = inst.landspeed
+    end
+    if inst.hop_distance then
+        inst.components.locomotor.hop_distance = inst.hop_distance
     end
 end
 
@@ -410,19 +429,6 @@ local function OnStopFollowing(inst, data)
     end
 end
 
-local function CanMutateFromCorpse(inst)
-	if inst.components.amphibiouscreature ~= nil and inst.components.amphibiouscreature.in_water then
-		return false
-	elseif inst.forcemutate then
-		return true
-	elseif not TUNING.SPAWN_MUTATED_HOUNDS then
-		return false
-	elseif math.random() <= TUNING.MUTATEDHOUND_SPAWN_CHANCE then
-		return TheWorld.Map:IsInLunacyArea(inst.Transform:GetWorldPosition())
-	end
-	return false
-end
-
 local function OnChangedLeader(inst, new, old)
 	--ignore if new is nil, (always nil upon death)
 	if new ~= nil then
@@ -436,6 +442,18 @@ local function OnChangedLeader(inst, new, old)
 			inst.components.follower:LoseLeaderOnAttacked()
 		end
 	end
+end
+
+local function SaveCorpseData(inst, corpse)
+    if inst.wargleader ~= nil and inst.wargleader:IsValid() and not inst.wargleader.components.health:IsDead() then
+        corpse.components.entitytracker:TrackEntity("warg", inst.wargleader)
+	    inst.wargleader:RememberFollowerCorpse(corpse)
+    end
+
+    local home = inst.components.homeseeker and inst.components.homeseeker:GetHome()
+    if home ~= nil then
+        corpse.components.entitytracker:TrackEntity("hound_home", home)
+    end
 end
 
 local function fncommon(bank, build, morphlist, custombrain, tag, data)
@@ -465,8 +483,12 @@ local function fncommon(bank, build, morphlist, custombrain, tag, data)
         inst:AddTag(tag)
 
         if tag == "clay" then
+			inst:AddTag("electricdamageimmune")
+
             inst._eyeflames = net_bool(inst.GUID, "clayhound._eyeflames", "eyeflamesdirty")
             inst:ListenForEvent("eyeflamesdirty", OnEyeFlamesDirty)
+        elseif tag == "lunar_aligned" then
+            inst:AddTag("soulless") -- no wortox souls
         end
     end
 
@@ -490,14 +512,13 @@ local function fncommon(bank, build, morphlist, custombrain, tag, data)
     -- NOTE(DiogoW): Ignore original dependencies.
     inst.scrapbook_deps = { }
 
-	inst._CanMutateFromCorpse = data.canmutatefn
-
 	inst.sounds = sounds
 
     inst:AddComponent("locomotor") -- locomotor must be constructed before the stategraph
     inst.components.locomotor.runspeed = tag == "clay" and TUNING.CLAYHOUND_SPEED or TUNING.HOUND_SPEED
 
     inst:SetStateGraph("SGhound")
+    inst.sg.mem.nolunarmutate = not data.canlunarmutate
 
     if data.amphibious then
 		inst:AddComponent("embarker")
@@ -508,22 +529,8 @@ local function fncommon(bank, build, morphlist, custombrain, tag, data)
 
 		inst:AddComponent("amphibiouscreature")
 		inst.components.amphibiouscreature:SetBanks(bank, bank.."_water")
-        inst.components.amphibiouscreature:SetEnterWaterFn(
-            function(inst)
-                inst.landspeed = inst.components.locomotor.runspeed
-                inst.components.locomotor.runspeed = TUNING.HOUND_SWIM_SPEED
-                inst.hop_distance = inst.components.locomotor.hop_distance
-                inst.components.locomotor.hop_distance = 4
-            end)
-        inst.components.amphibiouscreature:SetExitWaterFn(
-            function(inst)
-                if inst.landspeed then
-                    inst.components.locomotor.runspeed = inst.landspeed
-                end
-                if inst.hop_distance then
-                    inst.components.locomotor.hop_distance = inst.hop_distance
-                end
-            end)
+        inst.components.amphibiouscreature:SetEnterWaterFn(OnEnterWater)
+        inst.components.amphibiouscreature:SetExitWaterFn(OnExitWater)
 
 		inst.components.locomotor.pathcaps = { allowocean = true }
 	end
@@ -556,6 +563,8 @@ local function fncommon(bank, build, morphlist, custombrain, tag, data)
     inst.components.inspectable.getstatus = GetStatus
 
     if tag == "clay" then
+		inst.sg.mem.noelectrocute = true
+        inst.sg.mem.nocorpse = true
         inst.sg:GoToState("statue")
 
         inst:AddComponent("hauntable")
@@ -585,6 +594,8 @@ local function fncommon(bank, build, morphlist, custombrain, tag, data)
     inst:WatchWorldState("stopday", OnStopDay)
     inst.OnEntitySleep = OnEntitySleep
 
+    inst.SaveCorpseData = SaveCorpseData
+
     inst.OnSave = OnSave
     inst.OnLoad = OnLoad
 
@@ -597,7 +608,7 @@ local function fncommon(bank, build, morphlist, custombrain, tag, data)
 end
 
 local function fndefault()
-    local inst = fncommon("hound", "hound_ocean", { "firehound", "icehound" }, nil, nil, {amphibious = true, canmutatefn = CanMutateFromCorpse})
+    local inst = fncommon("hound", "hound_ocean", { "firehound", "icehound" }, nil, nil, {amphibious = true, canlunarmutate = true})
 
     if not TheWorld.ismastersim then
         return inst
@@ -611,11 +622,22 @@ local function fndefault()
 	inst:AddComponent("halloweenmoonmutable")
 	inst.components.halloweenmoonmutable:SetPrefabMutated("mutatedhound")
 
+    inst.spawn_lunar_mutated_tuning = "SPAWN_MUTATED_HOUNDS"
+
     return inst
 end
 
-local function PlayFireExplosionSound(inst)
+local NUM_HOUND_FIRE = 3
+local function DoFireExplosion(inst, data)
+    local loading = data ~= nil and data.cause == "file_load"
+    if loading then
+        return
+    end
+
     inst.SoundEmitter:PlaySound("dontstarve/creatures/hound/firehound_explo")
+    for i = 1, NUM_HOUND_FIRE do
+        inst.components.lootdropper:SpawnLootPrefab("houndfire")
+    end
 end
 
 local function fnfire()
@@ -636,12 +658,17 @@ local function fnfire()
     inst.components.health:SetMaxHealth(TUNING.FIREHOUND_HEALTH)
     inst.components.lootdropper:SetChanceLootTable('hound_fire')
 
-    inst:ListenForEvent("death", PlayFireExplosionSound)
+    inst:ListenForEvent("death", DoFireExplosion)
 
     return inst
 end
 
-local function DoIceExplosion(inst)
+local function DoIceExplosion(inst, data)
+    local loading = data ~= nil and data.cause == "file_load"
+    if loading then
+        return
+    end
+
     if inst.components.freezable == nil then
         MakeMediumFreezableCharacter(inst, "hound_body")
     end
@@ -749,7 +776,7 @@ local function fnclay()
 
 	inst.sounds = sounds_clay
 
-    MakeMediumFreezableCharacter(inst, "hound_body")
+	--MakeMediumFreezableCharacter(inst, "hound_body")
 
     inst.components.lootdropper:SetChanceLootTable('clayhound')
 
@@ -761,6 +788,21 @@ local function fnclay()
     return inst
 end
 
+local function LoadCorpseData(inst, corpse)
+    local warg = corpse.components.entitytracker:GetEntity("warg")
+	if warg ~= nil then
+		inst.components.follower:SetLeader(warg)
+		warg:ForgetFollowerCorpse(corpse)
+		corpse.components.entitytracker:ForgetEntity("warg")
+	end
+
+    local home = corpse.components.entitytracker:GetEntity("hound_home")
+    if home ~= nil then
+        home.components.childspawner:TakeOwnership(inst)
+		corpse.components.entitytracker:ForgetEntity("hound_home")
+    end
+end
+
 local function fnmutated()
     local inst = fncommon("hound", "hound_mutated", nil, nil, "lunar_aligned", {amphibious = true})
 
@@ -769,6 +811,10 @@ local function fnmutated()
     end
 
 	inst.sounds = sounds_mutated
+    inst.sg.mem.nocorpse = true
+    inst.save_in_foreign_childspawner = true
+
+    inst.LoadCorpseData = LoadCorpseData
 
     MakeMediumFreezableCharacter(inst, "hound_body")
     MakeMediumBurnableCharacter(inst, "hound_body")
@@ -816,20 +862,44 @@ local function OnHedgeKilled(inst)
     end
 end
 
+local hedge_scrapbook_deps =
+{
+	--from statueharp_hedgespawner.lua::COSTUME_ITEMS
+	"mask_dollhat",			"costume_doll_body",
+	"mask_blacksmithhat",	"costume_blacksmith_body",
+	"mask_mirrorhat",		"costume_mirror_body",
+	"mask_queenhat",		"costume_queen_body",
+	"mask_kinghat",			"costume_king_body",
+	"mask_treehat",			"costume_tree_body",
+	"mask_foolhat",			"costume_fool_body",
+
+	--from charlie_stage.lua::REWARDPOOL
+	"pickaxe", "minerhat", "lightbulb",
+	"wateringcan", "farm_hoe", "farm_plow_item",
+	"oceanfishingrod", "oceanfishingbobber_ball", "oceanfishinglure_spoon_red",
+	"axe", "backpack", "shovel",
+	"spear", "armorgrass", "trap",
+	"earmuffshat", "meat_dried", "umbrella",
+	"tophat", "sewing_kit", "grass_umbrella",
+}
 
 local function fnhedge()
-    local inst = fncommon("hound", "hound_hedge_ocean", nil, nil, nil, {amphibious = true})
+    local inst = fncommon("hound", "hound_hedge_ocean", nil, nil, "hedge", {amphibious = true})
 
     inst.death_shatter = true
 
     if not TheWorld.ismastersim then
         return inst
-    end 
+    end
+
+	inst.scrapbook_deps = hedge_scrapbook_deps
 
 	inst.sounds = sounds_hedge
 
     MakeMediumFreezableCharacter(inst, "hound_body")
     MakeMediumBurnableCharacter(inst, "hound_body")
+    inst.components.burnable:SetBurnTime(8 * TUNING.PLANTMOB_BURNTIME_MULT)
+    inst.components.health.fire_damage_scale = TUNING.PLANTMOB_FIRE_DAMAGE_SCALE
 
     inst.components.health:SetMaxHealth(TUNING.HEDGEHOUND_HEALTH)
 
@@ -839,6 +909,9 @@ local function fnhedge()
     inst.components.lootdropper:SetChanceLootTable(nil)
 
     inst:ListenForEvent("death", OnHedgeKilled)
+
+	inst.sg.mem.burn_on_electrocute = true
+    inst.sg.mem.nocorpse = true
 
     return inst
 end

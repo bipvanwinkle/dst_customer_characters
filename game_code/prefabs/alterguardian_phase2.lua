@@ -231,12 +231,15 @@ end
 
 local function OnPhaseTransition(inst)
     local px, py, pz = inst.Transform:GetWorldPosition()
+    local rot = inst.Transform:GetRotation()
     local target = inst.components.combat.target
 
     inst:Remove()
 
     local phase3 = SpawnPrefab("alterguardian_phase3")
     phase3.Transform:SetPosition(px, py, pz)
+    phase3.Transform:SetRotation(rot)
+    phase3.AnimState:MakeFacingDirty() --not needed for clients
     phase3.components.combat:SuggestTarget(target)
     phase3.sg:GoToState("spawn")
 end
@@ -355,6 +358,8 @@ local function fn()
         return inst
     end
 
+    WORLDSTATETAGS.SetTagEnabled("CELESTIAL_ORB_FOUND", true) -- Will drop when the boss is fully defeated.
+
     inst.DoSpikeAttack = do_spike_attack
     inst.SetNoMusic = SetNoMusic
 
@@ -405,9 +410,6 @@ local function fn()
     inst.components.teleportedoverride:SetDestPositionFn(teleport_override_fn)
 
     inst:AddComponent("drownable")
-
-    MakeLargeFreezableCharacter(inst)
-    inst.components.freezable:SetResistance(8)
 
 	inst:AddComponent("hauntable")
 	inst.components.hauntable:SetHauntValue(TUNING.HAUNT_TINY)

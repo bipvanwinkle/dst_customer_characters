@@ -89,15 +89,15 @@ local function SpawnPrefabChooser(inst)
         if oldestplayer <= TheWorld.state.autumnlength then
             return ChooseSeeds()
         elseif oldestplayer <= year then
-            return math.random() <= 0.8 and ChooseSeeds() or nil
+            return math.random() <= GetEntitiesLuckChance(players, TUNING.BIRD_DROP_SEEDS_CHANCE_ONEYEAR, LuckFormulas.BirdDropItem) and ChooseSeeds() or nil
         else
-            return math.random() <= 0.6 and ChooseSeeds() or nil
+            return math.random() <= GetEntitiesLuckChance(players, TUNING.BIRD_DROP_SEEDS_CHANCE_PASTONEYEAR, LuckFormulas.BirdDropItem) and ChooseSeeds() or nil
         end
     end
 
     -- Lower chance for older players to get item
     return oldestplayer >= 0
-        and math.random() < .35 - oldestplayer * .1
+        and math.random() <= GetEntitiesLuckChance(players, TUNING.BIRD_DROP_ITEM_BASE_CHANCE - oldestplayer * .1, LuckFormulas.BirdDropItem)
         and ChooseItem()
         or ChooseSeeds()
 end
@@ -213,6 +213,7 @@ local function makebird(name, soundname, no_feather, bank, custom_loot_setup, wa
         "seeds",
         "smallmeat",
         "cookedsmallmeat",
+        "birdcorpse",
 
         --mercy items
         "flint",
@@ -226,6 +227,8 @@ local function makebird(name, soundname, no_feather, bank, custom_loot_setup, wa
 
     if name == "canary" then
         table.insert(prefabs, "canary_poisoned")
+    elseif name == "puffin" then
+        table.insert(prefabs, "feather_crow")
     end
 
 	local soundbank = "dontstarve"
@@ -233,6 +236,13 @@ local function makebird(name, soundname, no_feather, bank, custom_loot_setup, wa
 		soundbank = soundname.bank
 		soundname = soundname.name
 	end
+
+    local BIRD_SOUNDS = {
+        takeoff = soundbank.."/birds/takeoff_"..soundname,
+        chirp = soundbank.."/birds/chirp_"..soundname,
+        flyin = "dontstarve/birds/flyin",
+        death = soundbank.."/birds/death_"..soundname,
+    }
 
     local function fn()
         local inst = CreateEntity()
@@ -247,12 +257,11 @@ local function makebird(name, soundname, no_feather, bank, custom_loot_setup, wa
 
         --Initialize physics
         inst.Physics:SetCollisionGroup(COLLISION.CHARACTERS)
-        inst.Physics:ClearCollisionMask()
         if water_bank ~= nil then
             -- Birds that float can pass through LIMITS walls, i.e. when hopping.
-            inst.Physics:CollidesWith(COLLISION.GROUND)
+			inst.Physics:SetCollisionMask(COLLISION.GROUND)
         else
-            inst.Physics:CollidesWith(COLLISION.WORLD)
+			inst.Physics:SetCollisionMask(COLLISION.WORLD)
         end
         inst.Physics:SetMass(1)
         inst.Physics:SetSphere(1)
@@ -288,23 +297,28 @@ local function makebird(name, soundname, no_feather, bank, custom_loot_setup, wa
             return inst
         end
 
-        inst.sounds =
-        {
-            takeoff = soundbank.."/birds/takeoff_"..soundname,
-            chirp = soundbank.."/birds/chirp_"..soundname,
-            flyin = "dontstarve/birds/flyin",
-        }
+        inst.lunar_mutation_chance = TUNING.BIRD_PRERIFT_MUTATION_SPAWN_CHANCE
+        inst.gestalt_possession_chance = TUNING.BIRD_RIFT_POSSESSION_SPAWN_CHANCE
+
+        inst.sounds = BIRD_SOUNDS
 
         inst.trappedbuild = name.."_build"
+
+        inst.spawn_lunar_mutated_tuning = "SPAWN_MUTATED_BIRDS"
+        inst.spawn_gestalt_mutated_tuning = "SPAWN_MUTATED_BIRDS_GESTALT"
 
         inst:AddComponent("locomotor") -- locomotor must be constructed before the stategraph
         inst.components.locomotor:EnableGroundSpeedMultiplier(false)
         inst.components.locomotor:SetTriggersCreep(false)
         inst:SetStateGraph("SGbird")
+        if name == "puffin" then
+            -- TODO (OMAR) remove when puffin gets mutation animations
+            inst.sg.mem.nolunarmutate = true
+        end
 
         inst:AddComponent("lootdropper")
 		if custom_loot_setup ~= nil then
-			custom_loot_setup(inst, prefabs)
+			custom_loot_setup(inst)
 		else
 			if not no_feather then
 				inst.components.lootdropper:AddRandomLoot("feather_"..name, name == "canary" and .1 or 1)
@@ -377,6 +391,7 @@ local function makebird(name, soundname, no_feather, bank, custom_loot_setup, wa
         if birdspawner ~= nil then
             inst:ListenForEvent("onremove", birdspawner.StopTrackingFn)
             inst:ListenForEvent("enterlimbo", birdspawner.StopTrackingFn)
+            inst:ListenForEvent("death", birdspawner.StopTrackingFn)
             -- inst:ListenForEvent("exitlimbo", birdspawner.StartTrackingFn)
             birdspawner:StartTracking(inst)
         end
@@ -412,12 +427,10 @@ local function makebird(name, soundname, no_feather, bank, custom_loot_setup, wa
     return Prefab(name, fn, assets, prefabs)
 end
 
-local function puffin_loot_setup(inst, prefab_deps)
+local function puffin_loot_setup(inst)
 	inst.components.lootdropper:AddRandomLoot("feather_crow", 1)
 	inst.components.lootdropper:AddRandomLoot("smallmeat", 1)
 	inst.components.lootdropper.numrandomloot = 1
-
-    table.insert(prefab_deps, "feather_crow")
 end
 
 return makebird("crow", "crow"),

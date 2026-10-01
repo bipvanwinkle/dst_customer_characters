@@ -48,8 +48,15 @@ local CHAIN_LEN = 10
 local PILLAR_RADIUS = 1.2
 local COLLAR_RADIUS = 1.2
 
-local function OnWallUpdate(inst, dt)
-	dt = dt * TheSim:GetTimeScale()
+local function GetDeltaTime(inst)
+	local current_time = GetTime()
+	local dt = current_time - inst.t
+	inst.t = current_time
+	return dt
+end
+
+local function OnPostUpdate(inst)
+	local dt = GetDeltaTime(inst) * TheSim:GetTimeScale()
 	local prisoner = inst.prisoner:value()
 	if prisoner ~= nil then
 		if inst.vibratespike then
@@ -208,9 +215,10 @@ local function SpawnChains(inst)
 		inst.vibratetime = 0
 		inst.vibrateamp = 0
 		inst.vibratespike = false
+		inst.t = GetTime()
 		inst:ListenForEvent("daywalker_pillar.restartvibrate", OnRestartVibrate)
 		inst:AddComponent("updatelooper")
-		inst.components.updatelooper:AddOnWallUpdateFn(OnWallUpdate)
+		inst.components.updatelooper:AddPostUpdateFn(OnPostUpdate)
 	end
 end
 
@@ -481,7 +489,7 @@ local function OnWorked(inst, worker, workleft, numworks)
 	end
 	inst.SoundEmitter:KillSound("vibrate_loop")
 	inst.SoundEmitter:KillSound("chain_vibrate_loop")
-	if workleft <= 1 and not changed and worker ~= nil and worker:HasAnyTag("player", "toughworker") then
+	if workleft <= 1 and not changed and worker ~= nil and worker:HasAnyTag("player", "possessedbody", "toughworker") then
 		inst.SoundEmitter:PlaySound("daywalker/pillar/pickaxe_hit_unbreakable")
 		local trigger_vibrate = worker:HasTag("toughworker")
 		if not trigger_vibrate then

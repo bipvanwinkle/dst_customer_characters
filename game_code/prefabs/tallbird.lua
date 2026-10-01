@@ -9,6 +9,7 @@ local assets =
 local prefabs =
 {
     "meat",
+    "tallbirdcorpse",
 }
 
 local loot = { "meat", "meat" }
@@ -187,6 +188,7 @@ local function fn()
         return inst
     end
 
+	inst.override_combat_fx_height = "high"
     inst._last_attacker = nil
     inst._last_attacked_time = nil
 

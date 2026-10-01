@@ -2,6 +2,9 @@ local easing = require("easing")
 
 local PROPAGATOR_DT = 0.5
 
+local TARGET_CANT_TAGS = { "INLIMBO" }
+local TARGET_MELT_ANY_TAGS = { "frozen", "firemelt" }
+
 local Propagator = Class(function(self, inst)
     self.inst = inst
     self.flashpoint = 100
@@ -38,6 +41,24 @@ function Propagator:OnRemoveFromEntity()
     if self.delay ~= nil then
         self.delay:Cancel()
         self.delay = nil
+    end
+end
+
+function Propagator:OnRemoveEntity()
+    if self.inst:IsValid() then -- NOTES(JBK): Hack check to hide crash case. The component needs a rework on how it handles the fire melt tagging and events.
+        if not (self.inst.components.heater ~= nil and self.inst.components.heater:IsEndothermic()) then
+            local x, y, z = self.inst.Transform:GetWorldPosition()
+            local prop_range = TheWorld.state.isspring and self.propagaterange * TUNING.SPRING_FIRE_RANGE_MOD or self.propagaterange
+            local ents = TheSim:FindEntities(x, y, z, prop_range, nil, nil, TARGET_MELT_ANY_TAGS)
+            -- OnRemoveEntity callback makes FindEntities return a nil in the first slot if the entity that was just removed is in the callback so ipairs cannot work here.
+            for i = 1, #ents do
+                local v = ents[i]
+                if v and v:IsValid() then
+                    v:PushEvent("stopfiremelt")
+                    v:RemoveTag("firemelt")
+                end
+            end
+        end
     end
 end
 
@@ -92,11 +113,25 @@ end
 --really this is TemperatureResistance, since it prevents cold from spreading also.
 function Propagator:GetHeatResistance()
     local tile, tile_info = self.inst:GetCurrentTileType()
-    return tile_info ~= nil
-        and tile_info.flashpoint_modifier ~= nil
-        and tile_info.flashpoint_modifier ~= 0
-        and math.max(1, self.flashpoint) / math.max(1, self.flashpoint + tile_info.flashpoint_modifier)
-        or 1
+
+    if tile_info ~= nil then
+        if tile_info.no_fire_spread then --This also prevents cold from spreading, but we don't have anything that spreads cold (in terms of fire), so it's OK
+            return 0
+        elseif tile_info.flashpoint_modifier ~= nil and tile_info.flashpoint_modifier ~= 0 then
+            return math.max(1, self.flashpoint) / math.max(1, self.flashpoint + tile_info.flashpoint_modifier)
+        end
+    end
+
+    return 1
+end
+
+function Propagator:CanSpreadHeat()
+    local _, tile_info = self.inst:GetCurrentTileType()
+    return tile_info == nil or not tile_info.no_fire_spread
+end
+
+function Propagator:AcceptsHeat()
+    return self.acceptsheat and not self.pauseheating
 end
 
 function Propagator:AddHeat(amount,source)
@@ -136,8 +171,6 @@ function Propagator:Flash()
     end
 end
 
-local TARGET_CANT_TAGS = { "INLIMBO" }
-local TARGET_MELT_MUST_TAGS = { "frozen", "firemelt" }
 function Propagator:OnUpdate(dt)
     self:CalculateHeatCap()
 
@@ -164,9 +197,7 @@ function Propagator:OnUpdate(dt)
                     local dsq = VecUtil_LengthSq(x - vx, z - vz)
 
                     if v ~= self.inst then
-                        if v.components.propagator ~= nil and
-                            v.components.propagator.acceptsheat and
-                            not v.components.propagator.pauseheating then
+                        if v.components.propagator ~= nil and v.components.propagator:AcceptsHeat() then
                             local percent_heat = math.max(.1, 1 - dsq / prop_range_sq)
                             v.components.propagator:AddHeat(self.heatoutput * percent_heat * dt, self.inst)
                         end
@@ -179,7 +210,7 @@ function Propagator:OnUpdate(dt)
                             end
                         end
 
-                        if not isendothermic and (v:HasTag("frozen") or v:HasTag("meltable")) then
+                        if not isendothermic and v:HasAnyTag("frozen", "meltable") then
                             v:PushEvent("firemelt")
                             v:AddTag("firemelt")
                         end
@@ -205,7 +236,7 @@ function Propagator:OnUpdate(dt)
         end
     else
         if not (self.inst.components.heater ~= nil and self.inst.components.heater:IsEndothermic()) then
-            local ents = TheSim:FindEntities(x, y, z, prop_range, TARGET_MELT_MUST_TAGS)
+            local ents = TheSim:FindEntities(x, y, z, prop_range, nil, nil, TARGET_MELT_ANY_TAGS)
             for i, v in ipairs(ents) do
                 v:PushEvent("stopfiremelt")
                 v:RemoveTag("firemelt")

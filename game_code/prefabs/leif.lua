@@ -52,11 +52,18 @@ local function onloadfn(inst, data)
         if data.sleeping then
             inst.components.sleeper:GoToSleep()
         end
+        if data.houndfriend then
+            inst:AddTag("houndfriend")
+        end
     end
 end
 
 local function onsavefn(inst, data)
     data.leifscale = inst._scale
+
+    if inst:HasTag("houndfriend") then -- for surprise
+        data.houndfriend = true
+    end
 
     if inst.components.sleeper:IsAsleep() then
         data.sleeping = true
@@ -116,6 +123,9 @@ local function common_fn(build)
         return inst
     end
 
+	inst.override_combat_fx_size = "med"
+	inst.override_combat_fx_height = "high"
+
     local color = .5 + math.random() * .5
     inst.AnimState:SetMultColour(color, color, color, 1)
 
@@ -132,6 +142,7 @@ local function common_fn(build)
 
     ------------------------------------------
     inst:SetStateGraph("SGLeif")
+	inst.sg.mem.burn_on_electrocute = true
 
     ------------------------------------------
 
@@ -148,6 +159,8 @@ local function common_fn(build)
     inst:AddComponent("health")
     inst.components.health:SetMaxHealth(TUNING.LEIF_HEALTH)
 
+    inst.components.burnable:SetBurnTime(10 * TUNING.PLANTMOB_BURNTIME_MULT)
+    inst.components.health.fire_damage_scale = TUNING.PLANTMOB_FIRE_DAMAGE_SCALE
     ------------------
 
     inst:AddComponent("combat")

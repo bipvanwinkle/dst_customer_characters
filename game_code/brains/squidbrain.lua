@@ -49,7 +49,7 @@ local function EatFoodAction(inst)
 end
 
 local function GetLeader(inst)
-    return inst.components.follower ~= nil and inst.components.follower.leader or nil
+    return inst.components.follower and inst.components.follower:GetLeader()
 end
 
 local function GetHome(inst)
@@ -200,6 +200,7 @@ function SquidBrain:OnStart()
             WhileNode(function() return not self.inst.sg:HasStateTag("jumping") end, "NotJumpingBehaviour",
                 PriorityNode({
 					BrainCommon.PanicTrigger(self.inst),
+                    BrainCommon.ElectricFencePanicTrigger(self.inst),
 
                     IfNode(function() return findwall(self.inst) end, "nearwall", AttackWall(self.inst)),
 

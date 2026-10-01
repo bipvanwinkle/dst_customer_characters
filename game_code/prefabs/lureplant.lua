@@ -35,8 +35,9 @@ local VALID_TILE_TYPES =
     [WORLD_TILES.DECIDUOUS] = true,
 }
 
-function adjustIdleSound(inst, vol)
-    inst.SoundEmitter:SetParameter("loop", "size", vol)
+local function adjustIdleSound(inst)
+	local max = inst.components.minionspawner.maxminions
+	inst.SoundEmitter:SetParameter("loop", "size", max > 0 and inst.components.minionspawner.numminions / max or 0)
 end
 
 local function TryRevealBait(inst)
@@ -187,6 +188,7 @@ local function SelectLure(inst)
         if #lures >= 1 then
             return lures[math.random(#lures)]
         elseif inst.components.minionspawner.numminions * 2 >= inst.components.minionspawner.maxminions then
+			--V2C: NOTE: keeping legacy behaviour: can reach here even if maxminions is 0.
             local meat = SpawnPrefab("plantmeat")
             inst.components.inventory:GiveItem(meat)
             return meat
@@ -264,7 +266,7 @@ end
 
 local function OnEntityWake(inst)
     inst.SoundEmitter:PlaySound("dontstarve/creatures/eyeplant/eye_central_idle", "loop")
-    adjustIdleSound(inst, inst.components.minionspawner.numminions / inst.components.minionspawner.maxminions)
+	adjustIdleSound(inst)
 end
 
 local function OnEntitySleep(inst)
@@ -285,7 +287,7 @@ end
 
 local function OnMinionChange(inst)
     if not inst:IsAsleep() then
-        adjustIdleSound(inst, inst.components.minionspawner.numminions / inst.components.minionspawner.maxminions)
+		adjustIdleSound(inst)
     end
 end
 
@@ -336,6 +338,7 @@ local function fn()
 	inst:SetDeploySmartRadius(DEPLOYSPACING_RADIUS[DEPLOYSPACING.DEFAULT] / 2) --lureplantbulb deployspacing/2
     inst:SetPhysicsRadiusOverride(.7)
     MakeObstaclePhysics(inst, inst.physicsradiusoverride)
+    MakeCollidesWithElectricField(inst)
 
     inst:AddTag("lureplant")
     inst:AddTag("hostile")
@@ -356,6 +359,8 @@ local function fn()
     if not TheWorld.ismastersim then
         return inst
     end
+
+	inst.override_combat_fx_height = "low"
 
     inst:AddComponent("health")
     inst.components.health:SetMaxHealth(300)
@@ -391,6 +396,7 @@ local function fn()
     inst.components.digester.itemstodigestfn = CanDigest
 
     inst:SetStateGraph("SGlureplant")
+	inst.sg.mem.burn_on_electrocute = true
 
     inst:ListenForEvent("startfiredamage", OnStartFireDamage)
     inst:ListenForEvent("stopfiredamage", OnStopFireDamage)
@@ -403,6 +409,8 @@ local function fn()
 
     MakeLargeBurnable(inst)
     MakeMediumPropagator(inst)
+    inst.components.burnable:SetBurnTime(30 * TUNING.PLANTMOB_BURNTIME_MULT)
+    inst.components.health.fire_damage_scale = TUNING.PLANTMOB_FIRE_DAMAGE_SCALE
 
     MakeHauntableIgnite(inst, TUNING.HAUNT_CHANCE_OCCASIONAL)
     AddHauntableCustomReaction(inst, OnHaunt, false, false, true)

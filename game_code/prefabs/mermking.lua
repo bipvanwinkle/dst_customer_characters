@@ -10,6 +10,8 @@ local prefabs =
     "kelp",
     "froglegs",
     "merm_king_splash",
+
+    "mermkingcorpse",
 }
 
 local loot =
@@ -534,6 +536,7 @@ local function fn()
     inst.entity:AddNetwork()
 
     MakeObstaclePhysics(inst, 1)
+    MakeCollidesWithElectricField(inst)
 
     inst.AnimState:SetBank("merm_king")
     inst.AnimState:SetBuild("merm_king")
@@ -555,6 +558,8 @@ local function fn()
     if not TheWorld.ismastersim then
         return inst
     end
+
+	inst.override_combat_fx_height = "low"
 
     inst:SetStateGraph("SGmermking")
 

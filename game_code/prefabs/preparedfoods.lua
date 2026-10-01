@@ -78,6 +78,8 @@ local function MakePreparedFood(data)
             end
         end
 
+		inst.wet_prefix = data.wet_prefix
+
         if data.basename ~= nil then
             inst:SetPrefabNameOverride(data.basename)
             if data.spice ~= nil then
@@ -119,9 +121,9 @@ local function MakePreparedFood(data)
         inst.components.edible.nochill = data.nochill or nil
         inst.components.edible.spice = data.spice
         inst.components.edible:SetOnEatenFn(data.oneatenfn)
+        inst.components.edible.chargevalue = data.chargevalue or nil -- Wx-78
 
         inst:AddComponent("inspectable")
-        inst.wet_prefix = data.wet_prefix
 
         inst:AddComponent("inventoryitem")
 		if data.OnPutInInventory then

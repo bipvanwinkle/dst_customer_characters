@@ -230,9 +230,19 @@ local Wisecracker = Class(function(self, inst)
 		inst.components.talker:Say(GetString(inst, "ANNOUNCE_TOOL_TOOWEAK"))
 	end)
 
+    inst:ListenForEvent("weapontooweak", function(inst, data)
+		inst.components.talker:Say(GetString(inst, "ANNOUNCE_WEAPON_TOOWEAK"))
+	end)
+
     if inst:HasTag("soulstealer") then
         inst:ListenForEvent("soulempty", function(inst)
-            inst.components.talker:Say(GetString(inst, "ANNOUNCE_SOUL_EMPTY"))
+            if inst.wortox_inclination == "nice" then
+                inst.components.talker:Say(GetString(inst, "ANNOUNCE_SOUL_EMPTY_NICE"))
+            elseif inst.wortox_inclination == "naughty" then
+                inst.components.talker:Say(GetString(inst, "ANNOUNCE_SOUL_EMPTY_NAUGHTY"))
+            else
+                inst.components.talker:Say(GetString(inst, "ANNOUNCE_SOUL_EMPTY"))
+            end
         end)
 
         local soultoofew_time = 0
@@ -240,7 +250,13 @@ local Wisecracker = Class(function(self, inst)
             local t = GetTime()
             if t > soultoofew_time then
                 soultoofew_time = t + 30
-                inst.components.talker:Say(GetString(inst, "ANNOUNCE_SOUL_FEW"))
+                if inst.wortox_inclination == "nice" then
+                    inst.components.talker:Say(GetString(inst, "ANNOUNCE_SOUL_FEW_NICE"))
+                elseif inst.wortox_inclination == "naughty" then
+                    inst.components.talker:Say(GetString(inst, "ANNOUNCE_SOUL_FEW_NAUGHTY"))
+                else
+                    inst.components.talker:Say(GetString(inst, "ANNOUNCE_SOUL_FEW"))
+                end
             end
         end)
 
@@ -249,10 +265,35 @@ local Wisecracker = Class(function(self, inst)
             local t = GetTime()
             if t > soultoomany_time then
                 soultoomany_time = t + 30
-                inst.components.talker:Say(GetString(inst, "ANNOUNCE_SOUL_MANY"))
+                if inst.wortox_inclination == "nice" then
+                    inst.components.talker:Say(GetString(inst, "ANNOUNCE_SOUL_MANY_NICE"))
+                elseif inst.wortox_inclination == "naughty" then
+                    inst.components.talker:Say(GetString(inst, "ANNOUNCE_SOUL_MANY_NAUGHTY"))
+                else
+                    inst.components.talker:Say(GetString(inst, "ANNOUNCE_SOUL_MANY"))
+                end
             end
         end)
+
+        inst:ListenForEvent("souloverloadwarning", function(inst)
+            inst.components.talker:Say(GetString(inst, "ANNOUNCE_SOUL_OVERLOAD_WARNING"))
+        end)
+        inst:ListenForEvent("souloverloadavoided", function(inst)
+            inst.components.talker:Say(GetString(inst, "ANNOUNCE_SOUL_OVERLOAD_AVOIDED"))
+        end)
+
+        inst:ListenForEvent("wortox_panflute_playing_active", function(inst)
+            inst.components.talker:Say(GetString(inst, "ANNOUNCE_PANFLUTE_BUFF_ACTIVE"))
+        end)
+
+        inst:ListenForEvent("wortox_panflute_playing_used", function(inst)
+            inst.components.talker:Say(GetString(inst, "ANNOUNCE_PANFLUTE_BUFF_USED"))
+        end)
     end
+
+    inst:ListenForEvent("wortox_reviver_failteleport", function(inst, data)
+        inst.components.talker:Say(GetString(inst, "ANNOUNCE_WORTOX_REVIVER_FAILTELEPORT"))
+    end)
 
 	inst:ListenForEvent("on_halloweenmoonpotion_failed", function(inst)
 		inst.components.talker:Say(GetString(inst, "ANNOUNCE_MOONPOTION_FAILED"))
@@ -332,6 +373,134 @@ local Wisecracker = Class(function(self, inst)
 			end
 		end
 	end)
+
+    local last_yoth_cooldown = -999
+    local yoth_cooldown_task
+    local function do_yoth_cooldown(inst)
+        yoth_cooldown_task = nil
+        inst.components.talker:Say(GetString(inst, "ANNOUNCE_YOTH_ONCOOLDOWN"))
+    end
+    inst:ListenForEvent("yoth_oncooldown", function(inst)
+        if yoth_cooldown_task == nil then
+            local t = GetTime()
+            if last_yoth_cooldown + 10 < t then
+                last_yoth_cooldown = t
+                yoth_cooldown_task = inst:DoTaskInTime(2 + math.random(), do_yoth_cooldown)
+            end
+        end
+    end)
+    inst:ListenForEvent("yoth_oncooldown_cancel", function(inst)
+        if yoth_cooldown_task ~= nil then
+            yoth_cooldown_task:Cancel()
+            yoth_cooldown_task = nil
+            last_yoth_cooldown = -999
+        end
+    end)
+
+	if inst:HasTag("dogrider") then
+		local lasttalktowobytime = 0
+		local lastwobymsg = nil
+		local callwobytask = nil
+		local function talktowoby(inst, woby, msgid, range, repeatcooldown, globalcooldown)
+			if callwobytask then
+				callwobytask:Cancel()
+				callwobytask = nil
+			end
+			if range == nil or inst:IsNear(woby, range) then
+				local t = GetTime()
+				local cooldown = msgid == lastwobymsg and repeatcooldown or globalcooldown
+				if lasttalktowobytime + cooldown < t then
+					lasttalktowobytime = t
+					lastwobymsg = msgid
+					inst.components.talker:Say(GetString(inst, msgid))
+				end
+			end
+		end
+		inst:ListenForEvent("treatwoby",		function(inst, woby) talktowoby(inst, woby, "ANNOUNCE_WOBY_PRAISE",	4,	6,	0) end)
+		inst:ListenForEvent("praisewoby",		function(inst, woby) talktowoby(inst, woby, "ANNOUNCE_WOBY_PRAISE",	8,	30,	8) end)
+		inst:ListenForEvent("tellwobysit",		function(inst, woby) talktowoby(inst, woby, "ANNOUNCE_WOBY_SIT",	12,	3,	0) end)
+		inst:ListenForEvent("tellwobyfollow",	function(inst, woby) talktowoby(inst, woby, "ANNOUNCE_WOBY_FOLLOW",	12,	6,	0) end)
+		inst:ListenForEvent("tellwobyforage",	function(inst, woby) talktowoby(inst, woby, "ANNOUNCE_WOBY_FORAGE",	8,	30,	4) end)
+		inst:ListenForEvent("tellwobywork",		function(inst, woby) talktowoby(inst, woby, "ANNOUNCE_WOBY_WORK",	8,	30,	4) end)
+		inst:ListenForEvent("tellwobycourier",	function(inst, woby) talktowoby(inst, woby, "ANNOUNCE_WOBY_COURIER",12,	3,	0) end)
+		inst:ListenForEvent("callwoby", function(inst, woby)
+			if callwobytask then
+				callwobytask:Cancel()
+			end
+			callwobytask = inst:DoTaskInTime(0.7, talktowoby, woby, "ANNOUNCE_WOBY_RETURN", nil, 4, 0)
+		end)
+	end
+
+    inst:ListenForEvent("vault_teleporter_does_nothing", function(inst)
+        inst.components.talker:Say(GetString(inst, "ANNOUNCE_VAULT_TELEPORTER_DOES_NOTHING"))
+    end)
+
+	local lastlightsoutshadowhand
+	inst:ListenForEvent("see_lightsout_shadowhand", function(inst)
+		local t = GetTime()
+		if lastlightsoutshadowhand == nil or lastlightsoutshadowhand + 15 < t then
+			lastlightsoutshadowhand = t
+			inst.components.talker:Say(GetString(inst, "ANNOUNCE_LIGHTSOUT_SHADOWHAND"))
+		end
+	end)
+
+	inst:ListenForEvent("ms_maxclockworks", function(inst, target)
+		inst.components.talker:Say(GetString(inst, "ANNOUNCE_MAX_CLOCKWORKS"))
+	end)
+    
+    local lastmisted
+    local mistedtask
+    local function ondeconmisted(inst)
+        mistedtask = nil
+        inst.components.talker:Say(GetString(inst, "ANNOUNCE_GOT_DECON_MISTED"))
+    end
+    inst:ListenForEvent("got_decon_misted", function(inst)
+        local t = GetTime()
+        if lastmisted == nil or lastmisted + 15 < t then
+            lastmisted = t
+            if mistedtask then
+                mistedtask:Cancel()
+            end
+            mistedtask = inst:DoTaskInTime(0.5 + math.random() * 0.5, ondeconmisted)
+        end
+    end)
+
+	local lastshadowassist
+	local shadowassisttask
+	local function onshadowassisted(inst)
+		shadowassisttask = nil
+		if TheWorld.Map:IsPointInVaultRoom(inst.Transform:GetWorldPosition()) then
+			inst.components.talker:Say(GetString(inst, "ANNOUNCE_VAULT_SHADOW_ASSIST"))
+		end
+	end
+	inst:ListenForEvent("ms_vaultshadowassist", function(inst)
+		local t = GetTime()
+		if lastshadowassist == nil or lastshadowassist + 90 < t then
+			lastshadowassist = t
+			if shadowassisttask then
+				shadowassisttask:Cancel()
+			end
+			shadowassisttask = inst:DoTaskInTime(2 + math.random() * 2, onshadowassisted)
+		end
+	end)
+
+	local lastsparkfollow
+	local sparkfollowtask
+	local function onsecuritysparkfollow(inst)
+		sparkfollowtask = nil
+        inst.components.talker:Say(GetString(inst, "ANNOUNCE_SECURITY_PULSE_FOLLOWING"))
+	end
+    inst:ListenForEvent("ms_securitysparkfollowing", function(inst)
+		local t = GetTime()
+		if lastsparkfollow == nil or lastsparkfollow + 100 < t
+            and (inst.components.leader == nil or (inst.components.leader:CountFollowers("power_point") == 0) ) then
+			lastsparkfollow = t
+			if sparkfollowtask then
+				sparkfollowtask:Cancel()
+			end
+			sparkfollowtask = inst:DoTaskInTime(1 + math.random() * 1.5, onsecuritysparkfollow)
+		end
+    end)
 
     if TheNet:GetServerGameMode() == "quagmire" then
         event_server_data("quagmire", "components/wisecracker").AddQuagmireEventListeners(inst)

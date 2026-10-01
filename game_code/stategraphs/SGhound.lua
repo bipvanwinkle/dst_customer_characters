@@ -20,17 +20,28 @@ end
 
 local events =
 {
-    EventHandler("attacked", function(inst)
-        if not inst.components.health:IsDead() and not inst.sg:HasStateTag("attack") then
-            inst.sg:GoToState("hit")
-        end
+	EventHandler("attacked", function(inst, data)
+        --V2C: health check since corpse shares this SG
+		if inst.components.health and not inst.components.health:IsDead() then
+			if CommonHandlers.TryElectrocuteOnAttacked(inst, data) then
+				return
+			elseif not inst.sg:HasAnyStateTag("attack", "electrocute") then
+				inst.sg:GoToState("hit")
+			end
+		end
     end),
-    EventHandler("death", function(inst)
-        inst.sg:GoToState("death", inst.sg.statemem.dead)
+    EventHandler("death", function(inst, data) -- We should use CommonHandlers.OnDeath, but SGhound has a special case for death states param.
+        local use_corpse_state = CommonHandlers.ShouldUseCorpseStateOnLoad(inst, data.cause)
+        if use_corpse_state then
+            inst.sg:GoToState("corpse", true)
+        else
+            inst.sg:GoToState("death", inst.sg.statemem.dead)
+        end
     end),
     EventHandler("doattack", function(inst, data)
         if not inst.components.health:IsDead() and
-                (inst.sg:HasStateTag("hit") or not inst.sg:HasStateTag("busy")) then
+			((inst.sg:HasStateTag("hit") and not inst.sg:HasStateTag("electrocute")) or not inst.sg:HasStateTag("busy"))
+		then
             inst.sg:GoToState("attack", data.target)
         end
     end),
@@ -50,6 +61,7 @@ local events =
     CommonHandlers.OnHop(),
     CommonHandlers.OnLocomote(true, false),
     CommonHandlers.OnFreeze(),
+	CommonHandlers.OnElectrocute(),
 
     EventHandler("startle", function(inst)
         if not (inst.sg:HasStateTag("startled") or
@@ -106,6 +118,9 @@ local events =
             inst.sg:GoToState("transformstatue")
         end
     end),
+
+	-- Corpse handlers
+	CommonHandlers.OnCorpseChomped(),
 }
 
 local function SpawnHound(inst)
@@ -608,7 +623,8 @@ local states =
         {
             EventHandler("animover", function(inst)
                 if not inst.sg.statemem.norepeat and math.random() < .333 then
-                    inst.sg:GoToState("taunt", inst.components.follower.leader ~= nil and inst.components.follower.leader:HasTag("player"))
+                    local leader = inst.components.follower and inst.components.follower:GetLeader()
+                    inst.sg:GoToState("taunt", leader ~= nil and leader:HasTag("player"))
                 else
                     inst.sg:GoToState("idle")
                 end
@@ -654,11 +670,10 @@ local states =
                 elseif inst.sg.statemem.count > 0 then
                     inst.sg:GoToState("howl", {count= inst.sg.statemem.count > 1 and inst.sg.statemem.count - 1 or -1})
                 elseif inst.sg.statemem.count == 0 and math.random() < 0.333 then
+                    local leader = inst.components.follower and inst.components.follower:GetLeader()
                     inst.sg:GoToState("howl", {
-                        count = (inst.components.follower.leader ~= nil
-                            and inst.components.follower.leader:HasTag("player")
-                            and -1) or 0
-                        })
+                        count = (leader ~= nil and leader:HasTag("player") and -1) or 0,
+                    })
                 else
                     inst.sg:GoToState("idle")
                 end
@@ -689,7 +704,7 @@ local states =
                 inst.SoundEmitter:PlaySound("dontstarve/common/destroy_pot")
             end
             inst.SoundEmitter:PlaySound(inst.sounds.death)
-            inst.components.lootdropper:DropLoot(inst:GetPosition())
+            inst:DropDeathLoot()
         end,
 
         timeline =
@@ -708,22 +723,8 @@ local states =
 
         events =
         {
-            EventHandler("animover", function(inst)
-				if inst._CanMutateFromCorpse ~= nil and inst:_CanMutateFromCorpse() then
-					local corpse = SpawnPrefab("houndcorpse")
-					corpse.Transform:SetPosition(inst.Transform:GetWorldPosition())
-					corpse.Transform:SetRotation(inst.Transform:GetRotation())
-					corpse.AnimState:MakeFacingDirty() -- Not needed for clients.
-					if inst.wargleader ~= nil and
-                            not inst.wargleader.components.health:IsDead()
-                            and inst.wargleader:IsValid() then
-						corpse:RememberWargLeader(inst.wargleader)
-					end
-					inst:Remove()
-				end
-            end),
+            CommonHandlers.OnCorpseDeathAnimOver(),
         },
-
 
         onexit = function(inst)
             if not inst:IsInLimbo() then
@@ -911,7 +912,7 @@ local states =
             MakeStatue(inst)
             inst.Transform:SetSixFaced()
             inst.AnimState:PlayAnimation("statue_pre")
-            local leader = inst.components.follower.leader
+            local leader = inst.components.follower and inst.components.follower:GetLeader()
             if leader ~= nil then
                 inst.Transform:SetRotation(leader.Transform:GetRotation())
             end
@@ -953,15 +954,21 @@ local states =
         end,
     },
 
+    -- Corpse and Mutate states
 
     State{
         name = "mutated_spawn",
-        tags = { "busy" },
+		tags = { "busy", },
 
         onenter = function(inst, data)
             inst.Physics:Stop()
             inst.AnimState:PlayAnimation("mutated_hound_spawn")
         end,
+
+        timeline =
+        {
+            FrameEvent(18, function(inst) inst.SoundEmitter:PlaySound(inst.sounds.howl) end),
+        },
 
         events =
         {
@@ -970,6 +977,32 @@ local states =
             end),
         },
     },
+
+	-- Winter 2025
+
+	State{
+		name = "surprise_spawn",
+		tags = { "busy" },
+
+		onenter = function(inst)
+			inst.components.locomotor:StopMoving()
+			inst.AnimState:PlayAnimation("surprise_hound_spawn")
+		end,
+
+		timeline =
+		{
+			FrameEvent(18, function(inst) inst.SoundEmitter:PlaySound(inst.sounds.howl) end),
+		},
+
+		events =
+		{
+			EventHandler("animover", function(inst)
+				if inst.AnimState:AnimDone() then
+					inst.sg:GoToState("taunt")
+				end
+			end),
+		},
+	},
 }
 
 CommonStates.AddAmphibiousCreatureHopStates(states,
@@ -1040,5 +1073,49 @@ CommonStates.AddRunStates(states,
     },
 })
 CommonStates.AddFrozenStates(states, HideEyeFX, ShowEyeFX)
+CommonStates.AddElectrocuteStates(states)
 
-return StateGraph("hound", states, events, "taunt", actionhandlers)
+CommonStates.AddCorpseStates(states,
+{ -- anims
+    corpse = function(inst)
+        local amphibiouscreature = inst.components.amphibiouscreature
+        if amphibiouscreature and amphibiouscreature.in_water then
+            return "death_idle", true
+        end
+    end,
+})
+
+CommonStates.AddLunarPreRiftMutationStates(states,
+{
+    mutate_timeline = {
+        SoundFrameEvent(11, "lunarhail_event/creatures/lunar_mutation/mutate_crack_thump"),
+        SoundFrameEvent(21, "turnoftides/creatures/together/mutated_hound/punch"),
+        SoundFrameEvent(31, "dontstarve/movement/body_fall"),
+        SoundFrameEvent(40, "turnoftides/creatures/together/mutated_hound/punch"),
+        SoundFrameEvent(47, "turnoftides/creatures/together/mutated_hound/punch"),
+        SoundFrameEvent(54, "turnoftides/creatures/together/mutated_hound/punch"),
+        SoundFrameEvent(59, "lunarhail_event/creatures/lunar_mutation/mutate_crack_thump"),
+        SoundFrameEvent(73, "lunarhail_event/creatures/lunar_mutation/mutate_crack_thump"),
+    },
+
+    mutatepst_timeline = {
+        FrameEvent(18, function(inst) inst.SoundEmitter:PlaySound(inst.sounds.howl) end),
+    },
+},
+{
+    mutate = "mutated_hound_reviving",
+    mutate_pst = "mutated_hound_spawn",
+},
+{
+    mutate_onenter = function(inst)
+        inst.SoundEmitter:PlaySound("turnoftides/creatures/together/mutated_hound/mutate")
+        inst.SoundEmitter:PlaySound("turnoftides/creatures/together/mutated_hound/punch")
+    end,
+},
+{
+    mutated_spawn_timing = 104 * FRAMES,
+    post_mutate_state = "taunt",
+})
+CommonStates.AddInitState(states, "taunt")
+
+return StateGraph("hound", states, events, "init", actionhandlers)

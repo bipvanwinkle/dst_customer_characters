@@ -297,7 +297,8 @@ local function DoLifeSteal(inst, owner, target)
         owner.components.health:IsHurt() and
         not target:HasOneOfTags(NON_LIFEFORM_TARGET_TAGS)
     then
-        owner.components.health:DoDelta(inst._lifesteal, false, "shadow_battleaxe")
+		local mult = owner.components.aoediminishingreturns and owner.components.aoediminishingreturns.mult:Get() or 1
+		owner.components.health:DoDelta(inst._lifesteal * mult, false, "shadow_battleaxe")
 
         if owner.components.sanity ~= nil then
             owner.components.sanity:DoDelta(-inst._lifesteal * TUNING.SHADOW_BATTLEAXE.LIFE_STEAL_SANITY_LOSS_SCALE)
@@ -912,9 +913,13 @@ end
 local function FxOnEquipToggle(inst)
     local owner = inst.equiptoggle:value() and inst.entity:GetParent() or nil
     if owner ~= nil then
-        if inst.fx == nil then
+        -- We might have switched owners (e.g. wx backup <-> possessed chassis transition)
+        if inst.fx ~= nil then
+            FxRemoveAll(inst)
+        else
             inst.fx = {}
         end
+
         local frame = inst.AnimState:GetCurrentAnimationFrame()
         for i, v in ipairs(FX_DEFS) do
             local fx = inst.fx[i]

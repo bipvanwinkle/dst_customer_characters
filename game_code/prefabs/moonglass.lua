@@ -50,6 +50,7 @@ local function createglass(name, preinit, postinit)
 
 		inst:AddTag("moonglass_piece")
 		inst:AddTag("lunarhaildebris")
+        inst:AddTag("quakedebris")
 
         if preinit then
            inst = preinit(inst)
@@ -70,6 +71,13 @@ local function createglass(name, preinit, postinit)
 
         inst:AddComponent("inventoryitem")
         inst.components.inventoryitem:SetSinks(true)
+
+        inst:AddComponent("edible")
+        inst.components.edible.foodtype = FOODTYPE.LUNAR_SHARDS
+        inst.components.edible.hungervalue = TUNING.CALORIES_SMALL
+        inst.components.edible.healthvalue = TUNING.HEALING_TINY
+
+        inst:AddComponent("bait")
 
         MakeHauntableLaunchAndSmash(inst)
 
@@ -98,18 +106,32 @@ local function ondropped(inst)
     inst.Light:Enable(true)
 end
 
+local function regular_postinit(inst)
+	inst:AddComponent("snowmandecor")
+	return inst
+end
+
+local function displayadjectivefn(inst)
+	return inst:HasTag("stale") and STRINGS.UI.HUD.STALE_POWER
+        or inst:HasTag("spoiled") and STRINGS.UI.HUD.SPOILED_POWER
+        or nil
+end
+
 local function infused_preinit(inst)
     inst.entity:AddLight()
     inst.AnimState:SetBloomEffectHandle("shaders/anim.ksh")
     inst.AnimState:SetBank("moonglass_charged")
     inst.AnimState:SetBuild("moonglass_charged")
     inst:AddTag("show_spoilage")
+    inst:AddTag("infusedshard")
 
     inst.Light:SetColour(111/255, 111/255, 227/255)
     inst.Light:SetIntensity(0.75)
     inst.Light:SetFalloff(0.5)
     inst.Light:SetRadius(1)
     inst.Light:Enable(true)
+
+    inst.displayadjectivefn = displayadjectivefn
 
     return inst
 end
@@ -125,5 +147,5 @@ local function infused_postinit(inst)
     return inst
 end
 
-return createglass("moonglass"),
+return createglass("moonglass", nil, regular_postinit),
        createglass("moonglass_charged", infused_preinit, infused_postinit)

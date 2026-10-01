@@ -134,7 +134,7 @@ local function OnUpdateProximity(inst, fast)
 		if inst._suspend_radius and
 			inst._suspendedplayer == nil and
 			inst.size == "_big" and
-			v.isplayer and
+			(v.isplayer or v:HasTag("possessedbody")) and
 			v.sg and not v.sg:HasStateTag("suspended") and
 			not (v.components.rider and v.components.rider:IsRiding()) and
 			not v:HasTag("wereplayer") and
@@ -154,6 +154,11 @@ local function OnUpdateProximity(inst, fast)
 					fx = SpawnPrefab("gelblob_attach_fx")
 					fx:SetupBlob(inst, v)
 					contacted = true
+					inst:ListenForEvent("onremove", function(fx)
+						if inst._targets[v] == fx then
+							inst._targets[v] = nil
+						end
+					end, fx)
 				end
 				inst._targets[v] = fx
 			end
@@ -259,13 +264,16 @@ local function DoDigest(inst, target, useimpactsound)
 end
 
 local function OnUpdateSuspended2(inst)
+	inst._suspendedtask = nil
 	DoDigest(inst, inst._suspendedplayer, true)
 	StealSuspendedEquip(inst)
 	ReleaseSuspended(inst, true)
 end
 
 local function OnUpdateSuspended(inst)
-	if inst._digestcount < 3 then
+	if inst.sg:HasStateTag("electrocute") then
+		inst._suspendedplayer:PushEvent("abouttospit")
+	elseif inst._digestcount < 3 then
 		inst._digestcount = inst._digestcount + 1
 		DoDigest(inst, inst._suspendedplayer)
 		inst.sg:HandleEvent("jiggle")
@@ -496,6 +504,12 @@ local function OnDropItem(inst, data)
 	end
 end
 
+local function GetStatus(inst)
+	return (inst.components.inventory:HasAnyEquipment() and "HAS_ITEM")
+		or (inst._suspendedplayer ~= nil and "HAS_CHARACTER")
+		or nil
+end
+
 local function fn()
 	local inst = CreateEntity()
 
@@ -563,6 +577,7 @@ local function fn()
 	inst.components.planardamage:SetBaseDamage(TUNING.GELBLOB_PLANAR_DAMAGE)
 
 	inst:AddComponent("inspectable")
+	inst.components.inspectable.getstatus = GetStatus
 
 	inst:AddComponent("inventory")
 	inst.components.inventory.maxslots = 0
@@ -663,7 +678,7 @@ local function OnUpdateReturning(inst)
 			inst.Physics:SetMotorVel(0, 0, 0)
 			inst.Physics:Stop()
 		else
-			inst.speed = (inst.speed or -3 * CHUNK_RETURN_ACCEL) + CHUNK_RETURN_ACCEL
+			inst.speed = (inst.speed or (-3 * CHUNK_RETURN_ACCEL)) + CHUNK_RETURN_ACCEL
 			if inst.speed > 0 then
 				local mult = inst.speed / math.sqrt(dsq)
 				inst.Physics:SetMotorVel(dx * mult, 0, dz * mult)
@@ -673,21 +688,7 @@ local function OnUpdateReturning(inst)
 		inst.Physics:SetMotorVel(0, 0, 0)
 		inst.Physics:Stop()
 	else
-		inst._returntask:Cancel()
-		inst._returntask = nil
-		inst.persists = false
-		inst.Physics:SetMotorVel(0, 0, 0)
-		inst.Physics:Stop()
-		inst.DynamicShadow:Enable(false)
-		ErodeAway(inst)
-		if inst._proximitytask then
-			inst._proximitytask:Cancel()
-			inst._proximitytask = nil
-		end
-		for k, v in pairs(inst._targets) do
-			v:KillFX()
-			inst._targets[k] = nil
-		end
+		inst:KillFX()
 	end
 end
 
@@ -715,6 +716,41 @@ local function Small_OnEntitySleep(inst)
 	end
 end
 
+local function Small_KillFX(inst, quick)
+	if inst:IsAsleep() then
+		inst:Remove()
+	elseif not inst.killed then
+		inst.killed = true
+		if inst.tossing then
+			inst.tossing:Cancel()
+			inst.tossing = nil
+		end
+		inst.components.timer:StopTimer("lifespan")
+		if inst._returntask then
+			inst._returntask:Cancel()
+			inst._returntask = nil
+		end
+		inst.persists = false
+		inst.Physics:SetMotorVel(0, 0, 0)
+		inst.Physics:Stop()
+		inst.DynamicShadow:Enable(false)
+		if quick then
+			inst.AnimState:PlayAnimation("splash")
+			inst:ListenForEvent("animover", inst.Remove)
+		else
+			ErodeAway(inst)
+		end
+		inst.OnEntitySleep = inst.Remove
+		if inst._proximitytask then
+			inst._proximitytask:Cancel()
+			inst._proximitytask = nil
+		end
+		for k, v in pairs(inst._targets) do
+			v:KillFX()
+			inst._targets[k] = nil
+		end
+	end
+end
 
 local function Small_OnTimerDone(inst, data)
 	if data and data.name == "lifespan" then
@@ -771,6 +807,18 @@ local function ReleaseFromBottle(inst)
 	end
 	inst.SoundEmitter:KillSound("loop")
 	OnTossLanded(inst)
+end
+
+local function ReleaseFromAmmoAfflicted(inst)
+	ReleaseFromBottle(inst)
+	inst:RemoveTag("canbebottled")
+	inst:AddTag("NOCLICK")
+	inst.persists = false
+	if inst._proximitytask then
+		inst._proximitytask:Cancel()
+		inst._proximitytask = inst:DoPeriodicTask(0.1, OnUpdateProximity, nil, true)
+		OnUpdateProximity(inst, true)
+	end
 end
 
 local function OnStartLongAction(inst, doer)
@@ -838,7 +886,9 @@ local function smallfn()
 
 	inst.SetLifespan = SetLifespan
 	inst.ReleaseFromBottle = ReleaseFromBottle
+	inst.ReleaseFromAmmoAfflicted = ReleaseFromAmmoAfflicted
 	inst.Toss = Toss
+	inst.KillFX = Small_KillFX
 	inst.OnContactChanged = Small_OnContactChanged
 	inst.OnEntityWake = Small_OnEntityWake
 	inst.OnEntitySleep = Small_OnEntitySleep

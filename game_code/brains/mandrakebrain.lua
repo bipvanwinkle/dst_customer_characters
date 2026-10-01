@@ -7,11 +7,11 @@ local TARGET_FOLLOW_DIST = 3
 local MAX_FOLLOW_DIST = 8
 
 local function GetLeader(inst)
-    return inst.components.follower ~= nil and inst.components.follower.leader or nil
+    return inst.components.follower and inst.components.follower:GetLeader()
 end
 
 local function KeepFaceTargetFn(inst, target)
-    return inst.components.follower ~= nil and inst.components.follower.leader == target
+    return GetLeader(inst) == target
 end
 
 local MandrakeBrain = Class(Brain, function(self, inst)
@@ -22,6 +22,7 @@ function MandrakeBrain:OnStart()
     local root = PriorityNode(
     {
 		BrainCommon.PanicTrigger(self.inst),
+        BrainCommon.ElectricFencePanicTrigger(self.inst),
         Follow(self.inst, GetLeader, MIN_FOLLOW_DIST, TARGET_FOLLOW_DIST, MAX_FOLLOW_DIST),
         FaceEntity(self.inst, GetLeader, KeepFaceTargetFn),
         Wander(self.inst),

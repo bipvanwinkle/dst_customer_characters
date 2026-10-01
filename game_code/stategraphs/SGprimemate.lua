@@ -19,6 +19,7 @@ local events=
 {
     CommonHandlers.OnLocomote(false, true),
     CommonHandlers.OnFreeze(),
+	CommonHandlers.OnElectrocute(),
     CommonHandlers.OnAttacked(1),
     CommonHandlers.OnDeath(),
     CommonHandlers.OnSleep(),
@@ -51,6 +52,9 @@ local events=
             inst.sg:GoToState("cheer")
         end
     end),
+
+	-- Corpse handlers
+	CommonHandlers.OnCorpseChomped(),
 }
 
 local states =
@@ -364,9 +368,15 @@ CommonStates.AddCombatStates(states,
 		return "atk_weapon"
     end
     return nil
-end})
+end},
+{
+    has_corpse_handler = true,
+})
 
 CommonStates.AddFrozenStates(states)
+CommonStates.AddElectrocuteStates(states)
 
+CommonStates.AddInitState(states, "idle")
+CommonStates.AddCorpseStates(states, nil, nil, "prime_matecorpse")
 
-return StateGraph("primemate", states, events, "idle", actionhandlers)
+return StateGraph("primemate", states, events, "init", actionhandlers)

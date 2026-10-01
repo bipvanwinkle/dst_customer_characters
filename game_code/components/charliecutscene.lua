@@ -32,15 +32,7 @@ local REVERT_COLOUR_TIME = 3.5
 local function CharlieCam_UpdateFn(dt, params, parent, dist_sq)
     ------ Start Default Focal Point Update Function -------
 
-    local tpos = params.target:GetPosition()
-    local ppos = parent:GetPosition()
-
-    local range = params.maxrange - params.minrange
-    local offs = tpos - ppos
-    if dist_sq > params.minrange * params.minrange then
-        offs = offs * (range ~= 0 and ((params.maxrange - math.sqrt(dist_sq)) / range))
-    end
-
+	local offs = FocalPoint_CalcBaseOffset(dt, params, parent, dist_sq)
     offs.y = offs.y + 1
     TheCamera:SetOffset(offs)
 
@@ -350,6 +342,20 @@ function CharlieCutscene:SpawnCharlieHand()
     local spawn_pos = self:FindCharlieHandSpawnPoint()
 
     self.hand:Initialize(spawn_pos)
+end
+
+-----------------------------------------------------------------------------------------------
+
+function CharlieCutscene:SpawnCharlieHandKeyStone()
+    self.hand = SpawnPrefab("charlie_hand_keystone")
+
+    self.inst.components.entitytracker:TrackEntity("charlie_hand", self.hand)
+    self.hand.components.entitytracker:TrackEntity("atrium", self.inst)
+
+    local spawn_pos = self:FindCharlieHandSpawnPoint()
+
+    self.hand:Initialize(spawn_pos)
+    self.hand:ShowUp()
 end
 
 -----------------------------------------------------------------------------------------------

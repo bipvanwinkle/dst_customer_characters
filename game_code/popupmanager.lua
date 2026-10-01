@@ -1,3 +1,6 @@
+--V2C: -For popups validaterpcfn, ALL params should be optional.
+--     -If validation fails, the RPC will still trigger ClosePopup, but without passing any params.
+
 PopupManagerWidget = Class(function(self, data)
     data = data or {}
 
@@ -10,7 +13,27 @@ function PopupManagerWidget:Close(inst, ...)
         if not TheWorld.ismastersim then
             SendRPCToServer(RPC.ClosePopup, self.code, self.mod_name, ...)
         else
-            inst:PushEvent("ms_closepopup", {popup = self, args = {...}})
+			inst:PushEvent("ms_closepopup", { popup = self, args = toarray(...) })
+        end
+    end
+end
+
+function PopupManagerWidget:SendMessageToServer(inst, ...)
+    if TheWorld ~= nil then -- NOTES(JBK): This is here for running debug panels at the main menu.
+        if not TheWorld.ismastersim then
+            SendRPCToServer(RPC.RecievePopupMessage, self.code, self.mod_name, ...)
+        else
+			inst:PushEvent("ms_popupmessage", { popup = self, args = toarray(...) })
+        end
+    end
+end
+
+function PopupManagerWidget:SendMessageToClient(inst, ...)
+    if TheWorld ~= nil then -- NOTES(JBK): This is here for running debug panels at the main menu.
+        if inst.userid ~= nil and (TheNet:IsDedicated() or (TheWorld.ismastersim and inst ~= ThePlayer)) then
+            SendRPCToClient(CLIENT_RPC.RecievePopupMessage, inst.userid, self.code, self.mod_name, ...)
+        else
+			inst:PushEvent("client_popupmessage", { popup = self, args = toarray(...) })
         end
     end
 end
@@ -23,6 +46,7 @@ POPUPS = {
     GIFTITEM = PopupManagerWidget(),
     WARDROBE = PopupManagerWidget(),
     GROOMER = PopupManagerWidget(),
+    HERMITCRABWARDROBE = PopupManagerWidget(),
     COOKBOOK = PopupManagerWidget(),
     PLANTREGISTRY = PopupManagerWidget(),
     SKILLTREE = PopupManagerWidget(),
@@ -30,6 +54,9 @@ POPUPS = {
     SCRAPBOOK = PopupManagerWidget(),
     INSPECTACLES = PopupManagerWidget(),
 	PUMPKINCARVING = PopupManagerWidget(),
+	PUMPKINHATCARVING = PopupManagerWidget(),
+	SNOWMANDECORATING = PopupManagerWidget(),
+    BALATRO = PopupManagerWidget(),
 }
 
 POPUPS_BY_POPUP_CODE = {}
@@ -103,6 +130,22 @@ POPUPS.GROOMER.fn = function(inst, show, target, filter)
     end
 end
 
+
+POPUPS.HERMITCRABWARDROBE.validaterpcfn = function(base_skin, cancel)
+    return optstring(base_skin) and optbool(cancel)
+end
+
+POPUPS.HERMITCRABWARDROBE.fn = function(inst, show, target, filter)
+    if inst.HUD then
+        if not show then
+            inst.HUD:CloseHermitCrabWardrobeScreen()
+        elseif not inst.HUD:OpenHermitCrabWardrobeScreen(target, filter) then
+            POPUPS.HERMITCRABWARDROBE:Close(inst)
+        end
+    end
+end
+
+
 POPUPS.COOKBOOK.fn = function(inst, show)
     if inst.HUD then
         if not show then
@@ -157,6 +200,20 @@ POPUPS.INSPECTACLES.fn = function(inst, show)
     end
 end
 
+POPUPS.BALATRO.validaterpcfn = function(solution)
+    return optuint(solution)
+end
+
+POPUPS.BALATRO.fn = function(inst, show, target, joker1, joker2, joker3, card1, card2, card3, card4, card5)
+    if inst.HUD then
+        if not show then
+            inst.HUD:CloseBalatroScreen()
+        elseif not inst.HUD:OpenBalatroScreen(target, { joker1, joker2, joker3 }, { card1, card2, card3, card4, card5 }) then
+            POPUPS.BALATRO:Close(inst)
+        end
+    end
+end
+
 POPUPS.PUMPKINCARVING.validaterpcfn = function(cutdata)
     return optstring(cutdata)
 end
@@ -167,6 +224,47 @@ POPUPS.PUMPKINCARVING.fn = function(inst, show, target)
 			inst.HUD:ClosePumpkinCarvingScreen()
 		elseif not inst.HUD:OpenPumpkinCarvingScreen(target) then
 			POPUPS.PUMPKINCARVING.Close(inst)
+		end
+	end
+end
+
+POPUPS.PUMPKINHATCARVING.validaterpcfn = function(...)
+	local PumpkinHatCarvable = require("components/pumpkinhatcarvable")
+	local zerotest --can only have all 0, or no 0 at all
+	for i = 1, #PumpkinHatCarvable.PARTS do
+		local val = select(i, ...)
+		if not optuint(val) then
+			return false
+		end
+		local zeroval = val == 0
+		if zeroval == zerotest then
+			return false
+		end
+		zerotest = not zeroval
+	end
+	return true
+end
+
+POPUPS.PUMPKINHATCARVING.fn = function(inst, show, target)
+	if inst.HUD then
+		if not show then
+			inst.HUD:ClosePumpkinHatCarvingScreen()
+		elseif not inst.HUD:OpenPumpkinHatCarvingScreen(target) then
+			POPUPS.PUMPKINHATCARVING.Close(inst)
+		end
+	end
+end
+
+POPUPS.SNOWMANDECORATING.validaterpcfn = function(decordata, obj)
+	return optstring(decordata) and optentity(obj)
+end
+
+POPUPS.SNOWMANDECORATING.fn = function(inst, show, target, obj)
+	if inst.HUD then
+		if not show then
+			inst.HUD:CloseSnowmanDecoratingScreen()
+		elseif not inst.HUD:OpenSnowmanDecoratingScreen(target, obj) then
+			POPUPS.SNOWMANDECORATING.Close(inst)
 		end
 	end
 end

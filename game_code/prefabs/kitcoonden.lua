@@ -39,7 +39,7 @@ local function onbuilt(inst)
 	local x, y, z = inst.Transform:GetWorldPosition()
 	local kitcoons = TheSim:FindEntities(x, y, z, TUNING.KITCOON_NEAR_DEN_DIST, {"kitcoon"})
 	for _, kitcoon in ipairs(kitcoons) do
-		if kitcoon.components.follower.leader == nil then
+		if kitcoon.components.follower:GetLeader() == nil then
 			inst.components.kitcoonden:AddKitcoon(kitcoon)
 		end
 	end
@@ -324,6 +324,7 @@ local function OnLoad(inst, data)
 	if data ~= nil then
         if data.burnt and not inst:HasTag("burnt") then
             OnBurnt(inst)
+            RemoveLunarHailBuildup(inst)
         end
 	end
 end

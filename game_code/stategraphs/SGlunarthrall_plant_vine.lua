@@ -107,9 +107,7 @@ local function DoToss(inst)
 	local x, y, z = inst.Transform:GetWorldPosition()
 	local totoss = TheSim:FindEntities(x, 0, z, TOSS_RADIUS + TOSS_RADIUS_PADDING, TOSSITEM_MUST_TAGS, TOSSITEM_CANT_TAGS)
 	for i, v in ipairs(totoss) do
-		if v.components.mine ~= nil then
-			v.components.mine:Deactivate()
-		end
+		DeactivateInventoryItemBeforeLaunch(v)
 		if not v.components.inventoryitem.nobounce then
 			Launch2(v, inst, .5, 1, .1, TOSS_RADIUS + v:GetPhysicsRadius(0))
 		end
@@ -118,9 +116,12 @@ end
 
 local events =
 {
-    EventHandler("attacked", function(inst)
+	CommonHandlers.OnElectrocute(),
+	EventHandler("attacked", function(inst, data)
         if not inst.components.health:IsDead() then
-			if inst.sg:HasStateTag("caninterrupt") or not inst.sg:HasStateTag("busy") then
+			if CommonHandlers.TryElectrocuteOnAttacked(inst, data) then
+				return
+			elseif inst.sg:HasStateTag("caninterrupt") or not inst.sg:HasStateTag("busy") then
                 inst.sg:GoToState("hit")
             end
         end
@@ -205,7 +206,7 @@ local states=
 
     State{
         name = "emerge",
-        tags = {"busy", "canrotate","emerged"},
+		tags = { "busy", "canrotate", "emerged", "noelectrocute" },
 
         onenter = function(inst)
             if inst:HasTag("weakvine") then
@@ -218,7 +219,10 @@ local states=
 
         timeline=
         {
-            TimeEvent(7*FRAMES, function(inst) inst.sg:AddStateTag("caninterrupt") end ),
+			FrameEvent(7, function(inst)
+				inst.sg:AddStateTag("caninterrupt")
+				inst.sg:RemoveStateTag("noelectrocute")
+			end),
         },
 
         events =
@@ -232,7 +236,7 @@ local states=
 
     State{
         name = "retract",
-        tags = {"busy", "canrotate", "retracting", "emerged"},
+		tags = { "busy", "canrotate", "retracting", "emerged", "noelectrocute" },
 
         onenter = function(inst, pos)
             inst.sg.statemem.pos = pos
@@ -241,7 +245,7 @@ local states=
 
         timeline=
         {
-            TimeEvent(15*FRAMES, function(inst) 
+			FrameEvent(11, function(inst) 
                 inst.sg:AddStateTag("noattack")
                 if inst.components.burnable and inst.components.burnable:IsBurning() then
                     inst.components.burnable:Extinguish()
@@ -337,7 +341,7 @@ local states=
     
     State{
         name = "death",
-        tags = {"busy"},
+		tags = { "dead", "busy" },
 
         onenter = function(inst)
 			cancelmovetail(inst)
@@ -364,7 +368,7 @@ local states=
 
     State{
         name = "nub_spawn",
-        tags = {"busy", "noattack","nub"},
+		tags = { "busy", "nub", "noelectrocute" },
 
         onenter = function(inst,pos)
             local pt = Vector3(inst.Transform:GetWorldPosition())
@@ -372,9 +376,9 @@ local states=
 
             if #ents <= 0 then
                 inst:setweakstate(true)
-                inst.sg:RemoveStateTag("noattack")
             else
                 inst:setweakstate(false)
+				inst.sg:AddStateTag("noattack")
             end
 
             inst.sg.statemem.pos = pos
@@ -404,11 +408,12 @@ local states=
 
     State{
         name = "nub_idle",
-        tags = {"idle", "noattack","nub"},
+		tags = { "idle", "nub" },
 
         onenter = function(inst)
-            if inst:HasTag("weakvine") then
-                inst.sg:RemoveStateTag("noattack")
+			if not inst:HasTag("weakvine") then
+				inst.sg:AddStateTag("noattack")
+				inst.sg:AddStateTag("noelectrocute")
             end
             inst.AnimState:PlayAnimation("idle")
         end,
@@ -426,11 +431,12 @@ local states=
 
     State{
         name = "nub_reverse",
-        tags = {"noattack","nub"},
+		tags = { "nub" },
 
         onenter = function(inst)
-            if inst:HasTag("weakvine") then
-                inst.sg:RemoveStateTag("noattack")
+			if not inst:HasTag("weakvine") then
+				inst.sg:AddStateTag("noattack")
+				inst.sg:AddStateTag("noelectrocute")
             end
             inst.AnimState:PlayAnimation("retract_loop")
         end,
@@ -445,11 +451,12 @@ local states=
 
     State{
         name = "nub_forward",
-        tags = {"noattack","nub"},
+		tags = { "nub" },
 
         onenter = function(inst)
-            if inst:HasTag("weakvine") then
-                inst.sg:RemoveStateTag("noattack")
+			if not inst:HasTag("weakvine") then
+				inst.sg:AddStateTag("noattack")
+				inst.sg:AddStateTag("noelectrocute")
             end
             inst.AnimState:PlayAnimation("loop")
         end,
@@ -464,11 +471,11 @@ local states=
 
     State{
         name = "nub_retract",
-        tags = {"noattack","nub"},
+		tags = { "nub", "noelectrocute" },
 
         onenter = function(inst,pos,notailmove)
-            if inst:HasTag("weakvine") then
-                inst.sg:RemoveStateTag("noattack")
+			if not inst:HasTag("weakvine") then
+				inst.sg:AddStateTag("noattack")
             end
             inst.sg.statemem.pos = pos
             inst.AnimState:PlayAnimation("retract")
@@ -563,5 +570,58 @@ local states=
 		end,
 	},
 }
+
+CommonStates.AddElectrocuteStates(states,
+nil, --timelines
+nil, --anims
+{	--fns
+	loop_onenter = function(inst)
+		if inst:HasTag("lunarthrall_plant_end") then
+			inst.sg:AddStateTag("emerged")
+		elseif not inst:HasTag("weakvine") then
+			inst:setweakstate(true)
+		end
+
+		local data = inst.sg.statemem.data
+		local syncdata =
+		{
+			duration = data and data.duration,
+			noburn = true,
+			synced = true,
+		}
+
+		if inst.tails then
+			for i, v in ipairs(inst.tails) do
+				if not v.sg:HasStateTag("electrocute") then
+					v:PushEventImmediate("electrocute", syncdata)
+				end
+			end
+		end
+
+		if not (data and data.synced) then
+			local parent = (inst.headplant or inst).parentplant
+			if parent and not parent.sg:HasStateTag("electrocute") then
+				parent:PushEventImmediate("electrocute", syncdata)
+			end
+		end
+	end,
+	pst_onenter = function(inst)
+		if inst:HasTag("lunarthrall_plant_end") then
+			inst.sg:AddStateTag("emerged")
+		end
+	end,
+	onanimover = function(inst)
+		if inst.AnimState:AnimDone() then
+			if inst:HasTag("weakvine") or not inst:HasTag("lunarthrall_plant_end") then
+				inst.sg:GoToState("nub_idle")
+			else
+				inst.sg:GoToState("idle")
+			end
+			if inst:HasTag("lunarthrall_plant_end") then
+				inst:ChooseAction()
+			end
+		end
+	end,
+})
 
 return StateGraph("lunarthrall_plant_vine", states, events, "nub_idle")

@@ -1,6 +1,13 @@
 local assets =
 {
-    Asset("ANIM", "anim/charlie_heckler2.zip"),    
+    Asset("ANIM", "anim/charlie_heckler2.zip"),
+    Asset("ANIM", "anim/yoth_charlie_heckler2_build.zip"),
+}
+
+local prefabs =
+{
+    -- Year of the Clockwork Knight
+    "playbill_the_princess_yoth",
 }
 
 local function fn()
@@ -9,15 +16,13 @@ local function fn()
     inst.entity:AddTransform()
     inst.entity:AddAnimState()
     inst.entity:AddSoundEmitter()
-    inst.entity:AddDynamicShadow()
     inst.entity:AddNetwork()
     inst.entity:AddFollower()
 
-    inst.DynamicShadow:SetSize(1.50, 0.75)
     inst.Transform:SetSixFaced()
 
     inst.AnimState:SetBank("charlie_heckler2")
-    inst.AnimState:SetBuild("charlie_heckler2")
+    inst.AnimState:SetBuild(IsSpecialEventActive(SPECIAL_EVENTS.YOTH) and "yoth_charlie_heckler2_build" or "charlie_heckler2")
     inst.AnimState:PlayAnimation("idle")
 
     inst:AddComponent("talker")
@@ -26,6 +31,9 @@ local function fn()
     inst.components.talker.colour = Vector3(163/255, 212/255, 158/255)
     inst.components.talker.offset = Vector3(0, -80, 0)
     inst.components.talker:MakeChatter()
+
+	inst:AddTag("NOCLICK") --starts in "idle" state with NOCLICK tag
+    inst:AddTag("NOBLOCK")
 
     inst.entity:SetPristine()
 
@@ -46,4 +54,4 @@ local function fn()
     return inst
 end
 
-return Prefab("charlie_heckler", fn, assets)
+return Prefab("charlie_heckler", fn, assets, prefabs)

@@ -45,6 +45,12 @@ local mutated_prefabs =
 	"ice",
 	"chesspiece_deerclops_mutated_sketch",
 	"winter_ornament_boss_mutateddeerclops",
+    "coolant",
+}
+
+local mutated_scrapbook_adddeps =
+{
+	"lunarthrall_plant_gestalt",
 }
 
 local normal_sounds =
@@ -82,7 +88,7 @@ end
 
 local function WantsToLeave(inst)
     return
-        not TheWorld.state.iswinter or
+		not (TUNING.DEERCLOPS_ATTACKS_OFF_SEASON or TheWorld.state.iswinter) or
         (
             not inst.components.combat:HasTarget()
             and inst:IsSated()
@@ -162,7 +168,7 @@ local function OnEntitySleep(inst)
 end
 
 local function OnStopWinter(inst)
-    if inst:IsAsleep() then
+	if not TUNING.DEERCLOPS_ATTACKS_OFF_SEASON and inst:IsAsleep() then
 		if not inst.ignorebase then
 			TheWorld:PushEvent("storehassler", inst)
 		end
@@ -172,16 +178,20 @@ end
 
 local function OnSave(inst, data)
     data.structuresDestroyed = inst.structuresDestroyed
-	data.looted = inst.looted
 end
 
 local function OnLoad(inst, data)
     if data then
         inst.structuresDestroyed = data.structuresDestroyed or inst.structuresDestroyed
-		inst.looted = data.looted
-		if inst.looted ~= nil and inst.components.health:IsDead() then
-			inst.sg:GoToState("corpse", true)
-		end
+
+        -- Deprecated, kept for old saves
+        inst.looted = data.looted
+        if inst.looted then
+            inst:SetDeathLootLevel(inst.looted)
+            if inst.components.health:IsDead() then
+			    inst.sg:GoToState("corpse")
+		    end
+        end
     end
 end
 
@@ -199,13 +209,10 @@ local function OnHitOther(inst, data)
             if other.components.freezable ~= nil then
 				other.components.freezable:AddColdness(inst.sg.statemem.freezepower or inst.freezepower or 2)
             end
-            if other.components.temperature ~= nil then
-                local mintemp = math.max(other.components.temperature.mintemp, 0)
-                local curtemp = other.components.temperature:GetCurrent()
-                if mintemp < curtemp then
-                    other.components.temperature:DoDelta(math.max(-5, mintemp - curtemp))
-                end
-            end
+			local ent_temp = GetEntityTemperature(other)
+			if ent_temp and 0 < ent_temp then
+            	DoDeltaTemperatureToEntity(other, -5)
+			end
         end
         if other.components.freezable ~= nil then
             other.components.freezable:SpawnShatterFX()
@@ -425,7 +432,6 @@ local function commonfn(build, commonfn)
     ------------------
 
     inst:AddComponent("health")
-	inst.components.health.nofadeout = true
 
     ------------------
 
@@ -510,6 +516,8 @@ local function normalfn()
 	inst.components.sleeper:SetWakeTest(ShouldWake)
 
 	MakeHugeFreezableCharacter(inst, "deerclops_body")
+
+    inst.spawn_gestalt_mutated_tuning = "SPAWN_MUTATED_DEERCLOPS"
 
     if yule then
 		inst.yule = true
@@ -616,7 +624,9 @@ end
 
 local function mutatedcommonfn(inst)
     inst:AddTag("lunar_aligned")
+    inst:AddTag("gestaltmutant")
 	inst:AddTag("noepicmusic")
+	inst:AddTag("soulless") -- no wortox souls
 
 	inst.AnimState:Hide("gestalt_eye")
 
@@ -637,6 +647,12 @@ local function mutatedcommonfn(inst)
 	end
 end
 
+local COOLANT_LOOT = {"coolant"}
+local function LootSetupFn_mutated(lootdropper)
+    lootdropper:SetLoot(TheWorld.components.wagboss_tracker and TheWorld.components.wagboss_tracker:IsWagbossDefeated() and COOLANT_LOOT or nil)
+    lootdropper:SetChanceLootTable("mutateddeerclops")
+end
+
 local function mutatedfn()
     local inst = commonfn("deerclops_mutated", mutatedcommonfn)
 
@@ -646,6 +662,8 @@ local function mutatedfn()
         return inst
     end
 
+	inst.scrapbook_adddeps = mutated_scrapbook_adddeps
+
     inst.sounds = mutated_sounds
 	inst.hasiceaura = true
 	inst.hasknockback = true
@@ -653,6 +671,8 @@ local function mutatedfn()
 	inst.hasfrenzy = true
 	inst.freezepower = 3
 	inst.ignorebase = true
+
+    inst.sg.mem.nocorpse = true
 
     inst:AddComponent("timer")
 
@@ -666,7 +686,7 @@ local function mutatedfn()
 	inst:AddComponent("planardamage")
 	inst.components.planardamage:SetBaseDamage(TUNING.MUTATED_DEERCLOPS_PLANAR_DAMAGE)
 
-    inst.components.lootdropper:SetChanceLootTable("mutateddeerclops")
+    inst.components.lootdropper:SetLootSetupFn(LootSetupFn_mutated)
 
 	inst.components.burnable.fxdata[1].prefab = "character_fire_flicker"
 	inst.components.burnable.nocharring = true

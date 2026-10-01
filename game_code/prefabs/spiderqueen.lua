@@ -13,6 +13,8 @@ local prefabs =
     "silk",
     "spiderhat",
     "spidereggsack",
+
+    "spiderqueencorpse",
 }
 
 local brain = require "brains/spiderqueenbrain"
@@ -73,11 +75,12 @@ local function BabyCount(inst)
 end
 
 local function MakeBaby(inst)
+    local target = inst.components.combat.target
     local angle = (inst.Transform:GetRotation() + 180) * DEGREES
-    
+
     local prefab = "spider"
-    if inst.components.combat:HasTarget() and math.random() < 0.45 then
-        prefab = math.random() > 0.5 and "spider_warrior" or "spider_healer"
+    if target ~= nil and TryLuckRoll(target, TUNING.SPIDERQUEEN_SPAWN_BETTER_SPIDER_CHANCE, LuckFormulas.SpiderQueenBetterSpider) then
+        prefab = math.random() <= TUNING.SPIDERQUEEN_SPAWN_SPIDER_WARRIOR_CHANCE and "spider_warrior" or "spider_healer"
     end
 
     local spider = inst.components.lootdropper:SpawnLootPrefab(prefab)
@@ -87,8 +90,8 @@ local function MakeBaby(inst)
         spider.Transform:SetPosition(x + rad * math.cos(angle), 0, z - rad * math.sin(angle))
         spider.sg:GoToState("taunt")
         inst.components.leader:AddFollower(spider)
-        if inst.components.combat.target ~= nil then
-            spider.components.combat:SetTarget(inst.components.combat.target)
+        if target ~= nil then
+            spider.components.combat:SetTarget(target)
         end
     end
 end
@@ -145,7 +148,7 @@ local function fn()
         return inst
     end
 
-    inst:SetStateGraph("SGspiderqueen")
+	inst.override_combat_fx_size = "med"
 
     inst:AddComponent("lootdropper")
     inst.components.lootdropper:SetLoot(loot)
@@ -216,7 +219,11 @@ local function fn()
 
     ------------------
 
+    inst:SetStateGraph("SGspiderqueen")
     inst:SetBrain(brain)
+
+	inst.hit_recovery = TUNING.SPIDERQEEN_HIT_RECOVERY
+    inst.spawn_lunar_mutated_tuning = "SPAWN_MUTATED_SPIDERQUEEN"
 
     inst:ListenForEvent("attacked", OnAttacked)
     inst:ListenForEvent("death", OnDead)

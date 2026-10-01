@@ -1,34 +1,69 @@
 local easing = require("easing")
 local SourceModifierList = require("util/sourcemodifierlist")
 
+local function _replica_setcurrent(self, replica_sanity, current, max, penalty, inducedinsanity, inducedlunacy)
+	replica_sanity:SetCurrent(
+		--(inducedunacy and inducedinsanity and 0) or --redundant
+		(inducedinsanity and 0) or
+		(inducedlunacy and max * (1 - penalty)) or
+		current
+	)
+end
+
+local function _replica_setissane(self, replica_sanity, sane, mode, inducedinsanity, inducedlunacy)
+	if mode == SANITY_MODE_INSANITY then
+		replica_sanity:SetIsSane(sane and not inducedinsanity or inducedlunacy or false)
+	else--if mode == SANITY_MODE_LUNACY then
+		replica_sanity:SetIsSane(sane and not inducedlunacy or inducedinsanity or false)
+	end
+end
+
 local function onmax(self, max)
-    self.inst.replica.sanity:SetMax(max)
+	local replica_sanity = self.inst.replica.sanity
+	replica_sanity:SetMax(max)
+	if self.inducedlunacy and not self.inducedinsanity then
+		--see _replica_setcurrent
+		replica_sanity:SetCurrent(max * (1 - self.penalty))
+	end
 end
 
 local function oncurrent(self, current)
-    self.inst.replica.sanity:SetCurrent(self.inducedinsanity and 0 or current)
+	_replica_setcurrent(self, self.inst.replica.sanity, current, self.max, self.penalty, self.inducedinsanity, self.inducedlunacy)
 end
 
 local function onratescale(self, ratescale)
     self.inst.replica.sanity:SetRateScale(ratescale)
 end
 
-
 local function onmode(self, mode)
-    self.inst.replica.sanity:SetSanityMode(mode)
+	local replica_sanity = self.inst.replica.sanity
+	replica_sanity:SetSanityMode(mode)
+	_replica_setissane(self, replica_sanity, self.sane, mode, self.inducedinsanity, self.inducedlunacy)
 end
 
 local function onsane(self, sane)
-    self.inst.replica.sanity:SetIsSane(not self.inducedinsanity and sane)
+	_replica_setissane(self, self.inst.replica.sanity, sane, self.mode, self.inducedinsanity, self.inducedlunacy)
 end
 
 local function oninducedinsanity(self, inducedinsanity)
-    self.inst.replica.sanity:SetIsSane(not inducedinsanity and self.sane)
-    self.inst.replica.sanity:SetCurrent(inducedinsanity and 0 or self.current)
+	local replica_sanity = self.inst.replica.sanity
+	_replica_setissane(self, replica_sanity, self.sane, self.mode, inducedinsanity, self.inducedlunacy)
+	_replica_setcurrent(self, replica_sanity, self.current, self.max, self.penalty, inducedinsanity, self.inducedlunacy)
+end
+
+local function oninducedlunacy(self, inducedlunacy)
+	local replica_sanity = self.inst.replica.sanity
+	_replica_setissane(self, replica_sanity, self.sane, self.mode, self.inducedinsanity, inducedlunacy)
+	_replica_setcurrent(self, replica_sanity, self.current, self.max, self.penalty, self.inducedinsanity, inducedlunacy)
 end
 
 local function onpenalty(self, penalty)
-    self.inst.replica.sanity:SetPenalty(penalty)
+	local replica_sanity = self.inst.replica.sanity
+	replica_sanity:SetPenalty(penalty)
+	if self.inducedlunacy and not self.inducedinsanity then
+		--see _replica_setcurrent
+		replica_sanity:SetCurrent(self.max * (1 - penalty))
+	end
 end
 
 local function onghostdrainmult(self, ghostdrainmult)
@@ -52,13 +87,16 @@ local Sanity = Class(function(self, inst)
 	self.externalmodifiers = SourceModifierList(self.inst, 0, SourceModifierList.additive)
     self.inducedinsanity = nil
     self.inducedinsanity_sources = nil
+    self.inducedlunacy = nil
+    self.inducedlunacy_sources = nil
     self.night_drain_mult = 1
 
     self.neg_aura_mult = 1 -- Deprecated, use the SourceModifier below
     self.neg_aura_modifiers = SourceModifierList(self.inst)
     self.neg_aura_absorb = 0
 
-	--self.neg_aura_immune = nil
+	--self.neg_aura_immune = nil --deprecated, use self.neg_aura_immune_sources below
+	self.neg_aura_immune_sources = SourceModifierList(inst, false, SourceModifierList.boolean)
     self.dapperness_mult = 1
     self.penalty = 0
 
@@ -68,14 +106,18 @@ local Sanity = Class(function(self, inst)
 
     self.custom_rate_fn = nil
 
-    --self.sanity_aura_immune = false -- is unaffected by ANY auras
+	--self.sanity_aura_immune = false --deprecated, use self.sanity_aura_immune_sources below
+	self.sanity_aura_immune_sources = SourceModifierList(inst, false, SourceModifierList.boolean) -- is unaffected by ANY auras
     --self.sanity_aura_immunities = nil -- protects against specific auras, like Wendy with the ghosts
-    --self.player_ghost_immune = false
+	--self.player_ghost_immune = false --deprecated, use self.player_ghost_immune_sources below
+	self.player_ghost_immune_sources = SourceModifierList(inst, false, SourceModifierList.boolean)
 
-    --self.light_drain_immune = false
+	--self.light_drain_immune = false --deprecated, use self.light_drain_immune_sources below
+	self.light_drain_immune_sources = SourceModifierList(inst, false, SourceModifierList.boolean)
 
     self._oldissane = self:IsSane()
     self._oldpercent = self:GetPercent()
+	self._oldmode = self.mode
 
     self.inst:StartUpdatingComponent(self)
     self:RecalcGhostDrain()
@@ -88,21 +130,25 @@ nil,
 	mode = onmode,
     sane = onsane,
     inducedinsanity = oninducedinsanity,
+    inducedlunacy = oninducedlunacy,
     penalty = onpenalty,
     ghost_drain_mult = onghostdrainmult,
 })
 
 function Sanity:IsSane()
-    return (self.mode == SANITY_MODE_INSANITY and (not self.inducedinsanity and self.sane))
-			or (self.mode == SANITY_MODE_LUNACY and (self.inducedinsanity or self.sane))
+	if self.mode == SANITY_MODE_INSANITY then
+		return self.sane and not self.inducedinsanity or self.inducedlunacy or false
+	else--if self.mode == SANITY_MODE_LUNACY then
+		return self.sane and not self.inducedlunacy or self.inducedinsanity or false
+	end
 end
 
 function Sanity:IsInsane()
-    return self.mode == SANITY_MODE_INSANITY and (self.inducedinsanity or not self.sane)
+	return self.mode == SANITY_MODE_INSANITY and (not self.sane or self.inducedinsanity) and not self.inducedlunacy
 end
 
 function Sanity:IsEnlightened()
-	return self.mode == SANITY_MODE_LUNACY and (not self.inducedinsanity and not self.sane)
+	return self.mode == SANITY_MODE_LUNACY and (not self.sane or self.inducedlunacy) and not self.inducedinsanity
 end
 
 function Sanity:IsCrazy()
@@ -126,15 +172,18 @@ function Sanity:GetSanityMode()
 	return self.mode
 end
 
-function Sanity:EnableLunacy(enable, source)
-	self._lunacy_sources:SetModifier(self.inst, enable, source)
-
+function Sanity:UpdateMode_Internal()
 	local mode = self._lunacy_sources:Get() and SANITY_MODE_LUNACY or SANITY_MODE_INSANITY
 	if self.mode ~= mode then
 		self.mode = mode
-        self.inst:PushEvent("sanitymodechanged", {mode = self.mode})
+		self.inst:PushEvent("sanitymodechanged", { mode = self.mode })
 		self:DoDelta(0)
 	end
+end
+
+function Sanity:EnableLunacy(enable, source)
+	self._lunacy_sources:SetModifier(self.inst, enable, source)
+	self:UpdateMode_Internal()
 end
 
 function Sanity:AddSanityPenalty(key, mod)
@@ -154,41 +203,56 @@ function Sanity:RecalculatePenalty()
         penalty = penalty + v
     end
 
-    penalty = math.min(penalty, 1-(5/self.max)) -- players cannot go lower than 5 max sanity. The sanity_penalties penalty will actually go beyond, so they will still have to remove enough sanity_penalties to get back above the 5 max sanity cap
-
-    self.penalty = penalty
+    -- players cannot go lower than 5 max sanity. The sanity_penalties penalty will actually go beyond,
+    -- so they will still have to remove enough sanity_penalties to get back above the 5 max sanity cap
+    self.penalty = math.min(penalty, 1-(5/self.max))
 
     self:DoDelta(0)
 end
 
-function Sanity:AddSanityAuraImmunity(tag)
+function Sanity:AddSanityAuraImmunity(tag, source)
+	local sources
 	if self.sanity_aura_immunities == nil then
 		self.sanity_aura_immunities = {}
+	else
+		sources = self.sanity_aura_immunities[tag]
 	end
-	self.sanity_aura_immunities[tag] = true
+	if sources == nil then
+		sources = SourceModifierList(self.inst, false, SourceModifierList.boolean)
+		self.sanity_aura_immunities[tag] = sources
+	end
+	sources:SetModifier(source or self.inst, true)
 end
 
-function Sanity:RemoveSanityAuraImmunity(tag)
-	self.sanity_aura_immunities[tag] = nil
-	if next(self.sanity_aura_immunities) == nil then
-		self.sanity_aura_immunities = nil
+function Sanity:RemoveSanityAuraImmunity(tag, source)
+	if self.sanity_aura_immunities then
+		local sources = self.sanity_aura_immunities[tag]
+		if sources then
+			sources:RemoveModifier(source or self.inst)
+			if not sources:Get() then
+				self.sanity_aura_immunities[tag] = nil
+				if next(self.sanity_aura_immunities) == nil then
+					self.sanity_aura_immunities = nil
+				end
+			end
+		end
 	end
 end
 
-function Sanity:SetFullAuraImmunity(immunity)
-    self.sanity_aura_immune = immunity
+function Sanity:SetFullAuraImmunity(immunity, source)
+	self.sanity_aura_immune_sources:SetModifier(source or self.inst, immunity)
 end
 
-function Sanity:SetNegativeAuraImmunity(immunity)
-    self.neg_aura_immune = immunity
+function Sanity:SetNegativeAuraImmunity(immunity, source)
+	self.neg_aura_immune_sources:SetModifier(source or self.inst, immunity)
 end
 
-function Sanity:SetPlayerGhostImmunity(immunity)
-    self.player_ghost_immune = immunity
+function Sanity:SetPlayerGhostImmunity(immunity, source)
+	self.player_ghost_immune_sources:SetModifier(source or self.inst, immunity)
 end
 
-function Sanity:SetLightDrainImmune(immunity)
-    self.light_drain_immune = immunity
+function Sanity:SetLightDrainImmune(immunity, source)
+	self.light_drain_immune_sources:SetModifier(source or self.inst, immunity)
 end
 
 function Sanity:OnSave()
@@ -222,11 +286,17 @@ function Sanity:GetRealPercent()
 end
 
 function Sanity:GetPercent()
-    return self.inducedinsanity and 0 or self:GetRealPercent()
+	--NOTE: (self.inducedlunacy and self.inducedinsanity) ==> 0
+    return (self.inducedinsanity and 0)
+		or (self.inducedlunacy and 1 - self.penalty)
+        or self:GetRealPercent()
 end
 
 function Sanity:GetPercentWithPenalty()
-    return self.inducedinsanity and 0 or self.current / (self.max - (self.max * self.penalty))
+	--NOTE: (self.inducedlunacy and self.inducedinsanity) ==> 0
+    return (self.inducedinsanity and 0)
+        or (self.inducedlunacy and 1)
+        or self.current / (self.max - (self.max * self.penalty))
 end
 
 function Sanity:SetPercent(per, overtime)
@@ -241,6 +311,11 @@ end
 
 function Sanity:SetMax(amount)
     self.max = amount
+    self.current = amount
+    self:DoDelta(0)
+end
+
+function Sanity:SetCurrent(amount)
     self.current = amount
     self:DoDelta(0)
 end
@@ -273,6 +348,29 @@ function Sanity:SetInducedInsanity(src, val)
         self.inducedinsanity = val
         self:DoDelta(0)
         self.inst:PushEvent("inducedinsanity", val)
+    end
+end
+
+function Sanity:SetInducedLunacy(src, val)
+    if val then
+        if self.inducedlunacy_sources == nil then
+            self.inducedlunacy_sources = { [src] = true }
+        else
+            self.inducedlunacy_sources[src] = true
+        end
+    elseif self.inducedlunacy_sources ~= nil then
+        self.inducedlunacy_sources[src] = nil
+        if next(self.inducedlunacy_sources) == nil then
+            self.inducedlunacy_sources = nil
+            val = nil
+        else
+            val = true
+        end
+    end
+    if self.inducedlunacy ~= val then
+        self.inducedlunacy = val
+        self:DoDelta(0)
+        self.inst:PushEvent("inducedlunacy", val)
     end
 end
 
@@ -309,7 +407,7 @@ function Sanity:DoDelta(delta, overtime)
     -- Re-call GetPercent on the slight chance that "sanitydelta" changed it.
     self._oldpercent = self:GetPercent()
 
-    if self:IsSane() ~= self._oldissane then
+	if self:IsSane() ~= self._oldissane or (not self._oldissane and self.mode ~= self._oldmode) then
         self._oldissane = self:IsSane()
         if self._oldissane then
             if self.onSane ~= nil then
@@ -333,9 +431,12 @@ function Sanity:DoDelta(delta, overtime)
 			end
         end
     end
+	self._oldmode = self.mode
 end
 
 function Sanity:OnUpdate(dt)
+	self:UpdateMode_Internal() --since we may not know when lunacy sources are removed
+
     if not (self.inst.components.health:IsInvincible() or
             self.inst:HasTag("spawnprotection") or
             self.inst.sg:HasStateTag("sleeping") or --need this now because you are no longer invincible during sleep
@@ -353,7 +454,7 @@ function Sanity:OnUpdate(dt)
 end
 
 function Sanity:RecalcGhostDrain()
-    if GetGhostSanityDrain(TheNet:GetServerGameMode()) and not self.player_ghost_immune then
+	if GetGhostSanityDrain(TheNet:GetServerGameMode()) and not self.player_ghost_immune_sources:Get() then
         local num_ghosts = TheWorld.shard.components.shard_players:GetNumGhosts()
         local num_alive = TheWorld.shard.components.shard_players:GetNumAlive()
         local group_resist = num_alive > num_ghosts and 1 - num_ghosts / num_alive or 0
@@ -386,13 +487,32 @@ end
 
 local SANITYRECALC_MUST_TAGS = { "sanityaura" }
 local SANITYRECALC_CANT_TAGS = { "FX", "NOCLICK", "DECOR","INLIMBO" }
+-- NOTES(JBK): This recalculation happens so many times in one frame we will reuse this table for all sanity components as a scratch pad to not stomp on garbage collection.
+local SCRATCHPAD_AURANAMES = {}
+local SCRATCHPAD_AURANAMES_ENDPOS = 0
+local function SCRATCHPAD_AURANAMES_HasBaseAuraNameBeenUsed(v)
+    local has_baseauraname_beenused = false
+    local baseauraname = v.components.sanityaura.baseauraname
+    if baseauraname then
+        for i = 1, SCRATCHPAD_AURANAMES_ENDPOS do
+            if SCRATCHPAD_AURANAMES[i] == baseauraname then
+                has_baseauraname_beenused = true
+                break
+            end
+        end
+        if not has_baseauraname_beenused then
+            SCRATCHPAD_AURANAMES_ENDPOS = SCRATCHPAD_AURANAMES_ENDPOS + 1
+            SCRATCHPAD_AURANAMES[SCRATCHPAD_AURANAMES_ENDPOS] = baseauraname
+        end
+    end
+    return has_baseauraname_beenused
+end
 function Sanity:Recalc(dt)
 	local dapper_delta = 0
 	if self.dapperness_mult ~= 0 then
 		local total_dapperness = self.dapperness
 		for k, v in pairs(self.inst.components.inventory.equipslots) do
             local equippable = v.components.equippable
-            
             if equippable ~= nil then
                 local item_dapperness = self.get_equippable_dappernessfn ~= nil and self.get_equippable_dappernessfn(self.inst, equippable) or equippable:GetDapperness(self.inst, self.no_moisture_penalty)
                 total_dapperness = total_dapperness + item_dapperness
@@ -403,12 +523,12 @@ function Sanity:Recalc(dt)
 		dapper_delta = total_dapperness * TUNING.SANITY_DAPPERNESS
 	end
 
-    local moisture_delta = self.no_moisture_penalty and 0 or easing.inSine(self.inst.components.moisture:GetMoisture(), 0, TUNING.MOISTURE_SANITY_PENALTY_MAX, self.inst.components.moisture:GetMaxMoisture())
+    local moisture_delta = (self.inst.components.moisture == nil or self.no_moisture_penalty) and 0 or easing.inSine(self.inst.components.moisture:GetMoisture(), 0, TUNING.MOISTURE_SANITY_PENALTY_MAX, self.inst.components.moisture:GetMaxMoisture())
 
     local light_sanity_drain = LIGHT_SANITY_DRAINS[self.mode]
 	local light_delta = 0
 
-    if not self.light_drain_immune then
+	if not self.light_drain_immune_sources:Get() then
         if TheWorld.state.isday and not TheWorld:HasTag("cave") then
             light_delta = light_sanity_drain.DAY
         else
@@ -421,36 +541,47 @@ function Sanity:Recalc(dt)
         end
     end
 
+    SCRATCHPAD_AURANAMES_ENDPOS = 0
     local aura_delta = 0
-	if not self.sanity_aura_immune then
-		local x, y, z = self.inst.Transform:GetWorldPosition()
-	    local ents = TheSim:FindEntities(x, y, z, TUNING.SANITY_AURA_SEACH_RANGE, SANITYRECALC_MUST_TAGS, SANITYRECALC_CANT_TAGS)
-	    for i, v in ipairs(ents) do
-	        if v.components.sanityaura ~= nil and v ~= self.inst then
+    if not self.sanity_aura_immune_sources:Get() then
+        local x, y, z = self.inst.Transform:GetWorldPosition()
+        local ents = TheSim:FindEntities(x, y, z, TUNING.SANITY_AURA_SEACH_RANGE, SANITYRECALC_MUST_TAGS, SANITYRECALC_CANT_TAGS)
+        for i, v in ipairs(ents) do
+            if v.components.sanityaura ~= nil and v ~= self.inst then
                 local is_aura_immune = false
-				if self.sanity_aura_immunities ~= nil then
-					for tag, _ in pairs(self.sanity_aura_immunities) do
-						if v:HasTag(tag) then
-							is_aura_immune = true
-							break
-						end
-					end
-				end
+                if self.sanity_aura_immunities ~= nil then
+                    for tag, sources in pairs(self.sanity_aura_immunities) do
+                        if not sources:Get() then
+                            self.sanity_aura_immunities[tag] = nil
+                            if next(self.sanity_aura_immunities) == nil then
+                                self.sanity_aura_immunities = nil
+                                break
+                            end
+                        elseif v:HasTag(tag) then
+                            is_aura_immune = true
+                            break
+                        end
+                    end
+                end
 
                 if not is_aura_immune then
-                    local aura_val = v.components.sanityaura:GetAura(self.inst)
-					aura_val = (aura_val < 0 and (self.neg_aura_absorb > 0 and self.neg_aura_absorb * -aura_val or aura_val) * self:GetAuraMultipliers() or aura_val)
-                    aura_delta = aura_delta + ((aura_val < 0 and self.neg_aura_immune) and 0 or aura_val)
+                    if not SCRATCHPAD_AURANAMES_HasBaseAuraNameBeenUsed(v) then
+                        local aura_val = v.components.sanityaura:GetAura(self.inst)
+                        aura_val = (aura_val < 0 and (self.neg_aura_absorb > 0 and self.neg_aura_absorb * -aura_val or aura_val) * self:GetAuraMultipliers() or aura_val)
+                        aura_delta = aura_delta + ((aura_val < 0 and self.neg_aura_immune_sources:Get()) and 0 or aura_val)
+                    end
                 end
             end
         end
     end
 
-    local mount = self.inst.components.rider:IsRiding() and self.inst.components.rider:GetMount() or nil
+    local mount = self.inst.components.rider and self.inst.components.rider:IsRiding() and self.inst.components.rider:GetMount() or nil
     if mount ~= nil and mount.components.sanityaura ~= nil then
-        local aura_val = mount.components.sanityaura:GetAura(self.inst)
-		aura_val = (aura_val < 0 and (self.neg_aura_absorb > 0 and self.neg_aura_absorb * -aura_val or aura_val) * self:GetAuraMultipliers() or aura_val)
-        aura_delta = aura_delta + ((aura_val < 0 and self.neg_aura_immune) and 0 or aura_val)
+        if not SCRATCHPAD_AURANAMES_HasBaseAuraNameBeenUsed(mount) then
+            local aura_val = mount.components.sanityaura:GetAura(self.inst)
+            aura_val = (aura_val < 0 and (self.neg_aura_absorb > 0 and self.neg_aura_absorb * -aura_val or aura_val) * self:GetAuraMultipliers() or aura_val)
+            aura_delta = aura_delta + ((aura_val < 0 and self.neg_aura_immune_sources:Get()) and 0 or aura_val)
+        end
     end
 
     self:RecalcGhostDrain()

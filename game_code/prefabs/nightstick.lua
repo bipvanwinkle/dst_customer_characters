@@ -21,7 +21,15 @@ end
 
 local function onequip(inst, owner)
     inst.components.burnable:Ignite()
-    owner.AnimState:OverrideSymbol("swap_object", "swap_nightstick", "swap_nightstick")
+
+    local skin_build = inst:GetSkinBuild()
+    if skin_build ~= nil then
+        owner:PushEvent("equipskinneditem", inst:GetSkinName())
+        owner.AnimState:OverrideItemSkinSymbol("swap_object", skin_build, "swap_nightstick", inst.GUID, "swap_nightstick")
+    else
+        owner.AnimState:OverrideSymbol("swap_object", "swap_nightstick", "swap_nightstick")
+    end
+
     owner.AnimState:Show("ARM_carry")
     owner.AnimState:Hide("ARM_normal")
 
@@ -37,6 +45,11 @@ local function onequip(inst, owner)
 end
 
 local function onunequip(inst, owner)
+    local skin_build = inst:GetSkinBuild()
+    if skin_build ~= nil then
+        owner:PushEvent("unequipskinneditem", inst:GetSkinName())
+    end
+
     if inst.fire ~= nil then
         inst.fire:Remove()
     end
@@ -88,9 +101,24 @@ local function onfuelchange(newsection, oldsection, inst)
 end
 
 local function onattack(inst, attacker, target)
-    if target ~= nil and target:IsValid() and attacker ~= nil and attacker:IsValid() then
-        SpawnPrefab("electrichitsparks"):AlignToTarget(target, attacker, true)
+    SpawnElectricHitSparks(attacker, target, true)
+end
+
+local function CalcBatteryChargeMult(inst, battery)
+	local pct = inst.components.fueled:GetPercent()
+	return math.clamp(1 - pct, 0, 1)
+end
+
+local function OnBatteryUsed(inst, battery, mult)
+	if mult <= 0 or inst.components.fueled:IsFull() then
+        return false, "CHARGE_FULL"
     end
+
+	local newpercent = math.clamp(inst.components.fueled:GetPercent() + mult, 0, 1)
+    inst.components.fueled:SetPercent(newpercent)
+    SpawnElectricHitSparks(inst, battery, true)
+
+    return true
 end
 
 local function fn()
@@ -108,6 +136,9 @@ local function fn()
     MakeInventoryPhysics(inst)
 
     inst:AddTag("wildfireprotected")
+
+	--batteryuser (from batteryuser component) added to pristine state for optimization
+	inst:AddTag("batteryuser")
 
     --weapon (from weapon component) added to pristine state for optimization
     inst:AddTag("weapon")
@@ -151,6 +182,11 @@ local function fn()
     inst.components.fueled:InitializeFuelLevel(TUNING.NIGHTSTICK_FUEL)
     inst.components.fueled:SetDepletedFn(inst.Remove)
     inst.components.fueled:SetFirstPeriod(TUNING.TURNON_FUELED_CONSUMPTION, TUNING.TURNON_FULL_FUELED_CONSUMPTION)
+
+	inst:AddComponent("batteryuser")
+	inst.components.batteryuser:SetChargeMultFn(CalcBatteryChargeMult)
+	inst.components.batteryuser:SetOnBatteryUsedFn(OnBatteryUsed)
+	inst.components.batteryuser:SetAllowPartialCharge(true)
 
     MakeHauntableLaunch(inst)
 

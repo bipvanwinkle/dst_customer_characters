@@ -50,6 +50,8 @@ SetSharedLootTable("alterguardian_phase3dead",
 local function orb_replacewithdead(inst)
     local dead_phase = SpawnPrefab("alterguardian_phase3dead")
     dead_phase.Transform:SetPosition(inst.Transform:GetWorldPosition())
+    dead_phase.Transform:SetRotation(inst.Transform:GetRotation())
+    dead_phase.AnimState:MakeFacingDirty() -- not needed for clients
 
     inst:Remove()
 end
@@ -122,13 +124,17 @@ local function start_wag_sequence(inst)
         ipos = ipos + offset
     end
 
-    local wagstaff = SpawnPrefab("wagstaff_npc_pstboss")
-    wagstaff.Transform:SetPosition(ipos:Get())
-    wagstaff:PushEvent("doerode", ERODEIN)
-    wagstaff:PushEvent("spawndevice", ERODEIN)
-    wagstaff:DoTaskInTime(ERODEIN.time - 5*FRAMES, function(w)
-        w:PushEvent("startwork", inst)
-    end)
+    if (TheWorld.components.wagboss_tracker and TheWorld.components.wagboss_tracker:IsWagbossDefeated()) then
+        inst:DoTaskInTime(3, function(d) d:PushEvent("orbtaken") end)
+    else
+        local wagstaff = SpawnPrefab("wagstaff_npc_pstboss")
+        wagstaff.Transform:SetPosition(ipos:Get())
+        wagstaff:PushEvent("doerode", ERODEIN)
+        wagstaff:PushEvent("spawndevice", ERODEIN)
+        wagstaff:DoTaskInTime(ERODEIN.time - 5*FRAMES, function(w)
+            w:PushEvent("startwork", inst)
+        end)
+    end
 end
 
 local function orbfn()
@@ -139,6 +145,8 @@ local function orbfn()
     inst.entity:AddLight()
     inst.entity:AddSoundEmitter()
     inst.entity:AddNetwork()
+
+    inst.Transform:SetSixFaced()
 
     set_lightvalues(inst, INITIAL_LIGHT_VALUE)
     inst.Light:SetColour(0.01, 0.35, 1)
@@ -153,6 +161,8 @@ local function orbfn()
     if not TheWorld.ismastersim then
         return inst
     end
+
+    WORLDSTATETAGS.SetTagEnabled("CELESTIAL_ORB_FOUND", true) -- Will drop when the dead boss is mined.
 
     inst:AddComponent("inspectable")
 
@@ -178,10 +188,9 @@ local ALTAR_PIECES =
     "moon_altar_ward",
 }
 
-local PIECEBLOCKER_CANT = {"INLIMBO", "FX", "DECOR", "NOCLICK", "flying", "ghost", "playerghost"}
+local PIECEBLOCKER_CANT = {"INLIMBO", "FX", "DECOR", "NOCLICK", "flying", "ghost", "playerghost", "_inventoryitem"}
 local function altarpiece_spawn_checkfn(v)
-    local ents = TheSim:FindEntities(v.x, v.y, v.z, 1.5, nil, PIECEBLOCKER_CANT)
-    return #ents == 0
+    return TheSim:CountEntities(v.x, v.y, v.z, 1.5, nil, PIECEBLOCKER_CANT) == 0
 end
 
 local function dead_onwork(inst, worker, workleft)
@@ -221,6 +230,8 @@ local function deadfn()
     inst.entity:AddAnimState()
     inst.entity:AddNetwork()
 
+    inst.Transform:SetSixFaced()
+
     MakeObstaclePhysics(inst, 2)
 
     inst.AnimState:SetBank("alterguardian_spawn_death")
@@ -239,6 +250,8 @@ local function deadfn()
         return inst
     end
 
+    WORLDSTATETAGS.SetTagEnabled("CELESTIAL_ORB_FOUND", true) -- Will drop when the dead boss is mined.
+
     inst:AddComponent("inspectable")
 
     inst:AddComponent("workable")
@@ -253,6 +266,7 @@ local function deadfn()
     inst.components.lootdropper.max_speed = 4.5
 
     MakeSnowCovered(inst)
+    SetLunarHailBuildupAmountLarge(inst)
 
     MakeHauntableWork(inst)
 

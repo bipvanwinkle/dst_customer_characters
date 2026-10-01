@@ -51,7 +51,7 @@ local FORMATION_MAX_SPEED = 10.5
 local FORMATION_RADIUS = 5.5
 local FORMATION_ROTATION_SPEED = 0.5
 local function OnUpdate(inst, dt)
-    local leader = inst.components.follower and inst.components.follower:GetLeader() or nil
+    local leader = inst.components.follower and inst.components.follower:GetLeader()
     if leader and leader.wormwood_lightflier_pattern and inst.brain and not inst.brain.stopped then
         local index = (leader.wormwood_lightflier_pattern[inst] or 1) - 1
         local maxpets = leader.wormwood_lightflier_pattern.maxpets
@@ -83,6 +83,13 @@ local function OnAttacked(inst, data)
             end
         end
     end
+end
+
+local function OnEntity_Init(inst)
+    -- Called once after the inst is initialized.
+    inst.SoundEmitter:PlaySound("grotto/creatures/light_bug/fly_LP", "loop")
+    inst.OnEntitySleep = nil
+    inst.OnEntityWake = nil
 end
 
 
@@ -151,6 +158,7 @@ local function fn()
     inst.components.locomotor.pathcaps = { allowocean = true }
 
     inst:SetStateGraph("SGwormwood_lightflier")
+    inst.sg.mem.burn_on_electrocute = true
     inst:SetBrain(brain)
 
     inst:AddComponent("combat")
@@ -169,15 +177,18 @@ local function fn()
 
     MakeSmallBurnableCharacter(inst, "lightbulb")
     MakeSmallFreezableCharacter(inst, "lightbulb")
+    inst.components.burnable:SetBurnTime(6 * TUNING.PLANTMOB_BURNTIME_MULT)
+    inst.components.health.fire_damage_scale = TUNING.PLANTMOB_FIRE_DAMAGE_SCALE
 
     local follower = inst:AddComponent("follower")
     follower:KeepLeaderOnAttacked()
     follower.keepdeadleader = true
     follower.keepleaderduringminigame = true
 
-    inst.SoundEmitter:PlaySound("grotto/creatures/light_bug/fly_LP", "loop")
-
     inst.EnableBuzz = EnableBuzz
+
+    inst.OnEntitySleep = OnEntity_Init
+    inst.OnEntityWake = OnEntity_Init
 
     local timer = inst:AddComponent("timer")
 	timer:StartTimer("finish_transformed_life", TUNING.WORMWOOD_PET_LIGHTFLIER_LIFETIME)

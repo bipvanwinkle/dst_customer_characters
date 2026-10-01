@@ -11,6 +11,7 @@ local BrainCommon = require "brains/braincommon"
 local SEE_FOOD_DIST = 10
 
 local TRADE_DIST = 20
+local TRADE_DIST_SQ = TRADE_DIST * TRADE_DIST
 
 local MAX_WANDER_DIST = 32
 
@@ -23,11 +24,16 @@ local SpiderBrain = Class(Brain, function(self, inst)
     Brain._ctor(self, inst)
 end)
 
-local GETTRADER_MUST_TAGS = { "player" }
 local function GetTraderFn(inst)
-    return inst.components.trader ~= nil
-        and FindEntity(inst, TRADE_DIST, function(target) return inst.components.trader:IsTryingToTradeWithMe(target) end, GETTRADER_MUST_TAGS)
-        or nil
+    if inst.components.trader ~= nil then
+        local x, y, z = inst.Transform:GetWorldPosition()
+        local players = FindPlayersInRangeSq(x, y, z, TRADE_DIST_SQ, true)
+        for _, player in ipairs(players) do
+            if inst.components.trader:IsTryingToTradeWithMe(player) then
+                return player
+            end
+        end
+    end
 end
 
 local function KeepTraderFn(inst, target)
@@ -36,17 +42,14 @@ local function KeepTraderFn(inst, target)
 end
 
 local EATFOOD_CANT_TAGS = { "INLIMBO", "outofreach" }
+local function IsFoodValid(item, inst)
+    return inst.components.eater:CanEat(item)
+        and item:IsOnValidGround()
+        and item:GetTimeAlive() > TUNING.SPIDER_EAT_DELAY
+end
+
 local function EatFoodAction(inst)
-    local target = FindEntity(inst,
-        SEE_FOOD_DIST,
-        function(item)
-            return inst.components.eater:CanEat(item)
-                and item:IsOnValidGround()
-                and item:GetTimeAlive() > TUNING.SPIDER_EAT_DELAY
-        end,
-        nil,
-        EATFOOD_CANT_TAGS
-    )
+    local target = FindEntity(inst, SEE_FOOD_DIST, IsFoodValid, nil, EATFOOD_CANT_TAGS, inst.components.eater:GetEdibleTags())
     return target ~= nil and BufferedAction(inst, target, ACTIONS.EAT) or nil
 end
 
@@ -72,12 +75,16 @@ local function InvestigateAction(inst)
     return investigatePos ~= nil and BufferedAction(inst, nil, ACTIONS.INVESTIGATE, nil, investigatePos, nil, 1) or nil
 end
 
+local function GetLeader(inst)
+    return inst.components.follower and inst.components.follower:GetLeader()
+end
+
 local function GetFaceTargetFn(inst)
-    return inst.components.follower.leader
+    return GetLeader(inst)
 end
 
 local function KeepFaceTargetFn(inst, target)
-    return inst.components.follower.leader == target
+    return GetLeader(inst) == target
 end
 
 ------------------------------------------------------------------------------------------
@@ -129,6 +136,7 @@ function SpiderBrain:OnStart()
     local pre_nodes = PriorityNode({
         BrainCommon.PanicWhenScared(self.inst, .3),
 		BrainCommon.PanicTrigger(self.inst),
+        BrainCommon.ElectricFencePanicTrigger(self.inst),
     })
 
     local post_nodes = PriorityNode({
@@ -147,7 +155,7 @@ function SpiderBrain:OnStart()
     })
 
     local attack_nodes = PriorityNode({
-        IfNode(function() return not self.inst.bedazzled and self.inst.components.follower.leader == nil end, "AttackWall",
+        IfNode(function() return not self.inst.bedazzled and GetLeader(self.inst) == nil end, "AttackWall",
             AttackWall(self.inst)
         ),
 
@@ -159,12 +167,12 @@ function SpiderBrain:OnStart()
 
     local aggressive_follow = PriorityNode({
         DoAction(self.inst, function() return EatFoodAction(self.inst) end ),
-        Follow(self.inst, function() return self.inst.components.follower.leader end, 
+        Follow(self.inst, function() return GetLeader(self.inst) end, 
                 TUNING.SPIDER_AGGRESSIVE_MIN_FOLLOW, TUNING.SPIDER_AGGRESSIVE_MED_FOLLOW, TUNING.SPIDER_AGGRESSIVE_MAX_FOLLOW),
     })
 
     local defensive_follow = PriorityNode({
-        Follow(self.inst, function() return self.inst.components.follower.leader end, 
+        Follow(self.inst, function() return GetLeader(self.inst) end, 
                 TUNING.SPIDER_DEFENSIVE_MIN_FOLLOW, TUNING.SPIDER_DEFENSIVE_MED_FOLLOW, TUNING.SPIDER_DEFENSIVE_MAX_FOLLOW),  
     })
 
@@ -175,7 +183,7 @@ function SpiderBrain:OnStart()
         IfNode(function() return not self.inst.defensive end, "AggressiveFollow",
             aggressive_follow),
 
-        IfNode(function() return self.inst.components.follower.leader ~= nil end, "HasLeader",
+        IfNode(function() return GetLeader(self.inst) ~= nil end, "HasLeader",
             FaceEntity(self.inst, GetFaceTargetFn, KeepFaceTargetFn )),
     })
 

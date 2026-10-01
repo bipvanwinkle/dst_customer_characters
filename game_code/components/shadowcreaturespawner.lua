@@ -13,6 +13,9 @@ assert(TheWorld.ismastersim, "Shadow creature spawner should not exist on client
 local NON_INSANITY_MODE_DESPAWN_INTERVAL = 0.1
 local NON_INSANITY_MODE_DESPAWN_VARIANCE = 0.1
 
+local KEY_ROOM_DESPAWN_INTERVAL = 0.2
+local KEY_ROOM_DESPAWN_VARIANCE = 0.1
+
 local OCEAN_SPAWN_ATTEMPTS = 4
 
 --------------------------------------------------------------------------
@@ -84,7 +87,7 @@ end
 local function SpawnLandShadowCreature(player)
     return SpawnPrefab(
         player.components.sanity:GetPercent() < .1 and
-        math.random() < TUNING.TERRORBEAK_SPAWN_CHANCE and
+        TryLuckRoll(player, TUNING.TERRORBEAK_SPAWN_CHANCE, LuckFormulas.TerrorbeakSpawn) and
         "terrorbeak" or
         "crawlinghorror"
     )
@@ -92,7 +95,6 @@ end
 
 local function SpawnOceanShadowCreature(player)
     return SpawnPrefab("oceanhorror")
-
 end
 
 function self:SpawnShadowCreature(player, params)
@@ -100,7 +102,7 @@ function self:SpawnShadowCreature(player, params)
 
     local x, y, z = player.Transform:GetWorldPosition()
     local boat = player:GetCurrentPlatform()
-    if player.components.sanity:GetPercent() < .1 and boat ~= nil then
+	if boat and boat:HasTag("boat") and player.components.sanity:GetPercent() < 0.1 then
         local boat_x, boat_y, boat_z = boat.Transform:GetWorldPosition()
 
         local angle = math.random() * TWOPI
@@ -199,11 +201,11 @@ local function UpdatePopulation(player, params)
         --Figure out our new target
         if targetpop > maxpop then
             targetpop = targetpop - 1
-        elseif math.random() < inc_chance then
+        elseif TryLuckRoll(player, inc_chance, LuckFormulas.IncreaseSanityMonsterPopulation) then
             if targetpop < maxpop then
                 targetpop = targetpop + 1
             end
-        elseif targetpop > 0 and math.random() < dec_chance then
+        elseif targetpop > 0 and TryLuckRoll(player, dec_chance, LuckFormulas.DecreaseSanityMonsterPopulation) then
             if targetpop < maxpop then
                 targetpop = targetpop - 1
             end
@@ -250,11 +252,11 @@ local function UpdatePopulation(player, params)
         --Figure out our new target
         if targetpop > maxpop then
             targetpop = targetpop - 1
-        elseif inc_chance > 0 and math.random() < inc_chance then
+        elseif inc_chance > 0 and TryLuckRoll(player, inc_chance, LuckFormulas.IncreaseSanityMonsterPopulation) then
             if targetpop < maxpop then
                 targetpop = targetpop + 1
             end
-        elseif dec_chance > 0 and math.random() < dec_chance then
+        elseif dec_chance > 0 and TryLuckRoll(player, dec_chance, LuckFormulas.DecreaseSanityMonsterPopulation) then
             if targetpop < maxpop then
                 targetpop = targetpop - 1
             end
@@ -267,9 +269,17 @@ local function UpdatePopulation(player, params)
         end
 
         --Reschedule population update
-        params.poptask = player:DoTaskInTime(is_insanity_mode and (TUNING.SANITYMONSTERS_POP_CHANGE_INTERVAL + TUNING.SANITYMONSTERS_POP_CHANGE_VARIANCE * math.random())
-												or (NON_INSANITY_MODE_DESPAWN_INTERVAL + NON_INSANITY_MODE_DESPAWN_VARIANCE * math.random())
-											, UpdatePopulation, params)
+        local schedule_time
+
+        local area_data = player.components.areaaware ~= nil and player.components.areaaware:GetCurrentArea() or nil
+        if area_data ~= nil and area_data.id ~= nil and area_data.id:find("Vault") and TheWorld.Map:IsPointInVaultRoom(player.Transform:GetWorldPosition()) then
+            schedule_time = KEY_ROOM_DESPAWN_INTERVAL + KEY_ROOM_DESPAWN_VARIANCE * math.random()
+        elseif is_insanity_mode then
+            schedule_time = TUNING.SANITYMONSTERS_POP_CHANGE_INTERVAL + TUNING.SANITYMONSTERS_POP_CHANGE_VARIANCE * math.random()
+        else
+            schedule_time = NON_INSANITY_MODE_DESPAWN_INTERVAL + NON_INSANITY_MODE_DESPAWN_VARIANCE * math.random()
+        end
+        params.poptask = player:DoTaskInTime(schedule_time, UpdatePopulation, params)
     end
 end
 

@@ -5,11 +5,11 @@ local actionhandlers =
     ActionHandler(ACTIONS.EAT, "eat"),
 }
 
-
 local events=
 {
     CommonHandlers.OnLocomote(true,true),
     CommonHandlers.OnSleep(),
+	CommonHandlers.OnElectrocute(),
     CommonHandlers.OnAttacked(),
     CommonHandlers.OnDeath(),
 
@@ -21,6 +21,8 @@ local events=
         inst.sg:GoToState("call_guards")
     end),
 
+	-- Corpse handlers
+	CommonHandlers.OnCorpseChomped(),
 }
 
 local function DoChewSound(inst)
@@ -174,6 +176,7 @@ local states=
     }
 }
 
+CommonStates.AddElectrocuteStates(states)
 CommonStates.AddCombatStates(states,
 {
     hittimeline =
@@ -184,6 +187,11 @@ CommonStates.AddCombatStates(states,
     {
         SoundFrameEvent(0, "dontstarve/characters/wurt/merm/king/death"),
     },
+},
+nil,
+nil,
+{
+    has_corpse_handler = true,
 })
 
 CommonStates.AddSimpleState(states, "get_trident", "give", {"busy"}, nil, {
@@ -205,4 +213,7 @@ CommonStates.AddSimpleState(states, "get_pauldron", "give", {"busy"}, nil, {
     end),
 })
 
-return StateGraph("mermking", states, events, "idle", actionhandlers)
+CommonStates.AddInitState(states, "idle")
+CommonStates.AddCorpseStates(states)
+
+return StateGraph("mermking", states, events, "init", actionhandlers)

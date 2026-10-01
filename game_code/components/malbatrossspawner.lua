@@ -68,7 +68,11 @@ local function TryBeginningMalbatrossSpawns()
             _worldsettingstimer:StartTimer(MALBATROSS_TIMERNAME, (_firstspawn and 0) or GetRandomWithVariance(TUNING.MALBATROSS_SPAWNDELAY_BASE, TUNING.MALBATROSS_SPAWNDELAY_RANDOM))
         end
 
-        _shuffled_shoals_for_spawning = _shuffled_shoals_for_spawning or shuffledKeys(_fishshoals)
+        -- Reshuffle if we don't have any shuffled shoals, or the number of fish shoals changed
+        if (_shuffled_shoals_for_spawning == nil)
+            or (#_shuffled_shoals_for_spawning ~= #_fishshoals) then
+            _shuffled_shoals_for_spawning = shuffledKeys(_fishshoals)
+        end
     end
 end
 
@@ -101,12 +105,18 @@ local function OnMalbatrossKilledOrRemoved(source, the_malbatross)
     TryBeginningMalbatrossSpawns()
 end
 
-local function OnShoalFishHooked(source, fish_shoal)
+local function OnShoalFishHookedRedux(source, data)
+    local fish_shoal = data.fish_shoal or nil
+    local fisher = data.fisher or nil
     if _activemalbatross == nil and fish_shoal ~= nil and (not _worldsettingstimer:ActiveTimerExists(MALBATROSS_TIMERNAME) or _worldsettingstimer:GetTimeLeft(MALBATROSS_TIMERNAME) < 10)
-            and math.random() < TUNING.MALBATROSS_HOOKEDFISH_SUMMONCHANCE then
+            and TryLuckRoll(fisher, TUNING.MALBATROSS_HOOKEDFISH_SUMMONCHANCE, LuckFormulas.MalbatrossSpawn) then
 
         _shuffled_shoals_for_spawning = {fish_shoal}
     end
+end
+
+local function OnShoalFishHooked(source, fish_shoal)
+    OnShoalFishHookedRedux(source, { fish_shoal = fish_shoal })
 end
 
 local function OnMalbatrossTimerDone()
@@ -176,7 +186,11 @@ end
 --------------------------------------------------------------------------
 --[[ Save/Load ]]
 --------------------------------------------------------------------------
-
+--[[
+FIXME (Omar):
+The shuffled shoals should be saved. Otherwise you can save/reload at a shoal and switch up whether its a malbatross spawn or not at that shoal, which is strange behaviour
+Not bothering at this point as we're nearing beta wrap up and I don't want to potentially create any more bugs.
+]]
 function self:OnSave()
     local data = {
         _firstspawn = _firstspawn,
@@ -271,6 +285,7 @@ end
 self.inst:ListenForEvent("ms_registerfishshoal", OnFishShoalAdded, TheWorld)
 self.inst:ListenForEvent("ms_unregisterfishshoal", OnFishShoalRemoved, TheWorld)
 self.inst:ListenForEvent("ms_shoalfishhooked", OnShoalFishHooked, TheWorld)
+self.inst:ListenForEvent("ms_shoalfishhooked_redux", OnShoalFishHookedRedux, TheWorld)
 self.inst:ListenForEvent("malbatrossremoved", OnMalbatrossKilledOrRemoved, TheWorld)
 self.inst:ListenForEvent("malbatrosskilled", OnMalbatrossKilledOrRemoved, TheWorld)
 

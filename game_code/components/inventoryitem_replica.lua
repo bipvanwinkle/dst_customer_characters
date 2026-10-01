@@ -90,6 +90,9 @@ function InventoryItem:CanBePickedUp(doer)
 	if restrictedtag and restrictedtag ~= 0 and doer and doer:HasTag(restrictedtag) then
 		return true
 	end
+    if self.inst:HasTag("spider") and doer and not doer:HasTag("spiderwhisperer") then
+        return false
+    end
     return not self._cannotbepickedup:value()
 end
 
@@ -105,8 +108,24 @@ function InventoryItem:SetCanOnlyGoInPocket(canonlygoinpocket)
     self.classified.canonlygoinpocket:set(canonlygoinpocket)
 end
 
+function InventoryItem:SetCanOnlyGoInPocketOrPocketContainers(canonlygoinpocketorpocketcontainers)
+    self.classified.canonlygoinpocketorpocketcontainers:set(canonlygoinpocketorpocketcontainers)
+end
+
 function InventoryItem:CanOnlyGoInPocket()
     return self.classified ~= nil and self.classified.canonlygoinpocket:value()
+end
+
+function InventoryItem:CanOnlyGoInPocketOrPocketContainers()
+    return self.classified ~= nil and self.classified.canonlygoinpocketorpocketcontainers:value()
+end
+
+function InventoryItem:SetIsLockedInSlot(locked)
+	self.classified.islockedinslot:set(locked)
+end
+
+function InventoryItem:IsLockedInSlot()
+	return self.classified ~= nil and self.classified.islockedinslot:value()
 end
 
 function InventoryItem:SetImage(imagename)
@@ -229,6 +248,9 @@ function InventoryItem:SerializeUsage()
         self.classified:SerializeRecharge(nil)
         self.classified:SerializeRechargeTime(nil)
     end
+    if self.inst.components.inventoryitemtemperature ~= nil then
+        self.classified:SerializeTemperature(self:GetTemperature())
+    end
 end
 
 function InventoryItem:DeserializeUsage()
@@ -237,6 +259,7 @@ function InventoryItem:DeserializeUsage()
         self.classified:DeserializePerish()
         self.classified:DeserializeRecharge()
         self.classified:DeserializeRechargeTime()
+        self.classified:DeserializeTemperature()
     end
 end
 
@@ -250,6 +273,15 @@ function InventoryItem:SetDeployMode(deploymode)
     self.classified.deploymode:set(deploymode)
 end
 
+function InventoryItem:GetDeployMode()
+    if self.inst.components.deployable then
+        return self.inst.components.deployable:GetDeployMode()
+    elseif self.classified then
+        return self.classified.deploymode:value()
+    end
+    return DEPLOYMODE.NONE
+end
+
 function InventoryItem:IsDeployable(deployer)
     if self.inst.components.deployable ~= nil then
         return self.inst.components.deployable:IsDeployable(deployer)
@@ -259,11 +291,17 @@ function InventoryItem:IsDeployable(deployer)
     local restrictedtag = self.classified.deployrestrictedtag:value()
 	if restrictedtag and restrictedtag ~= 0 and not (deployer and deployer:HasTag(restrictedtag)) then
 		return false
-	end
-	local rider = deployer and deployer.replica.rider or nil
-	if rider and rider:IsRiding() then
-		--can only deploy tossables while mounted
-		return self.inst:HasTag("projectile")
+	elseif deployer then
+		local rider = deployer.replica.rider
+		if rider and rider:IsRiding() then
+			--can only deploy tossables while mounted
+			return self.inst:HasTag("complexprojectile")
+		end
+		local inventory = deployer.replica.inventory
+		if inventory and inventory:IsFloaterHeld() then
+			--can only deploy boats while floating
+			return self.inst:HasTag("boatbuilder")
+		end
 	end
 	return true
 end
@@ -365,11 +403,26 @@ function InventoryItem:SetWalkSpeedMult(walkspeedmult)
     self.classified.walkspeedmult:set(x)
 end
 
+-- Keep logic in sync with Equippable::GetWalkSpeedMult()
 function InventoryItem:GetWalkSpeedMult()
     if self.inst.components.equippable ~= nil then
         return self.inst.components.equippable:GetWalkSpeedMult()
     elseif self.classified ~= nil then
-        return self.classified.walkspeedmult:value() / 100
+        local equippable = self.inst.replica.equippable
+        local speed = self.classified.walkspeedmult:value() / 100
+
+        if equippable and equippable:IsEquipped() then -- In case this was called without equippable??
+            if speed < 1 and ThePlayer:HasTag("vigorbuff") then
+                speed = math.min(1, speed + 0.25)
+            end
+
+            local speedmodifierfn = ThePlayer.inventory_EquippableWalkSpeedMultModifier
+            if speedmodifierfn ~= nil then
+                speed = speedmodifierfn(ThePlayer, speed, self.inst)
+            end
+        end
+
+        return speed
     else
         return 1
     end
@@ -381,7 +434,8 @@ end
 
 function InventoryItem:GetEquipRestrictedTag()
     if self.inst.components.equippable ~= nil then
-        return self.inst.components.equippable:GetRestrictedTag()
+		local tag = self.inst.components.equippable.restrictedtag
+		return tag and tag:len() > 0 and tag or nil
     end
     return self.classified ~= nil
         and self.classified.equiprestrictedtag:value() ~= 0
@@ -400,6 +454,16 @@ function InventoryItem:GetMoisture()
         return self.inst.components.inventoryitemmoisture.moisture
     elseif self.classified ~= nil then
         return self.classified.moisture:value()
+    else
+        return 0
+    end
+end
+
+function InventoryItem:GetMoisturePercent()
+    if self.inst.components.inventoryitemmoisture ~= nil then
+        return self.inst.components.inventoryitemmoisture.moisture / TUNING.MAX_WETNESS
+    elseif self.classified ~= nil then
+        return self.classified.moisture:value() / TUNING.MAX_WETNESS
     else
         return 0
     end
@@ -429,6 +493,34 @@ end
 
 function InventoryItem:SetGrabbableOverrideTag(tag)
     self._grabbableoverridetag:set(tag or 0)
+end
+
+function InventoryItem:SetTemperature(temperature)
+    if self.classified ~= nil then
+        self.classified:SerializeTemperature(temperature)
+    end
+end
+
+-- function InventoryItem:SetMinTemperature(mintemperature)
+--     if self.classified ~= nil then
+--         self.classified:SerializeTemperature(nil, mintemperature)
+--     end
+-- end
+
+-- function InventoryItem:SetMaxTemperature(maxtemperature)
+--     if self.classified ~= nil then
+--         self.classified:SerializeTemperature(nil, nil, maxtemperature)
+--     end
+-- end
+
+function InventoryItem:GetTemperature()
+    if self.inst.components.inventoryitemtemperature ~= nil then
+        return self.inst.components.inventoryitemtemperature.temperature
+    elseif self.classified ~= nil then
+        return self.classified.temperature:value()
+    else
+        return 0
+    end
 end
 
 return InventoryItem

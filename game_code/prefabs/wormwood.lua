@@ -408,9 +408,9 @@ local function EnableFullBloom(inst, enable)
 end
 
 local function SetStatsLevel(inst, level)
-    --V2C: setting .runspeed does not stack with mount speed
     local mult = Remap(level, 0, 3, 1, 1.2)
-    inst.components.locomotor.runspeed = TUNING.WILSON_RUN_SPEED * mult
+	--V2C: playerspeedmult does not stack with mount speed
+	inst.components.playerspeedmult:SetSpeedMult("wormwood_bloom_level", mult)
     inst.components.hunger:SetRate(TUNING.WILSON_HUNGER_RATE * mult)
 end
 
@@ -589,6 +589,7 @@ local function OnBecameGhost(inst)
 end
 
 local function OnRespawnedFromGhost(inst)
+    inst.sg.mem.nocorpse = true -- No flesh inside us.
     if TheWorld.state.isspring then
         inst.components.bloomness:Fertilize()
     end
@@ -777,6 +778,8 @@ local function master_postinit(inst)
 
     inst.endtalksound = "dontstarve/characters/wormwood/end"
     --inst.endghosttalksound = nil
+
+    inst.sg.mem.nocorpse = true -- No flesh inside us.
 
     inst.components.health:SetMaxHealth(TUNING.WORMWOOD_HEALTH)
     inst.components.hunger:SetMax(TUNING.WORMWOOD_HUNGER)

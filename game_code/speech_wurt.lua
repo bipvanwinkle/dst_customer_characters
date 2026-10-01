@@ -23,7 +23,15 @@ return{
             NOTMERM = "Florp?",
             NOKELP = "Needs more snacks.",
             HASMERMLEADER = "Glurgh. Gotta wait, other Mermfolk using it.",
+            NOTAROBOT = "Ironfolk only.",
+--fallback to speech_wilson.lua             NOTMYBACKUP = "only_used_by_wx78",
+--fallback to speech_wilson.lua             TOOMANYBACKUPBODIES = "only_used_by_wx78",
 		},
+        APPLYELIXIR =
+        {
+            TOO_SUPER = "Glurph! Too strong.",
+            NO_ELIXIRABLE = "only_used_by_wendy",
+        },
         APPLYMODULE =
         {
             COOLDOWN = "only_used_by_wx78",
@@ -59,6 +67,9 @@ return{
             HASPET = "Don't need 'nother pet, glort.",
 			TICOON = "Huh? You not right one!",
             BUSY_STATION = "Hate waiting game, florpt!",
+--fallback to speech_wilson.lua             TOOMANYBACKUPBODIES = "only_used_by_wx78",
+--fallback to speech_wilson.lua             TOOMANYSHADOWDRONE_HARVESTER = "only_used_by_wx78",
+--fallback to speech_wilson.lua             TOOMANYSHADOWDRONE_DEBUFFER = "only_used_by_wx78",
         },
         CARNIVALGAME_FEED =
         {
@@ -70,6 +81,7 @@ return{
 --fallback to speech_wilson.lua 			REVIVE_FAILED = "only_used_by_wanda",
 --fallback to speech_wilson.lua 			WARP_NO_POINTS_LEFT = "only_used_by_wanda",
 --fallback to speech_wilson.lua 			SHARD_UNAVAILABLE = "only_used_by_wanda",
+--fallback to speech_wilson.lua 			NO_TELEPORT_ZONE = "only_used_by_wanda",
 		},
 		CAST_SPELLBOOK =
 		{
@@ -99,8 +111,8 @@ return{
         },
         CHARGE_FROM =
         {
-            NOT_ENOUGH_CHARGE = "only_used_by_wx78",
-            CHARGE_FULL = "only_used_by_wx78",
+            NOT_ENOUGH_CHARGE = "Out of sparks. Florp.",
+            CHARGE_FULL = "Full of sparks!",
         },
 		COMPARE_WEIGHABLE =
 		{
@@ -120,6 +132,13 @@ return{
             GENERIC = "Don't wanna, glort.",
             INUSE = "Mmm... what that smell?",
             TOOFAR = "It way over there!",
+        },
+        DEPLOY = {
+            HERMITCRAB_RELOCATE = "Why not work now? Flort! I try again later.",
+        },
+        DIRECTCOURIER_MAP =
+        {
+--fallback to speech_wilson.lua             NOTARGET = "only_used_by_walter",
         },
 		DISMANTLE =
 		{
@@ -186,6 +205,7 @@ return{
             TERRARIUM_COOLDOWN = "There no tree inside for giving to, flurp! Will check later.",
             NOTAMONKEY = "Me not monkey, talk to somebody else!",
             QUEENBUSY = "Glurgh... why she gotta be so busy?",
+            CARNIVALGAME_GOLFGAME_NOTREADY = "Glurph! What missing?!",
         },
         GIVE_TACKLESKETCH =
 		{
@@ -208,6 +228,7 @@ return{
         HARVEST =
         {
             DOER_ISNT_MODULE_OWNER = "Glurph. You boring!",
+--fallback to speech_wilson.lua             DOER_DOESNT_HAVE_SKILL = "only_used_by_wx78",
         },
         HEAL =
         {
@@ -262,6 +283,7 @@ return{
         PICK =
         {
             NOTHING_INSIDE = "No stuff.",
+			STUCK = "Flort! It stuck.",
         },
         PICKUP =
         {
@@ -297,6 +319,7 @@ return{
 --fallback to speech_wilson.lua             NOWATERNEARBY = "only_used_by_waxwell_and_wicker",
 --fallback to speech_wilson.lua             TOOMANYBIRDS = "only_used_by_waxwell_and_wicker",
 --fallback to speech_wilson.lua             WAYTOOMANYBIRDS = "only_used_by_waxwell_and_wicker",
+--fallback to speech_wilson.lua             BIRDSBLOCKED = "only_used_by_waxwell_and_wicker",
 --fallback to speech_wilson.lua             NOFIRES =       "only_used_by_waxwell_and_wicker",
 --fallback to speech_wilson.lua             NOSILVICULTURE = "only_used_by_waxwell_and_wicker",
 --fallback to speech_wilson.lua             NOHORTICULTURE = "only_used_by_waxwell_and_wicker",
@@ -305,6 +328,8 @@ return{
 --fallback to speech_wilson.lua             TOOMANYBEES = "only_used_by_waxwell_and_wicker",
 --fallback to speech_wilson.lua             NOMOONINCAVES = "only_used_by_waxwell_and_wicker",
 --fallback to speech_wilson.lua             ALREADYFULLMOON = "only_used_by_waxwell_and_wicker",
+--fallback to speech_wilson.lua             -- rifts5.1
+--fallback to speech_wilson.lua             DEADBIRDS = "only_used_by_waxwell_and_wicker",
 --fallback to speech_wilson.lua         },
 		REMOTE_TELEPORT =
 		{
@@ -336,6 +361,11 @@ return{
 			INUSE = "You find something good?",
             NOTMASTERCHEF = "Fancy cooking man can do it, florpt.",
             NOTAMERM = "Unused_by_wurt",
+            NOTSOULJARHANDLER = "Imp's.",
+            RESTRICTED = "But why? Flort!",
+            NOTAROBOT = "Ironfolk only.",
+--fallback to speech_wilson.lua             NOTMYBACKUP = "only_used_by_wx78",
+--fallback to speech_wilson.lua             TOOMANYBACKUPBODIES = "only_used_by_wx78",
 		},
         SADDLE =
         {
@@ -367,7 +397,22 @@ return{
 			NOTALLOWED = "Can't, glorp.",
 			INUSE = "Gotta wait.",
             NOTMASTERCHEF = "Fancy cooking man can do it, florpt.",
+            NOTSOULJARHANDLER = "Imp's.",
+            RESTRICTED = "But why? Flort!",
+            NOTAROBOT = "Ironfolk only.",
+--fallback to speech_wilson.lua             NOTMYBACKUP = "only_used_by_wx78",
+--fallback to speech_wilson.lua             TOOMANYBACKUPBODIES = "only_used_by_wx78",
 		},
+		STARTMAPDELIVER =
+		{
+--fallback to speech_wilson.lua 			EMPTY = "only_used_by_wx78",
+--fallback to speech_wilson.lua 			INUSE = "only_used_by_wx78",
+--fallback to speech_wilson.lua 			NOSKILL_DRONE = "only_used_by_wx78", 
+		},
+        SWAPBODIES_MAP =
+        {
+--fallback to speech_wilson.lua             NOTARGET = "only_used_by_wx78",
+        },
         TEACH =
         {
             --Recipes/Teacher
@@ -396,6 +441,10 @@ return{
         {
 --fallback to speech_wilson.lua             BEDAZZLED = "only_used_by_webber",
         },
+        USEEQUIPPEDITEM =
+        {
+--fallback to speech_wilson.lua             BADPOSITION = "only_used_by_wx78",
+        },
         USEITEMON =
         {
             --GENERIC = "I can't use this on that!",
@@ -404,6 +453,12 @@ return{
             BEEF_BELL_INVALID_TARGET = "Won't work!",
             BEEF_BELL_ALREADY_USED = "Huh? Maybe belong to someone else...",
             BEEF_BELL_HAS_BEEF_ALREADY = "Have big fuzzy already, florpt!",
+
+			NOT_MINE = "Florp! Why can't I has?",
+
+			CANNOT_FIX_DRONE = "Can't fix? Fine, florpt.",
+
+--fallback to speech_wilson.lua             GESTALT_TOO_POWERFUL = "only_used_by_wx78",
         },
 		USEKLAUSSACKKEY =
         {
@@ -424,11 +479,51 @@ return{
         {
             DOESNTWORK = "Huh? Where is contest??",
             ALREADYACTIVE = "Maybe he doing secret contest somewhere else...",
+            NORESPONSE = "He away.",
+            RIGHTTHERE = "Why you ignore me? Florp!",
         },
         YOTB_UNLOCKSKIN =
         {
             ALREADYKNOWN = "Glurgh, know it already!",
         },
+		CARVEPUMPKIN =
+		{
+			INUSE = "Can't!",
+			BURNING = "Florp! Burning!",
+		},
+		DECORATESNOWMAN =
+		{
+			INUSE = "Can't!",
+			HASHAT = "Dumb hat!",
+			STACKEDTOOHIGH = "So high already! Glurgh!",
+			MELTING = "No more. Snowfolk is melting.",
+		},
+        MUTATE = 
+        {
+            NOGHOST = "only_used_by_wendy",
+            NONEWMOON = "only_used_by_wendy",
+            NOFULLMOON = "only_used_by_wendy",
+            NOTNIGHT = "only_used_by_wendy",
+            CAVE = "only_used_by_wendy",
+        },
+		MODSLINGSHOT =
+		{
+--fallback to speech_wilson.lua 			NOSLINGSHOT = "only_used_by_walter",
+		},
+		POUNCECAPTURE =
+		{
+			MISSED = "Florp! Missed!",
+		},
+        DIVEGRAB =
+        {
+            MISSED = "Florp! Missed!",
+        },
+
+		-- Winter 2025
+		SOAKIN =
+		{
+			NOSPACE = "Florpt! My turn already!",--there's someone in that space. there's no room there.
+		},
     },
 
 	ANNOUNCE_CANNOT_BUILD =
@@ -649,7 +744,7 @@ return{
 	},
 
     --hallowed nights
-    ANNOUNCE_SPOOKED = "G-glurp... saw something...",
+    ANNOUNCE_SPOOKED = "G-glurp... no thank you!",
 	ANNOUNCE_BRAVERY_POTION = "Me was never scared, florp!",
 	ANNOUNCE_MOONPOTION_FAILED = "Awww... nothing happen.",
 
@@ -703,7 +798,23 @@ return{
 --fallback to speech_wilson.lua     {
 --fallback to speech_wilson.lua         "only_used_by_wortox",
 --fallback to speech_wilson.lua     },
+--fallback to speech_wilson.lua     ANNOUNCE_SOUL_EMPTY_NICE =
+--fallback to speech_wilson.lua     {
+--fallback to speech_wilson.lua         "only_used_by_wortox",
+--fallback to speech_wilson.lua     },
+--fallback to speech_wilson.lua     ANNOUNCE_SOUL_EMPTY_NAUGHTY =
+--fallback to speech_wilson.lua     {
+--fallback to speech_wilson.lua         "only_used_by_wortox",
+--fallback to speech_wilson.lua     },
 --fallback to speech_wilson.lua     ANNOUNCE_SOUL_FEW =
+--fallback to speech_wilson.lua     {
+--fallback to speech_wilson.lua         "only_used_by_wortox",
+--fallback to speech_wilson.lua     },
+--fallback to speech_wilson.lua     ANNOUNCE_SOUL_FEW_NICE =
+--fallback to speech_wilson.lua     {
+--fallback to speech_wilson.lua         "only_used_by_wortox",
+--fallback to speech_wilson.lua     },
+--fallback to speech_wilson.lua     ANNOUNCE_SOUL_FEW_NAUGHTY =
 --fallback to speech_wilson.lua     {
 --fallback to speech_wilson.lua         "only_used_by_wortox",
 --fallback to speech_wilson.lua     },
@@ -711,17 +822,52 @@ return{
 --fallback to speech_wilson.lua     {
 --fallback to speech_wilson.lua         "only_used_by_wortox",
 --fallback to speech_wilson.lua     },
+--fallback to speech_wilson.lua     ANNOUNCE_SOUL_MANY_NICE =
+--fallback to speech_wilson.lua     {
+--fallback to speech_wilson.lua         "only_used_by_wortox",
+--fallback to speech_wilson.lua     },
+--fallback to speech_wilson.lua     ANNOUNCE_SOUL_MANY_NAUGHTY =
+--fallback to speech_wilson.lua     {
+--fallback to speech_wilson.lua         "only_used_by_wortox",
+--fallback to speech_wilson.lua     },
 --fallback to speech_wilson.lua     ANNOUNCE_SOUL_OVERLOAD =
+--fallback to speech_wilson.lua     {
+--fallback to speech_wilson.lua         "only_used_by_wortox",
+--fallback to speech_wilson.lua     },
+--fallback to speech_wilson.lua     ANNOUNCE_SOUL_OVERLOAD_NICE =
+--fallback to speech_wilson.lua     {
+--fallback to speech_wilson.lua         "only_used_by_wortox",
+--fallback to speech_wilson.lua     },
+--fallback to speech_wilson.lua     ANNOUNCE_SOUL_OVERLOAD_NAUGHTY =
+--fallback to speech_wilson.lua     {
+--fallback to speech_wilson.lua         "only_used_by_wortox",
+--fallback to speech_wilson.lua     },
+--fallback to speech_wilson.lua     ANNOUNCE_SOUL_OVERLOAD_WARNING =
+--fallback to speech_wilson.lua     {
+--fallback to speech_wilson.lua         "only_used_by_wortox",
+--fallback to speech_wilson.lua     },
+--fallback to speech_wilson.lua     ANNOUNCE_SOUL_OVERLOAD_AVOIDED =
+--fallback to speech_wilson.lua     {
+--fallback to speech_wilson.lua         "only_used_by_wortox",
+--fallback to speech_wilson.lua     },
+--fallback to speech_wilson.lua     ANNOUNCE_PANFLUTE_BUFF_ACTIVE =
+--fallback to speech_wilson.lua     {
+--fallback to speech_wilson.lua         "only_used_by_wortox",
+--fallback to speech_wilson.lua     },
+--fallback to speech_wilson.lua     ANNOUNCE_PANFLUTE_BUFF_USED =
 --fallback to speech_wilson.lua     {
 --fallback to speech_wilson.lua         "only_used_by_wortox",
 --fallback to speech_wilson.lua     },
 
     --walter specfic
+--fallback to speech_wilson.lua 	ANNOUNCE_AMMO_SLOT_OVERSTACKED = "only_used_by_walter",
 --fallback to speech_wilson.lua 	ANNOUNCE_SLINGHSOT_OUT_OF_AMMO =
 --fallback to speech_wilson.lua 	{
 --fallback to speech_wilson.lua 		"only_used_by_walter",
 --fallback to speech_wilson.lua 		"only_used_by_walter",
 --fallback to speech_wilson.lua 	},
+--fallback to speech_wilson.lua 	ANNOUNCE_SLINGHSOT_NO_AMMO_SKILL = "only_used_by_walter",
+--fallback to speech_wilson.lua 	ANNOUNCE_SLINGHSOT_NO_PARTS_SKILL = "only_used_by_walter",
 --fallback to speech_wilson.lua 	ANNOUNCE_STORYTELLING_ABORT_FIREWENTOUT =
 --fallback to speech_wilson.lua 	{
 --fallback to speech_wilson.lua         "only_used_by_walter",
@@ -729,6 +875,38 @@ return{
 --fallback to speech_wilson.lua 	ANNOUNCE_STORYTELLING_ABORT_NOT_NIGHT =
 --fallback to speech_wilson.lua 	{
 --fallback to speech_wilson.lua         "only_used_by_walter",
+--fallback to speech_wilson.lua 	},
+--fallback to speech_wilson.lua 	ANNOUNCE_WOBY_RETURN =
+--fallback to speech_wilson.lua 	{
+--fallback to speech_wilson.lua 		"only_used_by_walter",
+--fallback to speech_wilson.lua 	},
+--fallback to speech_wilson.lua 	ANNOUNCE_WOBY_SIT =
+--fallback to speech_wilson.lua 	{
+--fallback to speech_wilson.lua 		"only_used_by_walter",
+--fallback to speech_wilson.lua 	},
+--fallback to speech_wilson.lua 	ANNOUNCE_WOBY_FOLLOW =
+--fallback to speech_wilson.lua 	{
+--fallback to speech_wilson.lua 		"only_used_by_walter",
+--fallback to speech_wilson.lua 	},
+--fallback to speech_wilson.lua 	ANNOUNCE_WOBY_PRAISE =
+--fallback to speech_wilson.lua 	{
+--fallback to speech_wilson.lua 		"only_used_by_walter",
+--fallback to speech_wilson.lua 	},
+--fallback to speech_wilson.lua 	ANNOUNCE_WOBY_FORAGE =
+--fallback to speech_wilson.lua 	{
+--fallback to speech_wilson.lua 		"only_used_by_walter",
+--fallback to speech_wilson.lua 	},
+--fallback to speech_wilson.lua 	ANNOUNCE_WOBY_WORK =
+--fallback to speech_wilson.lua 	{
+--fallback to speech_wilson.lua 		"only_used_by_walter",
+--fallback to speech_wilson.lua 	},
+--fallback to speech_wilson.lua 	ANNOUNCE_WOBY_COURIER =
+--fallback to speech_wilson.lua 	{
+--fallback to speech_wilson.lua 		"only_used_by_walter",
+--fallback to speech_wilson.lua 	},
+--fallback to speech_wilson.lua 	ANNOUNCE_WOBY_REMEMBERCHEST_FAIL =
+--fallback to speech_wilson.lua 	{
+--fallback to speech_wilson.lua 		"only_used_by_walter",
 --fallback to speech_wilson.lua 	},
 
     -- wx specific
@@ -746,6 +924,12 @@ return{
         "Big important!",
         "Crowny head!",
         "Any fairy stories about you, florp?",
+    },
+    ANNOUNCE_ROYALTY_JOKER =
+    {
+        "Big \"important\"!",
+        "Jokey head!",
+        "No fairy stories about you, florp!",
     },
 
     ANNOUNCE_ATTACH_BUFF_ELECTRICATTACK    = "Sparky!!",
@@ -828,6 +1012,8 @@ return{
 --fallback to speech_wilson.lua         "only_used_by_wendy",
 --fallback to speech_wilson.lua     },
 --fallback to speech_wilson.lua 	ANNOUNCE_SISTURN_FULL = "only_used_by_wendy",
+    ANNOUNCE_SISTURN_FULL_EVIL = "only_used_by_wendy",
+    ANNOUNCE_SISTURN_FULL_BLOSSOM = "only_used_by_wendy",
 --fallback to speech_wilson.lua     ANNOUNCE_ABIGAIL_DEATH = "only_used_by_wendy",
 --fallback to speech_wilson.lua     ANNOUNCE_ABIGAIL_RETRIEVE = "only_used_by_wendy",
 --fallback to speech_wilson.lua 	ANNOUNCE_ABIGAIL_LOW_HEALTH = "only_used_by_wendy",
@@ -997,6 +1183,76 @@ return{
 
 	-- Hallowed Nights 2024
 	ANNOUNCE_NOPUMPKINCARVINGONFIRE = "Haha! Burning.",
+
+	-- Winter's Feast 2024
+	ANNOUNCE_SNOWBALL_TOO_BIG = "Won't go bigger.",
+	ANNOUNCE_SNOWBALL_NO_SNOW = "No snow. Glurph.",
+
+    -- Meta 5
+    ANNOUNCE_WENDY_BABYSITTER_SET = "only_used_by_wendy", 
+    ANNOUNCE_WENDY_BABYSITTER_STOP = "only_used_by_wendy",
+
+	ANNOUNCE_WORTOX_REVIVER_FAILTELEPORT = "Glurph! Work!",
+
+    ANNOUNCE_NO_ABIGAIL_FLOWER = "only_used_by_wendy",
+
+    ANNOUNCE_ELIXIR_BOOSTED = "Florp! Nice.",
+    ANNOUNCE_ELIXIR_GHOSTVISION = "See like Deadfolk, florp!",
+    ANNOUNCE_ELIXIR_PLAYER_SPEED = "Mermfolk strong!",
+
+    ANNOUNCE_ELIXIR_TOO_SUPER = "Glurph! Too strong.",
+
+    -- Rift 5
+
+    ANNOUNCE_LUNARGUARDIAN_INCOMING = "Flort! It baaack!",
+    ANNOUNCE_FLOATER_HELD = "See? Me best floater.",
+    ANNOUNCE_FLOATER_LETGO = "Glurph!",
+
+    -- rifts5.1
+    ANNOUNCE_LUNARHAIL_BIRD_SOUNDS = "Birds dying. Glurph.",
+    ANNOUNCE_LUNARHAIL_BIRD_CORPSES = "They dead.",
+    ANNOUNCE_FLOAT_SWIM_TIRED = "Tired! Glurph!",
+    ANOUNCE_MUTATED_BIRD_ATTACK = "Glurph! Birds!",
+
+    -- Rift 6
+    ANNOUNCE_WEAPON_TOOWEAK = "Grrr... need stronger weapon, florp!",
+    ANNOUNCE_VAULT_TELEPORTER_DOES_NOTHING = "Grrr... why not work?",
+
+	-- Rift 6.1
+	ANNOUNCE_LIGHTSOUT_SHADOWHAND = "Grrr... go away, Shadowfolk!",
+
+    -- Hallowed Nights 2025
+    ANNOUNCE_MUTATED_BUZZARD_ARRIVAL = "Buzzbirds! Glurph, look weird!", -- Mutated buzzards arrive to lurk and circle the player
+
+    -- Winter's Feast 2025
+    ANNOUNCE_HERMITCRAB_SHELL_BADTELEPORTPOINT = "Florp! Still here!",
+    ANNOUNCE_HERMITCRAB_SHELL_ARRIVE = "Again!",
+
+    -- Year of the Clockwork Knight
+    ANNOUNCE_YOTH_ONCOOLDOWN = "Springy Ironfolk too busy? Florp!",
+	-- Post-YOTH
+	ANNOUNCE_MAX_CLOCKWORKS = "Florp! What your problem?",
+
+    -- wx specific
+--fallback to speech_wilson.lua     ANNOUNCE_WX_SCANNER_HITDOWN_BY_CAT = "only_used_by_wx78",
+--fallback to speech_wilson.lua     ANNOUNCE_WX_TASER_BUILDUP = "only_used_by_wx78", -- Wx is building up charge when getting hit, nearing EMP blast
+--fallback to speech_wilson.lua     ANNOUNCE_WX_TASER_ABOUTTOEXPLODE = "only_used_by_wx78", -- Wx is fully charged and about to release it. Take cover!
+--fallback to speech_wilson.lua     ANNOUNCE_WX_TASER_POSTEXPLOSION = "only_used_by_wx78", -- Wx has exploded and released all the build up, now they can say something about how invigorating it was.
+--fallback to speech_wilson.lua     ANNOUNCE_WX_NIGHTMARECHARGE = "only_used_by_wx78", -- WX ate/used a nightmare fuel, giving them full charge temporarily
+--fallback to speech_wilson.lua 	ANNOUNCE_WX_NIGHTMAREDISCHARGE = "only_used_by_wx78", -- WX's temporary full charge ran out.
+
+    -- Rifts 7
+
+    ANNOUNCE_MITEGLAND_DEBUFF =
+	{
+		"not_used_by_wurt",
+		"not_used_by_wurt",
+	},
+	ANNOUNCE_MITEGLAND_DEBUFF_DONE = "not_used_by_wurt",
+    ANNOUNCE_GOT_DECON_MISTED = "Oooh, feel good on scales, florp!",
+	ANNOUNCE_VAULT_SHADOW_ASSIST = "What Shadowfolk doing?!",
+    ANNOUNCE_HEALINGSALVE_FUMAROLEBUFF_DONE = "Need more theer-mole bomb!",--fire immunity expired
+    ANNOUNCE_SECURITY_PULSE_FOLLOWING = "Glorp! Why you following me?", -- Security spark attached to us due to us holding Waymark Compass.
 
 	BATTLECRY =
 	{
@@ -1581,6 +1837,8 @@ return{
 		TURF_FUNGUS="Ground bit.",
 		TURF_FUNGUS_MOON = "Ground bit.",
 		TURF_ARCHIVE = "Ground bit.",
+        TURF_VAULT = "Ground bit.",
+        TURF_VENT = "Ground bit.",
 		TURF_SINKHOLE="Ground bit.",
 		TURF_UNDERROCK="Ground bit.",
 		TURF_MUD="Ground bit.",
@@ -1922,10 +2180,17 @@ return{
         CHESSPIECE_EYEOFTERROR = "Oh no... got dried out, glorp...",
         CHESSPIECE_TWINSOFTERROR = "Ha ha, they just rocks now!",
         CHESSPIECE_DAYWALKER = "Grrr... why we have nasty Pig statue?!",
+        CHESSPIECE_DAYWALKER2 = "Another nasty Pig statue! GRRRRR!",
         CHESSPIECE_DEERCLOPS_MUTATED = "Bye bye deer. No more eye pokey.",
         CHESSPIECE_WARG_MUTATED = "Poor doggy. Not so bad.",
         CHESSPIECE_BEARGER_MUTATED = "Remember bad teddy.",
         CHESSPIECE_SHARKBOI = "Haha! Bad fishie frozen.",
+        CHESSPIECE_WORMBOSS = "Hungriest worm.",
+        CHESSPIECE_YOTS = "Cute little worm.",
+        CHESSPIECE_WAGBOSS_ROBOT = "Little big Ironfolk.",
+        CHESSPIECE_WAGBOSS_LUNAR = "Moon stuff made big Ironfolk bad.",
+        CHESSPIECE_YOTH = "Where spring now, springy Ironfolk?",
+        CHESSPIECE_VAULT_PILLAR_GUARD = "Cute tiny horns! Florp!",
 
         CHESSJUNK1 = "It all broken.",
         CHESSJUNK2 = "Didn't do it!!",
@@ -1966,6 +2231,8 @@ return{
         CRITTER_KITTEN = "...Guess you pretty okay, florpt.",
         CRITTER_PERDLING = "Hello birdy!",
 		CRITTER_LUNARMOTHLING = "You ugly, but me love you.",
+        CRITTER_BULBIN = "Little, smelly and green. You perfect, florp.",
+        CRITTER_EETS = "You jump weird, florp.",
 
 		CROW =
 		{
@@ -2598,7 +2865,11 @@ return{
         ROCKS = "Buncha rocks, florp.",
         ROOK = "Look mean...",
         ROPE = "For tying, florpt.",
-        ROTTENEGG = "Has good stink to it.",
+        ROTTENEGG =
+        {
+            GENERIC = "Has good stink to it.",
+--fallback to speech_wilson.lua             CAN_PROCESS = "only_used_by_wx78",
+        },
         ROYAL_JELLY = "Mmmmmmmm!",
         JELLYBEAN = "A good bean.",
         SADDLE_BASIC = "Hee-hee, has little horns on it!",
@@ -2700,7 +2971,11 @@ return{
 			GENERIC = "Spiderfolk warrior...",
 			SLEEPING = "It dreaming of spider things.",
 		},
-		SPOILED_FOOD = "Maybe it still good?",
+        SPOILED_FOOD =
+        {
+            GENERIC = "Maybe it still good?",
+--fallback to speech_wilson.lua             CAN_PROCESS = "only_used_by_wx78",
+        },
         STAGEHAND =
         {
 			AWAKE = "Leeme alone, flort!!",
@@ -3147,6 +3422,7 @@ return{
         WINTER_ORNAMENTBOSS = "These get special place on tree!",
 		WINTER_ORNAMENTFORGE = "Have to put that one on tree?",
 		WINTER_ORNAMENTGORGE = "...?",
+        WINTER_ORNAMENTPEARL = "Crab lady made it.",
 
         WINTER_FOOD1 = "MMMM, but what it supposed to be?", --gingerbread cookie
         WINTER_FOOD2 = "This snowflake melt on tongue too!", --sugar cookie
@@ -3861,7 +4137,11 @@ return{
         FISHMEAT_COOKED = "Won't eat it!",
         FISHMEAT_SMALL = "Was so little...",
         FISHMEAT_SMALL_COOKED = "Glurgh... who do such thing!",
-		SPOILED_FISH = "Someone not take care of fish pet!",
+		SPOILED_FISH =
+        {
+            GENERIC = "Someone not take care of fish pet!",
+--fallback to speech_wilson.lua             CAN_PROCESS = "only_used_by_wx78",
+        },
 
 		FISH_BOX = "This where scale-less keep fish pets, florp?",
         POCKET_SCALE = "Is funny measure thing.",
@@ -3955,14 +4235,28 @@ return{
             "Aww, hey doggie!",
         },
 		WALTERHAT = "Is good color.",
-		SLINGSHOT = "Hee-hee, look fun!",
+		SLINGSHOT =
+		{
+			GENERIC = "Hee-hee, look fun!",
+--fallback to speech_wilson.lua 			NOT_MINE = "only_used_by_walter",
+		},
 		SLINGSHOTAMMO_ROCK = "Bits of stuff.",
 		SLINGSHOTAMMO_MARBLE = "Bits of stuff.",
 		SLINGSHOTAMMO_THULECITE = "Bits of stuff.",
         SLINGSHOTAMMO_GOLD = "Bits of stuff.",
+		SLINGSHOTAMMO_HONEY = "Bits of stuff.",
         SLINGSHOTAMMO_SLOW = "Bits of stuff.",
         SLINGSHOTAMMO_FREEZE = "Bits of stuff.",
 		SLINGSHOTAMMO_POOP = "Tiny poops.",
+		SLINGSHOTAMMO_STINGER = "Bits of stuff.",
+		SLINGSHOTAMMO_MOONGLASS = "Bits of stuff",
+		SLINGSHOTAMMO_GELBLOB = "Bits of stuff.",
+		SLINGSHOTAMMO_SCRAPFEATHER = "Bits of stuff.",
+        SLINGSHOTAMMO_DREADSTONE = "Bits of stuff.",
+        SLINGSHOTAMMO_GUNPOWDER = "Bits of stuff.",
+        SLINGSHOTAMMO_LUNARPLANTHUSK = "Bits of stuff.",
+        SLINGSHOTAMMO_PUREBRILLIANCE = "Bits of stuff.",
+        SLINGSHOTAMMO_HORRORFUEL = "Bits of stuff.",
         PORTABLETENT = "Is sleeping place.",
         PORTABLETENT_ITEM = "Building something, florp?",
 
@@ -3995,15 +4289,22 @@ return{
 		GHOSTLYELIXIR_ATTACK = "Ooooh! Me wanna make some too, florp!",
 		GHOSTLYELIXIR_SPEED = "Ooooh! Me wanna make some too, florp!",
 		GHOSTLYELIXIR_RETALIATION = "Ooooh! Me wanna make some too, florp!",
+        GHOSTLYELIXIR_REVIVE = "Ooooh! Me wanna make some too, florp!",
 		SISTURN =
 		{
 			GENERIC = "What in jar? Snacks?",
 			SOME_FLOWERS = "Scale-less like putting flowers here.",
 			LOTS_OF_FLOWERS = "So is... not snack jar?",
+            LOTS_OF_FLOWERS_EVIL = "Glurgh... my brain breaking.",
+            LOTS_OF_FLOWERS_BLOSSOM = "Huh? Who that?",   
 		},
 
         --Wortox
 --fallback to speech_wilson.lua         WORTOX_SOUL = "only_used_by_wortox", --only wortox can inspect souls
+        --WORTOX_DECOY is not needed because it uses the default WORTOX inspection.
+        WORTOX_NABBAG = "Looks fun, florpt!",
+        WORTOX_REVIVER = "Imp made it.",
+        WORTOX_SOULJAR = "Imp food?",
 
         PORTABLECOOKPOT_ITEM =
         {
@@ -4222,6 +4523,13 @@ return{
             LINE_4 = "Someone read story!",
             LINE_5 = "Glorph... it too hard to read.",
         },
+		VAULT_RUNE = "Glorph... who cares.",
+		VAULT_STATUE =
+		{
+			LORE1 = "Bugfolk King sick? Glurgh.",
+			LORE2 = "Bugfolk all gone.",
+			LORE3 = "Brave Bugfolk.",
+		},
 
         ARCHIVE_RESONATOR = {
             GENERIC = "Glorph! What it doing?!",
@@ -4473,6 +4781,7 @@ return{
 		},
 		CARNIVALDECOR_FIGURE_KIT = "Open up!",
 		CARNIVALDECOR_FIGURE_KIT_SEASON2 = "Open up!",
+		CARNIVALDECOR_FIGURE_KIT_SEASON3 = "Open up!",
 
         CARNIVAL_BALL = "Mine!! Hee-hee-hee!", --unimplemented
 		CARNIVAL_SEEDPACKET = "Mmmm, crunchy snack.",
@@ -4610,6 +4919,7 @@ return{
 
         MOONSTORM_STATIC = "What that sparky stuff?",
         MOONSTORM_STATIC_ITEM = "Hee-hee! It can't get out!",
+        MOONSTORM_STATIC_ROAMER = "Watch me catch sparky stuff!",
         MOONSTORM_SPARK = "Glorp! It zaps!",
 
         BIRD_MUTANT = "Ha ha! What happen to you?",
@@ -4923,6 +5233,7 @@ return{
 
         PLAYBILL_THE_DOLL = "Too many words to remember, florp.",
         PLAYBILL_THE_VEIL = "Dunno. Ask Wicker-lady.",
+        PLAYBILL_THE_VAULT = "Pages so hard, florp.",
         STATUEHARP_HEDGESPAWNER = "It look broken. Didn't do it!",
         HEDGEHOUND = "Sneaky doggy! Bad!",
         HEDGEHOUND_BUSH = "Glurgh, it full of ugly flowers.",
@@ -5184,6 +5495,7 @@ return{
         RECORD_MAIN = "Boring. Next one.", -- Unused.
         RECORD_WORKTOBEDONE = "Don't like. Next.", -- Unused.
         RECORD_HALLOWEDNIGHTS = "Like this one.",
+        RECORD_BALATRO = "Again!",
 
         ARCHIVE_ORCHESTRINA_MAIN = "Why floor make weird sounds, florp?",
 
@@ -5240,7 +5552,7 @@ return{
         YOTD_STEERINGWHEEL = "Me steer, me steer!",
         YOTD_STEERINGWHEEL_ITEM = "This go on boat?",
         YOTD_OAR = "Gonna have claws just as big one day, you gonna see!",
-        YOTD_ANCHOR = "Carful not to hurt any fishies on way down, florp!",
+        YOTD_ANCHOR = "Careful not to hurt any fishies on way down, florp!",
         YOTD_ANCHOR_ITEM = "Can make boat-stopper!",
         MAST_YOTD = "Everything better with scales.",
         MAST_YOTD_ITEM = "Pieces for boat thing.",
@@ -5272,8 +5584,11 @@ return{
 
         FENCE_JUNK = "Made of bunch of metal bits.",
         JUNK_PILE = "If anything good in there, it mine!",
-        JUNK_PILE_BIG = "Glurp... look like it gonna fall!",
-
+        JUNK_PILE_BIG = {
+            BLUEPRINT = "What that? Me get!",
+            GENERIC = "Glurp... look like it gonna fall!",
+        },
+        
         ARMOR_LUNARPLANT_HUSK = "Plant's killing shirt!",
 
         -- Meta 4 / Ocean QoL
@@ -5340,8 +5655,8 @@ return{
         MERM_ARMORY_UPGRADED = "Best Mermfolk fighting hat here!",
         MERM_TOOLSHED = "Mermfolk tools inside.",
         MERM_TOOLSHED_UPGRADED = "These Mermfolk tools better.",
-        MERMARMORHAT = "Only for big Mermfolk, glorp…",
-        MERMARMORUPGRADEDHAT = "Only for big Mermfolk, glorp…",
+        MERMARMORHAT = "Only for big Mermfolk, glorp...",
+        MERMARMORUPGRADEDHAT = "Only for big Mermfolk, glorp...",
         MERM_TOOL = "Made for hardworking Mermfolk!",
         MERM_TOOL_UPGRADED = "Made for hardest working Mermfolk!",
 
@@ -5394,7 +5709,7 @@ return{
 
         CHEST_MIMIC_REVEALED = "Mouth box! Glorp!",
 
-        GELBLOB_STORAGE = { 
+        GELBLOB_STORAGE = {
             GENERIC  = "What we pre-save?",
             FULL = "Wow. Wicker-lady right! It pre-saved!",
         },
@@ -5402,7 +5717,7 @@ return{
         GELBLOB_BOTTLE = "Cute!",
 
         PLAYER_HOSTED =
-        {        
+        {
             GENERIC = "Weird game.",
             ME = "Look familiar.",
         },
@@ -5414,6 +5729,548 @@ return{
         SHADOWTHRALL_PARASITE = "Aww. Just wants a hug. Florp!",
 
         PUMPKINCARVER = "Florp! Pumpkin poker.",
+		SNOWMAN =
+		{
+			GENERIC = "Hey, Snowfolk.",
+			SNOWBALL = "Snowfolk missing part.",
+		},
+        SNOWBALL_ITEM = "Oh, Webby boy...",
+
+        -- Year of the Snake
+        YOTS_SNAKESHRINE =
+        {
+            GENERIC = "Gimme, gimme!",
+            EMPTY = "No Mermfolk meat for you!",
+            BURNT = "Bye, worm!",
+        },
+        YOTS_WORM = "GOLD WORM!",
+        YOTS_LANTERN_POST = 
+        {
+            GENERIC = "Party post? Party post!",
+            BURNT = "Glurgh, party over.",
+        },
+        YOTS_LANTERN_POST_ITEM = "Me good builder.",
+        CHESSPIECE_DEPTHWORM  = "Little worm is so cute!",
+
+        -- Meta 5
+        GHOSTLYELIXIR_LUNAR = "Ooooh! Me wanna make some too, florp!",
+        GHOSTLYELIXIR_SHADOW = "Ooooh! Me wanna make some too, florp!",
+
+		SLINGSHOTMODKIT = "Pine boy shooty toy. Florp!",
+		SLINGSHOT_BAND_PIGSKIN = "Pine boy shooty toy. Florp!",
+		SLINGSHOT_BAND_TENTACLE = "Pine boy shooty toy. Florp!",
+		SLINGSHOT_BAND_MIMIC = "Pine boy shooty toy. Florp!",
+		SLINGSHOT_FRAME_BONE = "Pine boy shooty toy. Florp!",
+		SLINGSHOT_FRAME_GEMS = "Pine boy toys. Florp!",
+		SLINGSHOT_FRAME_WAGPUNK_0 = "Pine boy toys. Florp!",
+		SLINGSHOT_FRAME_WAGPUNK = "Pine boy shooty toy. Florp!",
+		SLINGSHOT_HANDLE_STICKY = "Pine boy shooty toy. Florp!",
+		SLINGSHOT_HANDLE_JELLY = "Pine boy toys. Florp!",
+		SLINGSHOT_HANDLE_SILK = "Pine boy shooty toy. Florp!",
+		SLINGSHOT_HANDLE_VOIDCLOTH = "Pine boy shooty toy. Florp!",
+
+		WOBY_TREAT = "Smell... familiar.",
+		BANDAGE_BUTTERFLYWINGS = "Stick me!",
+		PORTABLEFIREPIT_ITEM = "Florp! Can take cozy time anywhere!",
+        SLINGSHOTAMMO_CONTAINER = "Pine boy pockets.",
+
+        ELIXIR_CONTAINER = "Abby-gill won't share treats. Glurgh.",
+        GHOSTFLOWERHAT = "Now can share Abby-gill treats!",
+        WENDY_RESURRECTIONGRAVE = "Dead, not dead! Glorp!",
+        GRAVEURN =
+        {
+            GENERIC = "Nothing! Glorp!",
+            HAS_SPIRIT = "Deadfolk inside.",
+        },
+
+        SHALLOW_GRAVE = "Who that?",
+        THULECITEBUGNET = "Come out, bugs! Florp!",
+
+        -- Deck of Cards
+        DECK_OF_CARDS = "Go fish! Go fish! Florp!",
+        PLAYING_CARD = "Glurgh, who cheated?",
+        BALATRO_MACHINE = "So easy game!",
+
+		-- Rifts 5
+		GESTALT_CAGE =
+		{
+			GENERIC = "None. Glurgh.",
+			FILLED = "Got you!",
+		},
+		WAGBOSS_ROBOT_SECRET = "Florp! What that? Show me!",
+        WAGBOSS_ROBOT = "Big Ironfolk! Florp!",
+        WAGBOSS_ROBOT_POSSESSED = "Flort! Flort! Flort! Bad Ironfolk!",
+		WAGBOSS_ROBOT_LEG = "Florp! Me did that!",
+		ALTERGUARDIAN_PHASE1_LUNARRIFT = "Florpt. What that new stuff?",
+		ALTERGUARDIAN_PHASE1_LUNARRIFT_GESTALT = "Me catch it! Florp!",
+        ALTERGUARDIAN_PHASE4_LUNARRIFT = "Why bits of stuff in bright moon stuff want kill me?! Flort, why?!",
+		WAGDRONE_ROLLING =
+        {
+            GENERIC = "Making me dizzy! Flort!",
+            INACTIVE = "Make on! Florp!",
+            DAMAGED = "Can fix or take parts! Me choose.",
+            FRIENDLY = "Be nice! Glurgh.",
+        },
+        WAGDRONE_FLYING =
+        {
+            GENERIC = "Flort! Fly away!",
+            INACTIVE = "Make on! Florp!",
+            DAMAGED = "What mean can't fix? Fine, take parts! Florp.",
+        },
+		WAGDRONE_PARTS = "Extra bits. Florp.",
+		WAGDRONE_BEACON = "Not clown man's wall?",
+
+        WAGPUNK_WORKSTATION = "Me make! Florp!",
+        WAGPUNK_LEVER = "Florp! Me pull!",
+        WAGPUNK_FLOOR_KIT = "Floor...p?",
+        WAGPUNK_CAGEWALL = "Me go wherever me want. Glurgh.",
+
+		WAGSTAFF_ITEM_1 = "So what? Me real too! Glurgh.",
+		WAGSTAFF_ITEM_2 = "Board real? Me real bored! Flort.",
+
+        HERMITCRAB_RELOCATION_KIT = "Can crabby lady live in swamp!? Florp!",
+
+        WANDERINGTRADER =
+        {
+            REVEALED = "Hi, fuzzy guy! Florp!",
+            GENERIC = "Glurgh. What wrong with it?",
+        },
+
+        GESTALT_GUARD_EVOLVED = "You not nice! Flort!",
+        FLOTATIONCUSHION = "Me best floater, florp!",
+        LUNAR_SEED = "Glorp, me keep!",
+
+        -- rifts5.1
+        WAGBOSS_ROBOT_CONSTRUCTIONSITE = "Big bad ironfolk body.",
+        WAGBOSS_ROBOT_CONSTRUCTIONSITE_KIT = "Florp, me build.",
+        WAGBOSS_ROBOT_CREATION_PARTS = "Me always have spare parts left.",
+        MOONSTORM_STATIC_CATCHER = "Put thing inside?",
+        COOLANT = "Glurgh. Weird bubble slime.",
+
+        FENCE_ELECTRIC = {
+            LINKED = "Me touch.",      --NOTE: the fence post is fully linked to two other posts
+            GENERIC = "Where zap? Make zap.",           --NOTE: no links or electricity, just boring ol fence post
+        },
+        FENCE_ELECTRIC_ITEM = "Where put for zap?",
+
+        MUTATEDBIRD = "Pretty bird",
+
+        BIRDCORPSE =
+        {
+            GENERIC  = "Dead bird. Glurgh.", --witnessing the corpse
+            BURNING  = "Florp! Burn bird!", --when its burning
+            REVIVING = "Dead bird waking up! Florp!", --when its mutating and being revived
+        },
+
+        BUZZARDCORPSE = {
+            GENERIC  = "Dead bird. Glurgh.", --witnessing the corpse
+            BURNING  = "Florp! Burn bird!", --when its burning
+            REVIVING = "Dead bird waking up! Florp!", --when its mutating and being revived
+        },
+
+        MUTATEDBUZZARD_GESTALT = {
+            GENERIC = "Dead bird even prettier.", -- Generic string
+            EATING_CORPSE = "Flort! Stop that!", -- Eating from a fresh corpse (might be from the players kill or another creatures kill)
+        },
+
+        -- Rifts 6
+
+        SHADOWTHRALL_CENTIPEDE = {
+            HEAD = "Where you going?", --The head segment
+            BODY = "Big and strong and pretty!", --The body segment
+            FLIPPED = "Haha! Florpt!", --When it's flipped over (either head or body segment)
+        },
+
+        TREE_ROCK =
+		{
+			BURNING = "About to florp!", --It's vines are burning, it will collapse
+			CHOPPED = "Haha! Florpt!", --It's 'chopped', so the rock fell
+			GENERIC = "Me make it florp.", --Rock is still on tree
+		},
+
+        -- NOTE: Unsure about HOT and COLD, just do GENERIC, GAS, MIASMA for now!
+        CAVE_VENT_ROCK =
+        {
+            GENERIC = "Stinky rock holes.", -- Not ventilating anything
+            HOT     = "So hot, florp.", -- Ventiliating hot air, making the area warm
+            GAS     = "Florp! Rude!", -- Ventiliating Toadstools gas fumes and spores
+            MIASMA  = "Flort! Bad cloud!", -- Ventiliating the shadow rift miasma
+        },
+        CAVE_FERN_WITHERED = "Leafy cave plant dead. Flort.",
+        FLOWER_CAVE_WITHERED = "Not so glowy.",
+
+		ABYSSPILLAR_MINION =
+		{
+			GENERIC = "Glurgh.", --off, looks like decor/statue
+			ACTIVATED = "Stop it, florp!", --turned on and hopping over puzzle pillars
+		},
+		ABYSSPILLAR_TRIAL = "Me pull!",
+
+        VAULT_TELEPORTER =
+        {
+            GENERIC = "Me go first!",
+            BROKEN = "Not work. Glurgh.",
+            UNPOWERED = "Grrr... why not?",
+        },
+--fallback to speech_wilson.lua 		VAULT_TELEPORTER_UNDERCONSTRUCTION = "\"This Waymark is under development for a future update.\"",
+		VAULT_ORB = "Mine!",
+        VAULT_LOBBY_EXIT = "Hmm... could climb back if had rope...",
+		VAULT_CHANDELIER_BROKEN = "Not me, florp.",
+
+		ANCIENT_HUSK = "Glurgh. Something bad.",
+		MASK_ANCIENT_HANDMAIDHAT = "Florpt. Me wanna wear it.",
+		MASK_ANCIENT_ARCHITECTHAT = "Look like funny hair man! Florpt!",
+		MASK_ANCIENT_MASONHAT = "Strong Bugfolk face.",
+
+        TREE_ROCK_SEED = "A sweet baby, florpt!",
+        TREE_ROCK_SAPLING = "Grow, grow grow!",
+
+        -- Rifts 6.1
+        OCEANWHIRLBIGPORTALEXIT = "Ocean poop?", -- The flotsam pickable not the waterfall.
+
+		VAULT_TORCH =
+		{
+			GENERIC = "We switch!",
+			BROKEN = "Florp! Broke!", --the torch still functions, just the lever is broken
+		},
+
+        CAVE_VENT_MITE =
+		{
+			DEAD = "Bye stink bug!",
+			GENERIC = "Stink bug!",
+			SLEEPING = "Stink bug sleeping.",
+            VENTING = "So stinky, flort!", -- in the shield state and venting out gasses
+        },
+
+		--Hallowed Nights 2025
+
+		PUMPKINHAT =
+		{
+			GENERIC = "Me carve best face.",
+			UNCARVED = "No face holes yet.",--can't wear it unless it's carved.
+		},
+
+        PENGUINCORPSE =
+		{
+            GENERIC  = "Dead bird. Glurgh.", --witnessing the corpse
+            BURNING  = "Florp! Burn bird!", --when its burning
+            REVIVING = "Dead bird waking up! Florp!", --when its mutating and being revived
+		},
+        SPIDERCORPSE =
+		{
+			GENERIC = "That Spiderfolk dead.",
+			BURNING = "Better to burn dead Spiderfolk.",
+			REVIVING = "I know should have burned dead Spiderfolk!",
+		},
+        SPIDERQUEENCORPSE =
+		{
+			GENERIC = "Mighty queen has died.",
+			BURNING = "Hope Webby-boy okay.",
+			REVIVING = "Florp. Not like this.",
+		},
+        MERMCORPSE =
+		{
+			GENERIC = "Who do this?!",
+			BURNING = "For best, my Mermfolk.",
+			REVIVING = "Better gone than like this. Glurgh.",
+		},
+        GENERIC_CORPSE = -- A generic set of lines for ANY corpse, until they get their own unique lines at least.
+        {
+            GENERIC = "It dead. But will poke to make sure.",
+            BURNING = "Bye-bye dead thing!",
+            REVIVING = "Oh florp.",
+        },
+
+		--Winter's Feast 2025
+
+		W_RADIO = "Make do stuff, flort!",
+
+		HERMITHOTSPRING  =
+        {
+            BOMBED = "My turn!",
+            GENERIC = "Swimming hole!",
+            EMPTY = "Nothing here!",
+        },
+		HERMITHOTSPRING_CONSTR = "When done?",
+		MEATRACK_HERMIT_MULTI = --talk to vito; want to reuse MEATRACK, but less meat focused; more fish/tea
+        {
+            DONE = "Crabby lady! Dry stuff ready now!",
+            DRYING = "Crabby lady! Dry stuff ready now!",
+            DRYINGINRAIN = "Not sure this thought through, flort.",
+            GENERIC =  "Dry many dry stuff.",
+            BURNT = "Oh well, flort.",
+            DONE_NOTMEAT = "Look even worse than usual, florp.",
+            DRYING_NOTMEAT = "That not look right.",
+            DRYINGINRAIN_NOTMEAT = "Thought you said this make things dry?",
+            DONE_SALT = "Salt? Glurph!",
+			ABANDONED = "Crabby lady need new one.",
+        },
+		HERMITHOUSE_ORNAMENT = "Just for crabby lady!",
+		HERMITHOUSE_LAUNDRY = "Play prank on crabby lady?",
+
+        PETALS_DRIED = "Dried bits not yummy.",
+        PETALS_EVIL_DRIED = "Dried bits not yummy.",
+        FOLIAGE_DRIED = "Dried bits not yummy.",
+        SUCCULENT_PICKED_DRIED = "Dried bits not yummy.",
+        FIRENETTLES_DRIED = "Dried bits not yummy.",
+        TILLWEED_DRIED = "Dried bits not yummy.",
+        MOON_TREE_BLOSSOM_DRIED = "Dried bits not yummy.",
+        FORGETMELOTS_DRIED = "Dried bits not yummy.",
+
+        HERMITCRABTEA_PETALS = "Nice flower tea.",
+        HERMITCRABTEA_PETALS_EVIL = "Naughty flower tea?",
+        HERMITCRABTEA_FOLIAGE = "Me already brave.",
+        HERMITCRABTEA_SUCCULENT_PICKED = "Mmm. Refresh me!",
+        HERMITCRABTEA_FIRENETTLES = "Make warm inside! Glurph!",
+        HERMITCRABTEA_TILLWEED = "Good stuff, bad taste. Florp.",
+        HERMITCRABTEA_MOON_TREE_BLOSSOM = "Make friends with Moonfolk?",
+        HERMITCRABTEA_FORGETMELOTS = "Glurph? Make dizzy go away?",
+        SHELLWEAVER = "Why everything so salty?",
+        ICESTAFF2 = "Can't lick magic icy stick? Florp.",
+        ICESTAFF3 = "But looks so yummy! Florp!",
+        NONSLIPGRIT = "Sticky dust!",
+        NONSLIPGRITBOOSTED = "Me put sticky dust everywhere!",
+        DESICCANT = "Make me dry!",
+        DESICCANTBOOSTED = "Stop me dry? Glurph!",
+        HERMITCRAB_SHELL = "Miss crabby lady.",
+        SALTY_DOGHAT = "Soft fur like sea doggie!",
+        SALTY_DOG = "Get salt, sea doggie!",
+
+        HERMITCRAB_TEASHOP =
+        {
+            GENERIC = "Where crabby lady?", -- Inactive state, no Pearl inside.
+            ACTIVE = "Me thirsty!", -- Active, Pearl is inside, can buy from her
+            BREWING = "Hurry, crabby lady!", -- A trade just happened and she's brewing the tea!|
+            BURNT = "No! Florp.", -- burnt strings.
+        },
+
+        FISHMEAT_DRIED = "Glurgh. Stinky.",
+        FISHMEAT_SMALL_DRIED = "Glurgh. Stinky.",
+
+        HERMITCRAB_LIGHTPOST = -- Similar to YOTS_LANTERN_POST
+        {
+            GENERIC = "Make crabby lady house pretty. Glurph!",
+            ABANDONED = "Too bad, glurgh.",
+        },
+        HERMITCRAB_LIGHTPOST_ITEM = "Me put!",
+
+        -- Year of the Clockwork Knight
+
+        YOTH_KNIGHTSHRINE =
+        {
+            GENERIC = "Gimme.", -- Has an offering of either gears, wires or doodad.
+            EMPTY = "Florp! What you want?", -- No offering. Character should hint at it wanting an offering.
+            BURNT = "Burnt. Useless.", -- Burnt.
+        },
+
+        MASK_PRINCESSHAT = "Me already princess.",
+        COSTUME_PRINCESS_BODY = "Okay me try.",
+
+        PLAYBILL_THE_PRINCESS_YOTH = "What show about? Princess?",
+
+        KNIGHT_YOTH =
+        {
+            GENERIC = "Bad springy Ironfolk.", -- Generic quote. It's aggressive.
+            FOLLOWING = "Follow me, springy Ironfolk!", -- Following the character examining
+            FOLLOWING_OTHER = "Not my springy Ironfolk.", -- Following another character or mannequin
+        },
+
+        YOTH_KNIGHTHAT = "So? Me have two horns.",
+        ARMOR_YOTH_KNIGHT = "Nice Ironfolk shirt.",
+        HORSESHOE = "Me best at luck, glurph.",
+        YOTH_LANCE = "Me use save princess? But me princess. Glurph?",
+
+        FLOATINGLANTERN =
+        {
+            DEFLATED = "What glowy problem?", -- Depleted and on the ground
+            HELD = "Glowy all mine.", -- In the players inventory
+            GENERIC = "Flort? What make glowy fly?", -- Floating in the sky!
+        },
+
+        YOTH_KNIGHTSTICK = "Me fastest.",
+        YOTH_CHAIR_ROCKING_ITEM = "Me build, me rock. Glurph!", -- The chair itself uses WOOD_CHAIR inspect states.
+
+		-- Meta 6
+
+		WX78_DRONE_SCOUT = "Where you going?",
+		WX78_DRONE_DELIVERY = "Lemme see Ironfolk stuff.",
+		WX78_DRONE_ZAP = "Don't zap me, florp!",
+		WX78_DRONE_ZAP_REMOTE =
+		{
+			GENERIC = "Ironfolk toy.",
+--fallback to speech_wilson.lua 			CANUSE = "only_used_by_wx78",
+		},
+
+        -- All other characters but Wx-78 share one quote.
+        WX78MODULE_RADAR = "Crunchy.",
+        WX78MODULE_STACKSIZE = "Crunchy.",
+        WX78MODULE_DIGESTION = "Crunchy.",
+        WX78MODULE_SCREECH = "Crunchy.",
+        WX78MODULE_LIGHT2 = "Crunchy.",
+        WX78MODULE_SHIELDING = "Crunchy.",
+        WX78MODULE_SPIN = "Crunchy.",
+		WX78MODULE_CHESS = "Crunchy.",
+
+        WX78_INVENTORYCONTAINER =
+        {
+            HELD = "only_used_by_wx78", -- Held, and working as a container
+--fallback to speech_wilson.lua 			NOPOWER = "only_used_by_wx78", -- Held but can't open due to wx charge level too low
+            GENERIC = "Stuff inside Ironfolk box?", -- It was dropped, treat it as if its broken down, and is rummagable
+        },
+
+        WX78_FOODBRICK =
+        {
+            WET = "Made inside Ironfolk? Florp!",
+            GENERIC = "So hard!",
+        },
+
+        WX78_BACKUPBODY =
+        {
+            GENERIC = "No folk in Ironfolk.", -- We are examining a claimed body belonging to a WX. We can use their display name if we want to.
+--fallback to speech_wilson.lua             UNCLAIMED = "only_used_by_wx78", -- We are examining an unclaimed body.
+--fallback to speech_wilson.lua             VIEWERS_BODY = "only_used_by_wx78", -- We (WX) are examining our own body.
+        },
+
+        WX78_POSSESSEDBODY = "Florp! Who inside Ironfolk?!",
+
+        WX78_GESTALTTRAPPER = "Weird Ironfolk stuff.",
+
+        SHADOW_HEART_VEIN = "Thanks, sad heart.",
+
+        WX78_SHADOWDRONE_DEBUFFER = "What you see?",
+        WX78_SHADOWDRONE_HARVESTER = "Florp! So grabby!",
+
+        -- Rifts 7
+        STALKER_NPC = "N-not scared of him anymore!",
+
+        MITEGLAND =
+        {
+            GENERIC = "Blegh!! Nasty bug guts!",
+            COLD = "Cold bug guts.",
+        },
+        MITEGLAND_COOKED = "Glurgh. Nuh-uh.",
+
+        BROKEN_FUMAROLETOOLITEM = "Easy to fix. Just get hot, florp!", -- character should comment that they could melt the pieces back together by heating it.
+        FUMAROLEAXE =
+		{
+			GENERIC = "It gonna break, florp!", -- This is the coldest state, the heat tool is about to break and shatter into the broken state if used a bit more, there are visible cracks.
+			LUKEWARM = "Hey! How come not warm anymore?", -- The next state, its lukewarm, no cracks.
+			WARM = "So warm! Gimme!", -- It's starting to get red hot, it's a bit more efficient in the action it does, and keeps the player cozy.
+			HOT = "It good chopper, but hurt claws!", -- SUPER HOT, it's very efficient in the action it does, e.g. the axe fells trees in half the hits needed, keeps the player cozy, maybe too cozy! (e.g. overheat in summer)
+		},
+
+        FUMAROLEPICKAXE =
+		{
+			GENERIC = "It gonna break, florp!", -- This is the coldest state, the heat tool is about to break and shatter into the broken state if used a bit more, there are visible cracks.
+			LUKEWARM = "Hey! How come not warm anymore?", -- The next state, its lukewarm, no cracks.
+			WARM = "So warm! Gimme!", -- It's starting to get red hot, it's a bit more efficient in the action it does, and keeps the player cozy.
+			HOT = "It good at breaking rock, but hurt claws!", -- SUPER HOT, it's very efficient in the action it does, e.g. the axe fells trees in half the hits needed, keeps the player cozy, maybe too cozy! (e.g. overheat in summer)
+		},
+
+        FUMAROLEHAMMER =
+		{
+			GENERIC = "It gonna break, florp!", -- This is the coldest state, the heat tool is about to break and shatter into the broken state if used a bit more, there are visible cracks.
+			LUKEWARM = "Hey! How come not warm anymore?", -- The next state, its lukewarm, no cracks.
+			WARM = "So warm! Gimme!", -- It's starting to get red hot, it's a bit more efficient in the action it does, and keeps the player cozy.
+			HOT = "It good smasher, but hurt claws!", -- SUPER HOT, it's very efficient in the action it does, e.g. the axe fells trees in half the hits needed, keeps the player cozy, maybe too cozy! (e.g. overheat in summer)
+		},
+
+        FUMAROLESHOVEL =
+		{
+			GENERIC = "It gonna break, florp!", -- This is the coldest state, the heat tool is about to break and shatter into the broken state if used a bit more, there are visible cracks.
+			LUKEWARM = "Hey! How come not warm anymore?", -- The next state, its lukewarm, no cracks.
+			WARM = "So warm! Gimme!", -- It's starting to get red hot, it's a bit more efficient in the action it does, and keeps the player cozy.
+			HOT = "It good digger, but hurt claws!", -- SUPER HOT, it's very efficient in the action it does, e.g. the axe fells trees in half the hits needed, keeps the player cozy, maybe too cozy! (e.g. overheat in summer)
+		},
+
+        FUMAROLE_FARM_HOE =
+		{
+			GENERIC = "It gonna break, florp!", -- This is the coldest state, the heat tool is about to break and shatter into the broken state if used a bit more, there are visible cracks.
+			LUKEWARM = "Hey! How come not warm anymore?", -- The next state, its lukewarm, no cracks.
+			WARM = "So warm! Gimme!", -- It's starting to get red hot, it's a bit more efficient in the action it does, and keeps the player cozy.
+			HOT = "It good at gardening, but hurt claws!", -- SUPER HOT, it's very efficient in the action it does, e.g. the axe fells trees in half the hits needed, keeps the player cozy, maybe too cozy! (e.g. overheat in summer)
+		},
+
+        -- This trap is a cluster of rocks gets heated and deals fire damage to creatures (including players!) on top
+        TRAP_FUMAROLE =
+        {
+            HELD = "Hee-hee-hee...", -- When held in the inventory.
+            GENERIC = "Glurgh. Trap no good anymore!", -- Coldest state, the trap is ineffective.
+            WARM = "Rocks still hot enough to hurt.", -- Warm, a bit red hot, it does some damage.
+            HOT = "Come here! Good place for stepping! Hee-hee...", -- Super hot, it's doing full fire damage.
+        },
+
+        HEALINGSALVE_FUMAROLE = "Fire lady right! Fire fun when don't hurt, florp!",
+
+		VAULT_PILLAR_GUARD = "Glorp! Didn't do it!!",
+		VAULT_PILLAR_GUARD_CRAFTED = "You be good!",
+		VAULT_PILLAR_GUARD_DORMANT = "Nice horns, florp!",
+		VAULT_PILLAR_GUARD_DORMANT_CRAFTED = "I know, florp! Needs floaty glowy!",
+		VAULT_PILLAR_GUARD_CONSTR = "Glorp? What else it want?",
+		VAULT_PILLAR_GUARD_CONSTR_PLANS = "Me decide where put!",
+		VAULT_CRAWLER =
+		{
+			GENERIC = "Weird bug fun to roll around, florp!",
+			SOCKETED = "I win!",
+		},
+
+        VAULT_DECON_DOOR = "Glurgh. Big wall not gonna keep me out!",
+        VAULT_DECON_MISTER = "Do again! Do again!",
+		VAULT_KEY_ACTIVATOR = "Something round go inside?",
+		VAULT_CRAWLER_LEVER = "Pull! Pull!",
+        VAULT_KEY = "Oooooh! What it unlock, florp?",
+        VAULT_KEY_PEDESTAL =
+        {
+            GENERIC = "Mine!", -- Keystone is on it, ready to take
+            PICKED = "Gone.", -- No more keystone on it, we already took it, or someone else did.
+        },
+        VAULT_ORB_REFINED = "Prettiest rock! Glorp!",
+        VAULT_PILLAR_GUARD_PIECE = "Me always have spare parts.",
+        VAULT_REFINER_PEDESTAL = "Glurph. Makes old stuff.",
+
+        VAULT_COMPASS =
+        {
+            GENERIC = "Show which way! Now!!", -- Pointing us to the teleporters leading to the key room
+            NOTVAULT = "Glurgh. Why not working?", -- We're not in the vault, so its in an ineffective state.
+            KEYROOM = "We here!", -- We're already in the key room! Compass marker is in a success state.
+        },
+
+        CEILING_ROPE = "Climbing easy.",
+        VAULT_KEY_EXIT = "What mean can't climb out?",--There's no where to tie a rope. Exit, but no re-entry.
+
+        -- Crow Carnival 2026
+
+        CARNIVALGAME_GOLFGAME_KIT_EASY = "For babies! Flort!",
+        CARNIVALGAME_GOLFGAME_KIT_MEDIUM = "Me beat anyone. Me best!",
+        CARNIVALGAME_GOLFGAME_KIT_HARD = "Hard one? Glorp! Me still win.",
+        CARNIVALGAME_GOLFGAME_KIT_DIY = "Me make best one.",
+
+        CARNIVALGAME_GOLF_TEE =
+        {
+            GENERIC = "Need token to play! Gimme token!",  -- Ready to take a game token, reference other carnival game strings
+            PLAYING = "Already put token! Flort!", -- The game is active and in play
+            INACTIVE = "Glurph! What missing?!", -- The game token slot is covered, due to the course not being fully complete (e.g. hole marker isn't placed)
+        },
+        CARNIVALGAME_GOLF_HOLE = "Me win! Me always win! Florp!",
+
+        CARNIVALGAME_GOLF_TEE_KIT = "Me choose where start.",
+        CARNIVALGAME_GOLF_HOLE_KIT = "Me choose where finish.",
+
+        CARNIVALGAME_GOLFCLUB = "Why not swing hard?",
+        CARNIVALGAME_GOLFBALL = "Me hit!",
+
+        CARNIVALGAME_GOLFPROP_FENCE = "Stop ball from running away... good fence.",
+
+        CARNIVALGAME_GOLFPROP_SPINNER = "Wheeeeee!", -- All 4 spin plates(size/rotation) use the same inspect
+        CARNIVALGAME_GOLFPROP_CUTOUT = "Me make ball go around it.", -- All 10 prop wood cutouts use the same inspect
+        CARNIVALGAME_GOLFPROP_MOVINGWALL = "Wait for right time, then go fast!", -- All colored moving walls use this space inspect
+
+        CARNIVALGAME_GOLFPROP_WORMHOLE = "Florp! Make ball disappear... then pop out somewhere else!", -- a fake wormhole, that lets the ball travel to another random wormhole
+
+        CARNIVALGAME_GOLFPROP_SPRING = "Make ball jump!", -- spring that pops up to launch the ball
+
+        CARNIVALGAME_GOLFPROP_FAN = "Glurph! Bad wind!", -- fan that blows wind and pushes in a direction
+
     },
 
     DESCRIBE_GENERIC = "What that?",
@@ -5436,4 +6293,8 @@ return{
         TALLBIRDEGG_CRACKED = "Blegh, who wanna eat that?",
 		WINTERSFEASTFUEL = "Mmmmm, sweets!",
     },
+
+    WENDY_SKILLTREE_EASTEREGG = "only_used_by_wendy",
+
+
 }

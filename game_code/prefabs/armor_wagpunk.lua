@@ -210,7 +210,8 @@ local function TimeCheck(inst, targettime, lasttime)
 end
 
 local function ShouldKeepTarget(inst, target)
-    return inst:GetDistanceSqToInst(target) <= TUNING.WAGPUNK_MAXRANGE*TUNING.WAGPUNK_MAXRANGE
+    local range = GetArmorWagpunkRange(inst, inst.components.inventoryitem.owner)
+    return inst:GetDistanceSqToInst(target) <= range*range
 end
 
 local function OnBlocked(owner)
@@ -304,6 +305,7 @@ end
 
 local function SetupEquippable(inst)
     inst:AddComponent("equippable")
+    inst.components.equippable.insulated = true
     inst.components.equippable.equipslot = EQUIPSLOTS.BODY
     inst.components.equippable:SetOnEquip(OnEquip)
     inst.components.equippable:SetOnUnequip(OnUnequip)
@@ -346,6 +348,7 @@ local function fn()
     inst.AnimState:PlayAnimation("anim")
 
     inst:AddTag("metal") -- Impact sound.
+	inst:AddTag("hardarmor")
     inst:AddTag("show_broken_ui")
 
     inst.foleysound = "dontstarve/movement/foley/metalarmour"
@@ -385,6 +388,7 @@ local function fn()
     inst.components.planardefense:SetBaseDefense(TUNING.ARMORPUNK_PLANAR_DEF)
 
     inst:AddComponent("equippable")
+    inst.components.equippable.insulated = true
     inst.components.equippable.equipslot = EQUIPSLOTS.BODY
     inst.components.equippable:SetOnEquip(OnEquip)
     inst.components.equippable:SetOnUnequip(OnUnequip)

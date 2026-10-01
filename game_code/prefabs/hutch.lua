@@ -27,6 +27,8 @@ local prefabs =
     "chester_transform_fx",
     "impact",
     "globalmapiconunderfog",
+
+    "chestercorpse",
 }
 
 local brain = require "brains/chesterbrain"
@@ -350,10 +352,11 @@ local function create_hutch()
 
     MakeCharacterPhysics(inst, 75, .5)
     inst.Physics:SetCollisionGroup(COLLISION.CHARACTERS)
-    inst.Physics:ClearCollisionMask()
-    inst.Physics:CollidesWith(COLLISION.WORLD)
-    inst.Physics:CollidesWith(COLLISION.OBSTACLES)
-    inst.Physics:CollidesWith(COLLISION.CHARACTERS)
+	inst.Physics:SetCollisionMask(
+		COLLISION.WORLD,
+		COLLISION.OBSTACLES,
+		COLLISION.CHARACTERS
+	)
 
     inst:AddTag("companion")
     inst:AddTag("character")
@@ -362,6 +365,7 @@ local function create_hutch()
     inst:AddTag("notraptrigger")
     inst:AddTag("noauradamage")
     inst:AddTag("devourable")
+    inst:AddTag("NOBLOCK")
     
 
     inst.MiniMapEntity:SetIcon("hutch.png")

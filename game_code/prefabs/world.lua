@@ -56,6 +56,9 @@ local assets =
 
 	Asset("DYNAMIC_ATLAS", "images/pumpkin_carving2.xml"),
 	Asset("PKGREF", "images/pumpkin_carving2.tex"),
+
+	Asset("DYNAMIC_ATLAS", "images/snowman.xml"),
+	Asset("PKGREF", "images/snowman.tex"),
 }
 
 for k, v in pairs(GroundTiles.assets) do
@@ -196,6 +199,8 @@ local prefabs =
     --"spawn_fx_huge",
     --"spawn_fx_large",
     "spawn_fx_medium",
+	"spawn_fx_medium_static",
+	"spawn_fx_ocean_static",
     "spawn_fx_small",
     "spawn_fx_tiny",
     "spawn_fx_small_high",
@@ -205,6 +210,7 @@ local prefabs =
     "fire",
     "character_fire",
     "shatter",
+	"electrocute_fx",
     --
 
     "migration_portal",
@@ -218,6 +224,7 @@ local prefabs =
     "writeable_classified",
     "container_classified",
     "container_opener",
+	"container_closed_receiveitem_classified",
     "constructionsite_classified",
 
     "dummytarget",
@@ -267,6 +274,8 @@ local prefabs =
 
 	-- vinebridgemanager
 	"vine_bridge_fx",
+
+    "snowball_item",
 }
 
 for _, v in pairs(require("prefabs/farm_plant_defs").PLANT_DEFS) do
@@ -556,6 +565,8 @@ function MakeWorld(name, customprefabs, customassets, common_postinit, master_po
             return inst
         end
 
+        inst:AddComponent("shardtransactionsteps")
+
         inst:AddComponent("klaussackloot")
 
         inst:AddComponent("undertile")
@@ -567,11 +578,14 @@ function MakeWorld(name, customprefabs, customassets, common_postinit, master_po
 
         inst:AddComponent("dockmanager")
         inst:AddComponent("vinebridgemanager")
+        inst:AddComponent("worldroutes")
 
         inst:AddComponent("playerspawner")
 
         inst:AddComponent("nightlightmanager")
         inst:AddComponent("winonateleportpadmanager")
+
+        inst:AddComponent("corpsepersistmanager")
 
         --World health management
         inst:AddComponent("skeletonsweeper")

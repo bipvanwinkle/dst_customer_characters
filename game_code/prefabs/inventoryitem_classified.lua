@@ -128,12 +128,47 @@ local function OnIsAcidSizzlingDirty(parent)
     end
 end
 
+--Temperature stuff
+local max_precision_temp = 6
+local min_precision_temp = -11
+local precision_factor = 4
+local coarse_factor = 1
+local pivot = math.floor((256 - (max_precision_temp + min_precision_temp) * precision_factor) / 2)
+
+local function SerializeTemperature(inst, temperature)
+    if temperature ~= nil then
+        if temperature >= max_precision_temp then
+            inst.temperature:set(pivot + max_precision_temp * precision_factor + math.floor((temperature - max_precision_temp) * coarse_factor + .5))
+        elseif temperature <= min_precision_temp then
+            inst.temperature:set(pivot + min_precision_temp * precision_factor + math.floor((temperature - min_precision_temp) * coarse_factor + .5))
+        else
+            inst.temperature:set(pivot + math.floor(temperature * precision_factor + .5))
+        end
+    end
+end
+
+local function DeserializeTemperature(inst)
+    local temperature
+    if inst.temperature:value() >= pivot + max_precision_temp * precision_factor then
+        temperature = (inst.temperature:value() - pivot - max_precision_temp * precision_factor) / coarse_factor + max_precision_temp
+    elseif inst.temperature:value() <= pivot + min_precision_temp * precision_factor then
+        temperature = (inst.temperature:value() - pivot - min_precision_temp * precision_factor) / coarse_factor + min_precision_temp
+    else
+        temperature = (inst.temperature:value() - pivot) / precision_factor
+    end
+
+    if inst._parent ~= nil then
+        inst._parent:PushEvent("temperaturedelta", { new = temperature })
+    end
+end
+
 local function RegisterNetListeners(inst)
     inst:ListenForEvent("imagedirty", OnImageDirty)
     inst:ListenForEvent("percentuseddirty", DeserializePercentUsed)
     inst:ListenForEvent("perishdirty", DeserializePerish)
     inst:ListenForEvent("rechargedirty", DeserializeRecharge)
     inst:ListenForEvent("rechargetimedirty", DeserializeRechargeTime)
+    inst:ListenForEvent("temperaturedirty", DeserializeTemperature)
 	inst:ListenForEvent("inventoryitem_stacksizedirty", OnStackSizeDirty, inst._parent)
     inst:ListenForEvent("iswetdirty", OnIsWetDirty, inst._parent)
     inst:ListenForEvent("isacidsizzlingdirty", OnIsAcidSizzlingDirty, inst._parent)
@@ -153,6 +188,7 @@ local function fn()
     inst.atlas = net_hash(inst.GUID, "inventoryitem.atlas", "imagedirty")
     inst.cangoincontainer = net_bool(inst.GUID, "inventoryitem.cangoincontainer")
     inst.canonlygoinpocket = net_bool(inst.GUID, "inventoryitem.canonlygoinpocket")
+    inst.canonlygoinpocketorpocketcontainers = net_bool(inst.GUID, "inventoryitem.canonlygoinpocketorpocketcontainers")
     inst.src_pos =
     {
         isvalid = net_bool(inst.GUID, "inventoryitem.src_pos.isvalid"),
@@ -169,13 +205,16 @@ local function fn()
     inst.usegridplacer = net_bool(inst.GUID, "deployable.usegridplacer")
     inst.attackrange = net_float(inst.GUID, "weapon.attackrange")
     inst.walkspeedmult = net_byte(inst.GUID, "equippable.walkspeedmult")
-    inst.equiprestrictedtag = net_hash(inst.GUID, "equippable.restrictedtag")
     inst.moisture = net_float(inst.GUID, "inventoryitemmoisture.moisture")
+    inst.temperature = net_byte(inst.GUID, "inventoryitemtemperature.temperature", "temperaturedirty")
+    inst.equiprestrictedtag = net_hash(inst.GUID, "equippable.restrictedtag")
+    inst.islockedinslot = net_bool(inst.GUID, "inventoryitem.islockedinslot")
 
     inst.image:set(0)
     inst.atlas:set(0)
     inst.cangoincontainer:set(true)
     inst.canonlygoinpocket:set(false)
+    inst.canonlygoinpocketorpocketcontainers:set(false)
     inst.src_pos.isvalid:set(false)
     inst.percentused:set(255)
     inst.perish:set(63)
@@ -187,8 +226,10 @@ local function fn()
     inst.usegridplacer:set(false)
     inst.attackrange:set(-99)
     inst.walkspeedmult:set(1)
-    inst.equiprestrictedtag:set(0)
     inst.moisture:set(0)
+    inst.temperature:set(0)
+    inst.equiprestrictedtag:set(0)
+	inst.islockedinslot:set(false)
 
     inst.entity:SetPristine()
 
@@ -197,6 +238,7 @@ local function fn()
         inst.DeserializePerish = DeserializePerish
         inst.DeserializeRecharge = DeserializeRecharge
         inst.DeserializeRechargeTime = DeserializeRechargeTime
+        inst.DeserializeTemperature = DeserializeTemperature
         inst.OnEntityReplicated = OnEntityReplicated
 
         --inst._rechargetask = nil
@@ -213,6 +255,7 @@ local function fn()
     inst.ForcePerishDirty = ForcePerishDirty
     inst.SerializeRecharge = SerializeRecharge
     inst.SerializeRechargeTime = SerializeRechargeTime
+    inst.SerializeTemperature = SerializeTemperature
 
     return inst
 end

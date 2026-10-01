@@ -157,7 +157,8 @@ local function RepopulateNodeIdTileMap(world_map, savedata)
 		world_map:RepopulateNodeIdTileMap(i, node.x, node.y, node.poly)
 	end
 
-	print ("Retrofitting for Return of Them: Forgotten Knowledge - Added Node Id's to the world.")
+	print("Retrofitting Repopulation for Node Id Tile Map - Added Node Id's to the world.")
+	-- print ("Retrofitting for Return of Them: Forgotten Knowledge - Added Node Id's to the world.")
 end
 
 
@@ -234,6 +235,14 @@ local function DoRetrofitting(savedata, world_map)
         print("Retrofitting for Junk Yard: Removing fence_junk_pre_rotator instances.")
         savedata.ents["fence_junk_pre_rotator"] = nil
     end
+
+	if savedata.retrofit_rifts6_add_fumarole then
+		savedata.retrofit_rifts6_add_fumarole = nil
+
+        require("map/caves_retrofit_land").FromBeyondRetrofitting_Fumarole(TheWorld.Map, savedata)
+
+		dirty = true
+	end
 
 	if dirty then
 		savedata.map.tiles = world_map:GetStringEncode()

@@ -25,16 +25,21 @@ local HOUSE_RETURN_DIST = 50
 
 local SIT_BOY_DIST = 10
 
+local function IsFoodValid(item, inst)
+    return inst.components.eater:CanEat(item)
+        and item:IsOnPassablePoint(true)
+end
+
 local function EatFoodAction(inst)
 	if inst.sg:HasStateTag("busy") and not inst.sg:HasStateTag("wantstoeat") then
 		return
 	end
-	local target = FindEntity(inst, SEE_DIST, function(item) return inst.components.eater:CanEat(item) and item:IsOnPassablePoint(true) end, nil, FINDFOOD_CANT_TAGS)
+	local target = FindEntity(inst, SEE_DIST, IsFoodValid, nil, FINDFOOD_CANT_TAGS, inst.components.eater:GetEdibleTags())
     return target ~= nil and BufferedAction(inst, target, ACTIONS.EAT) or nil
 end
 
 local function GetLeader(inst)
-    return inst.components.follower ~= nil and inst.components.follower.leader or nil
+    return inst.components.follower and inst.components.follower:GetLeader()
 end
 
 local function GetHome(inst)
@@ -110,17 +115,22 @@ end
 
 --------------------------------------------------------------------------
 
-local CARCASS_TAGS = { "meat_carcass" }
-local CARCASS_NO_TAGS = { "fire" }
+local CARCASS_TAGS = { "creaturecorpse" }
+local CARCASS_NO_TAGS = { "NOCLICK", "fire" }
+local function IsCarcassValid(guy, inst)
+    return not guy:IsMutating()
+end
+
 function HoundBrain:SelectCarcass()
-	self.carcass = FindEntity(self.inst, SEE_DIST, nil, CARCASS_TAGS, CARCASS_NO_TAGS)
+	self.carcass = FindEntity(self.inst, SEE_DIST, IsCarcassValid, CARCASS_TAGS, CARCASS_NO_TAGS)
 	return self.carcass ~= nil
 end
 
 function HoundBrain:CheckCarcass()
 	return not (self.carcass.components.burnable ~= nil and self.carcass.components.burnable:IsBurning())
 		and self.carcass:IsValid()
-		and self.carcass:HasTag("meat_carcass")
+		and self.carcass:HasTag("creaturecorpse")
+        and not self.carcass:IsMutating()
 end
 
 function HoundBrain:GetCarcassPos()
@@ -181,6 +191,7 @@ function HoundBrain:OnStart()
             WhileNode(function() return not self.inst.sg:HasStateTag("jumping") end, "NotJumpingBehaviour",
                 PriorityNode({
 					BrainCommon.PanicTrigger(self.inst),
+                    BrainCommon.ElectricFencePanicTrigger(self.inst),
                     WhileNode(function() return GetLeader(self.inst) == nil end, "NoLeader", AttackWall(self.inst)),
 
 					--Eat carcass behaviour (for non-mutated hounds)
@@ -201,7 +212,7 @@ function HoundBrain:OnStart()
 										function() return self.inst.components.combat:GetHitRange() + self.carcass:GetPhysicsRadius(0) - 1 end,
 										true)),
 								IfNode(function() return self:CheckCarcass() and not self.inst.components.combat:InCooldown() end, "chomp",
-									ActionNode(function() self.inst.sg:HandleEvent("chomp", { target = self.carcass }) end)),
+									ActionNode(function() self.inst:PushEventImmediate("chomp", { target = self.carcass }) end)),
 								FaceEntity(self.inst,
 									function() return self.carcass end,
 									function() return self:CheckCarcass() end),

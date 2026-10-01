@@ -29,10 +29,15 @@ local events=
     end),
     CommonHandlers.OnLocomote(false, true),
     CommonHandlers.OnFreeze(),
+	CommonHandlers.OnElectrocute(),
     CommonHandlers.OnAttack(),
     CommonHandlers.OnAttacked(),
     CommonHandlers.OnDeath(),
     CommonHandlers.OnSleepEx(),
+    CommonHandlers.OnWakeEx(),
+
+	-- Corpse handlers
+	CommonHandlers.OnCorpseChomped(),
 }
 
 local function DoChewSound(inst)
@@ -97,7 +102,7 @@ local states =
 
     State{
         name = "flyaway",
-        tags = {"flight", "busy"},
+		tags = { "flight", "busy", "noelectrocute" },
         onenter = function(inst)
             inst.Physics:Stop()
 
@@ -127,7 +132,7 @@ local states =
 
     State{
         name = "flyback",
-        tags = {"flight", "busy"},
+		tags = { "flight", "busy", "noelectrocute" },
         onenter = function(inst)
             inst.Physics:Stop()
 
@@ -375,8 +380,17 @@ CommonStates.AddCombatStates(states,
         TimeEvent(4*FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve/creatures/bat/flap") end ),
         TimeEvent(15*FRAMES, LandFlyingCreature),
     },
+},
+nil,
+nil,
+{
+    has_corpse_handler = true,
 })
 
 CommonStates.AddFrozenStates(states, LandFlyingCreature, RaiseFlyingCreature)
+CommonStates.AddElectrocuteStates(states)
 
-return StateGraph("bat", states, events, "idle", actionhandlers)
+CommonStates.AddInitState(states, "idle")
+CommonStates.AddCorpseStates(states)
+
+return StateGraph("bat", states, events, "init", actionhandlers)

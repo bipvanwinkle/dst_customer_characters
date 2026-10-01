@@ -137,6 +137,7 @@ local events =
     CommonHandlers.OnLocomote(false, true),
     CommonHandlers.OnDeath(),
     CommonHandlers.OnFreeze(),
+	CommonHandlers.OnElectrocute(),
     CommonHandlers.OnSleepEx(),
     CommonHandlers.OnWakeEx(),
     CommonHandlers.OnSink(),
@@ -146,11 +147,13 @@ local events =
             ChooseAttack(inst)
         end
     end),
-    EventHandler("attacked", function(inst)
-        if not inst.components.health:IsDead() and
-            (not inst.sg:HasStateTag("busy") or inst.sg:HasStateTag("caninterrupt")) and
-            not CommonHandlers.HitRecoveryDelay(inst) then
-            inst.sg:GoToState("hit")
+	EventHandler("attacked", function(inst, data)
+		if inst.components.health and not inst.components.health:IsDead() then
+			if CommonHandlers.TryElectrocuteOnAttacked(inst, data) then
+				return
+			elseif (not inst.sg:HasStateTag("busy") or inst.sg:HasStateTag("caninterrupt")) and not CommonHandlers.HitRecoveryDelay(inst) then
+				inst.sg:GoToState("hit")
+			end
         end
     end),
     EventHandler("chomp", function(inst)
@@ -178,6 +181,9 @@ local events =
             end
         end
     end),
+
+	-- Corpse handlers
+	CommonHandlers.OnCorpseChomped(),
 }
 
 local states =
@@ -276,7 +282,7 @@ local states =
         name = "death",
         tags = { "busy" },
 
-        onenter = function(inst)
+        onenter = function(inst, data)
             inst.components.locomotor:StopMoving()
             inst.AnimState:PlayAnimation("death")
             if inst:IsUnchained() then
@@ -306,18 +312,17 @@ local states =
                 if inst:IsUnchained() and inst.persists then
                     inst.persists = false
                     inst.components.commander:DropAllSoldierTargets()
+                    -- Key can just drop, not stored in corpse. It's like an 'item' he holds anyways.
                     local key = SpawnPrefab("klaussackkey")
                     inst:PushEvent("dropkey", key)
                     inst.components.lootdropper:FlingItem(key)
-                    inst.components.lootdropper:DropLoot(inst:GetPosition())
+                    --
+                    inst:DropDeathLoot()
                 end
             end),
             TimeEvent(3, function(inst)
                 if not inst:IsUnchained() then
                     inst.sg.statemem.resurrecting = true
-					if inst.brain.stopped then
-						inst.brain:Start()
-					end
                     inst.sg:GoToState("resurrect")
                 end
             end),
@@ -331,8 +336,12 @@ local states =
         events =
         {
             EventHandler("animover", function(inst)
-                if not inst:IsUnchained() and inst.AnimState:AnimDone() then
-                    inst:PauseMusic(true)
+                if inst.AnimState:AnimDone() then
+                    if inst:IsUnchained() then
+                        inst.sg:GoToState("corpse")
+                    else
+                        inst:PauseMusic(true)
+                    end
                 end
             end),
         },
@@ -348,7 +357,7 @@ local states =
 
     State{
         name = "resurrect",
-        tags = { "busy", "nosleep", "nofreeze" },
+		tags = { "busy", "nosleep", "nofreeze", "noelectrocute" },
 
         onenter = function(inst)
             inst.components.locomotor:StopMoving()
@@ -390,7 +399,7 @@ local states =
 
     State{
         name = "resurrect_pst",
-        tags = { "busy", "nosleep", "nofreeze" },
+		tags = { "busy", "nosleep", "nofreeze", "noelectrocute" },
 
         onenter = function(inst)
             inst.components.locomotor:StopMoving()
@@ -876,7 +885,7 @@ local states =
 
     State{
         name = "transition",
-        tags = { "transition", "busy", "nosleep", "nofreeze" },
+		tags = { "transition", "busy", "nosleep", "nofreeze", "noelectrocute" },
 
         onenter = function(inst, transition)
             inst.components.locomotor:StopMoving()
@@ -910,7 +919,7 @@ local states =
 
     State{
         name = "transition_loop",
-        tags = { "transition", "busy", "nosleep", "nofreeze" },
+		tags = { "transition", "busy", "nosleep", "nofreeze", "noelectrocute" },
 
         onenter = function(inst, transition)
             if not inst.AnimState:IsCurrentAnimation("transform_loop") then
@@ -943,7 +952,7 @@ local states =
 
     State{
         name = "transition_pst",
-        tags = { "busy", "nosleep", "nofreeze" },
+		tags = { "busy", "nosleep", "nofreeze", "noelectrocute" },
 
         onenter = function(inst)
             inst.AnimState:PlayAnimation("transform_pst2")
@@ -966,6 +975,7 @@ local states =
                 inst.sg:RemoveStateTag("busy")
                 inst.sg:RemoveStateTag("nosleep")
                 inst.sg:RemoveStateTag("nofreeze")
+				inst.sg:RemoveStateTag("noelectrocute")
             end),
         },
 
@@ -977,7 +987,7 @@ local states =
 
     State{
         name = "transition_enrage",
-        tags = { "enrage", "busy", "nosleep", "nofreeze" },
+		tags = { "enrage", "busy", "nosleep", "nofreeze", "noelectrocute" },
 
         onenter = function(inst)
             inst.AnimState:PlayAnimation("transform_pst")
@@ -998,6 +1008,7 @@ local states =
                 inst.sg:RemoveStateTag("busy")
                 inst.sg:RemoveStateTag("nosleep")
                 inst.sg:RemoveStateTag("nofreeze")
+				inst.sg:RemoveStateTag("noelectrocute")
             end),
         },
 
@@ -1105,7 +1116,11 @@ CommonStates.AddSleepExStates(states,
 })
 
 CommonStates.AddFrozenStates(states, nil, StopLaughing)
+CommonStates.AddElectrocuteStates(states)
 CommonStates.AddSinkAndWashAshoreStates(states)
 CommonStates.AddVoidFallStates(states)
 
-return StateGraph("SGklaus", states, events, "idle")
+CommonStates.AddInitState(states, "idle")
+CommonStates.AddCorpseStates(states)
+
+return StateGraph("klaus", states, events, "init")

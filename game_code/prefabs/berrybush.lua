@@ -100,8 +100,9 @@ local function onpickedfn(inst, picker)
         end
     end
 
+    local spawnchance = IsSpecialEventActive(SPECIAL_EVENTS.YOTG) and TUNING.YOTG_PERD_SPAWNCHANCE or TUNING.PERD_SPAWNCHANCE
     if not (picker and picker:HasTag("berrythief") or inst._noperd) and
-            math.random() < (IsSpecialEventActive(SPECIAL_EVENTS.YOTG) and TUNING.YOTG_PERD_SPAWNCHANCE or TUNING.PERD_SPAWNCHANCE) then
+            TryLuckRoll(picker, spawnchance, LuckFormulas.SpawnPerd) then
         inst:DoTaskInTime(3 + math.random() * 3, spawnperd)
     end
 end
@@ -182,7 +183,7 @@ local function dig_up_common(inst, worker, numberries)
                     inst.components.lootdropper:SpawnLootPrefab(inst.components.pickable.product, pt)
                 end
             end
-            inst.components.lootdropper:SpawnLootPrefab("dug_"..inst.prefab)
+            inst.components.lootdropper:SpawnLootPrefab("dug_"..inst.prefab, nil, inst.linked_skinname, inst.skin_id)
         end
     end
     inst:Remove()
@@ -313,6 +314,7 @@ local function createbush(name, inspectname, berryname, master_postinit)
 
         inst:ListenForEvent("onwenthome", shake)
         MakeSnowCovered(inst)
+        SetLunarHailBuildupAmountSmall(inst)
         MakeNoGrowInWinter(inst)
 
         MakeWaxablePlant(inst)

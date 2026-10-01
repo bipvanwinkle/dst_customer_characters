@@ -200,6 +200,7 @@ local function make_stump(inst)
     inst:RemoveComponent("burnable")
     inst:RemoveComponent("propagator")
     inst:RemoveComponent("workable")
+    RemoveLunarHailBuildup(inst)
     inst:RemoveComponent("hauntable")
     inst:RemoveTag("shelter")
 
@@ -273,8 +274,8 @@ end
 local function set_short_burnable(inst)
     if inst.components.burnable == nil then
         inst:AddComponent("burnable")
+        inst.components.burnable:AddBurnFX("fire", Vector3(0, 0, 0))
     end
-    inst.components.burnable:AddBurnFX("fire", Vector3(0, 0, 0))
     inst.components.burnable:SetFXLevel(2)
     inst.components.burnable:SetBurnTime(TUNING.TREE_BURN_TIME / 2)
     inst.components.burnable:SetOnIgniteFn(DefaultBurnFn)
@@ -316,8 +317,8 @@ end
 local function set_normal_burnable(inst)
     if inst.components.burnable == nil then
         inst:AddComponent("burnable")
+        inst.components.burnable:AddBurnFX("fire", Vector3(0, 0, 0))
     end
-    inst.components.burnable:AddBurnFX("fire", Vector3(0, 0, 0))
     inst.components.burnable:SetBurnTime(TUNING.TREE_BURN_TIME)
     inst.components.burnable:SetFXLevel(3)
     inst.components.burnable:SetOnIgniteFn(DefaultBurnFn)
@@ -359,8 +360,8 @@ end
 local function set_tall_burnable(inst)
     if inst.components.burnable == nil then
         inst:AddComponent("burnable")
+        inst.components.burnable:AddBurnFX("fire", Vector3(0, 0, 0))
     end
-    inst.components.burnable:AddBurnFX("fire", Vector3(0, 0, 0))
     inst.components.burnable:SetFXLevel(5)
     inst.components.burnable:SetBurnTime(TUNING.TREE_BURN_TIME * 1.5)
     inst.components.burnable:SetOnIgniteFn(DefaultBurnFn)
@@ -498,6 +499,9 @@ local function on_load(inst, data)
         on_moon_tree_burnt_immediate_helper(inst, true)
     else
         sway(inst)
+    end
+    if is_burnt then
+        RemoveLunarHailBuildup(inst)
     end
 end
 

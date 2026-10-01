@@ -88,13 +88,14 @@ local function startsleepsound(inst, len)
 end
 
 local function temperaturetick(inst, sleeper)
-    if sleeper.components.temperature ~= nil then
+    local ent_temp = GetEntityTemperature(sleeper)
+    if ent_temp ~= nil then
         if inst.is_cooling then
-            if sleeper.components.temperature:GetCurrent() > TUNING.SLEEP_TARGET_TEMP_TENT then
-                sleeper.components.temperature:SetTemperature(sleeper.components.temperature:GetCurrent() - TUNING.SLEEP_TEMP_PER_TICK)
+            if ent_temp > TUNING.SLEEP_TARGET_TEMP_TENT then
+                SetEntityTemperature(sleeper, ent_temp - TUNING.SLEEP_TEMP_PER_TICK)
             end
-        elseif sleeper.components.temperature:GetCurrent() < TUNING.SLEEP_TARGET_TEMP_TENT then
-            sleeper.components.temperature:SetTemperature(sleeper.components.temperature:GetCurrent() + TUNING.SLEEP_TEMP_PER_TICK)
+        elseif ent_temp < TUNING.SLEEP_TARGET_TEMP_TENT then
+            SetEntityTemperature(sleeper, ent_temp + TUNING.SLEEP_TEMP_PER_TICK)
         end
     end
 end
@@ -315,7 +316,9 @@ local function AttemptMakeQueen(inst)
 end
 
 local function onspawnspider(inst, spider)
-    spider.sg:GoToState("taunt")
+    if spider.sg and spider.sg:HasState("taunt") then
+        spider.sg:GoToState("taunt")
+    end
     if inst:HasTag("bedazzled") then
         inst.components.bedazzlement:PacifySpiders()
     end
@@ -358,22 +361,20 @@ local function SpawnDefenders(inst, attacker)
                             (TUNING.SPAWN_SPIDER_WARRIORS and k <= num_warriors and not inst:HasTag("bedazzled")) and 
                             "spider_warrior" or "spider"
 
-                local spider = inst.components.childspawner:SpawnChild()
+                local spider = inst.components.childspawner:SpawnChild(attacker)
                 if spider ~= nil and attacker ~= nil and spider.components.combat ~= nil then
-                    spider.components.combat:SetTarget(attacker)
                     spider.components.combat:BlankOutAttacks(1.5 + math.random() * 2)
                 end
             end
 
             inst.components.childspawner.childname = "spider"
             if not inst:HasTag("bedazzled") then
-            local emergencyspider = inst.components.childspawner:TrySpawnEmergencyChild()
-            if emergencyspider ~= nil then
-                emergencyspider.components.combat:SetTarget(attacker)
-                emergencyspider.components.combat:BlankOutAttacks(1.5 + math.random() * 2)
+                local emergencyspider = inst.components.childspawner:TrySpawnEmergencyChild(attacker)
+                if emergencyspider ~= nil then
+                    emergencyspider.components.combat:BlankOutAttacks(1.5 + math.random() * 2)
+                end
             end
         end
-    end
     end
 end
 
@@ -411,7 +412,7 @@ local function SpawnInvestigators(inst, data)
 
             for _ = 1, num_to_release do
                 local spider = inst.components.childspawner:SpawnChild()
-                if spider ~= nil and targetpos ~= nil then
+                if spider ~= nil and targetpos ~= nil and spider.components.knownlocations ~= nil then
                     spider.components.knownlocations:RememberLocation("investigate", targetpos)
                 end
             end
@@ -715,8 +716,6 @@ local function MakeSpiderDenFn(den_level)
         inst:AddTag("hive")
 		inst:AddTag("NPC_workable")
 
-        MakeSnowCoveredPristine(inst)
-
         inst:SetPrefabName("spiderden")
 
         inst.scrapbook_anim = "cocoon_large"
@@ -810,8 +809,6 @@ local function MakeSpiderDenFn(den_level)
         inst:AddComponent("hauntable")
         inst.components.hauntable.cooldown = TUNING.HAUNT_COOLDOWN_MEDIUM
         inst.components.hauntable:SetOnHauntFn(OnHaunt)
-
-        MakeSnowCovered(inst)
 
         inst:AddComponent("shaveable")
         inst.components.shaveable:SetPrize("silk", 1)

@@ -195,7 +195,16 @@ function SetSkinsOnAnim( anim_state, prefab, base_skin, clothing_names, monkey_c
 	                end
                 end
 
-				for _,sym in pairs(CLOTHING[name].symbol_overrides) do
+                local symbols = {}
+                for _, symbol in ipairs(CLOTHING[name].symbol_overrides) do
+                    symbols[symbol] = true
+                end
+                if src_symbols_alt then
+                    for symbol, override in pairs(src_symbols_alt) do
+                        symbols[symbol] = true
+                    end
+                end
+				for sym, _ in pairs(symbols) do
 					if not ModManager:IsModCharacterClothingSymbolExcluded( prefab, sym ) then
 						if (not allow_torso and sym == "torso") or (not allow_arms and ((sym == "arm_upper" or sym == "arm_upper_skin" or sym == "arm_lower") or (sym == "arm_lower_cuff" and type == "body" )) ) then
 							--skip this symbol for wolfgang
@@ -413,6 +422,28 @@ function SetSkinsOnAnim( anim_state, prefab, base_skin, clothing_names, monkey_c
 	end
 end
 
+function Skinner:HasSpinnableTail()
+    local has_spinnable_tail
+    if self.skin_name then
+        has_spinnable_tail = self.skin_name:find("wortox") ~= nil and self.skin_name ~= "wortox_noeyeddeer" -- Hack workaround until heads with skins can flag if they overwrite tails.
+    else
+        has_spinnable_tail = self.inst.prefab == "wortox" -- All base Wortox heads have a spinnable tail.
+    end
+    if self.clothing then
+        for _, cloth_slot in pairs(clothing_order) do
+            local cloth_name = self.clothing[cloth_slot]
+            if cloth_name and CLOTHING[cloth_name] then
+                if CLOTHING[cloth_name].spinnable_tail then
+                    has_spinnable_tail = true
+                elseif table.contains(CLOTHING[cloth_name].symbol_overrides, "tail") then
+                    has_spinnable_tail = false
+                end
+            end
+        end
+    end
+    return has_spinnable_tail
+end
+
 function Skinner:GetSkinMode()
     return self.skintype
 end
@@ -441,6 +472,92 @@ function Skinner:SetSkinMode(skintype, default_build)
 	end
 
 	self.inst.Network:SetPlayerSkin( self.skin_name or "", self.clothing["body"] or "", self.clothing["hand"] or "", self.clothing["legs"] or "", self.clothing["feet"] or "" )
+end
+
+local function MergeCantTagsAndCheckForbidden(canttags, overridedata)
+    if overridedata.tags then
+        for _, tag in ipairs(overridedata.tags) do
+            if canttags[tag] then
+                return true
+            end
+        end
+    end
+
+    if overridedata.canttags then
+        for _, tag in ipairs(overridedata.canttags) do
+            if canttags[tag] then
+                return true
+            end
+        end
+    end
+
+    -- All good to merge.
+    if overridedata.canttags then
+        for _, tag in ipairs(overridedata.canttags) do
+            canttags[tag] = true
+        end
+    end
+    return false
+end
+
+function Skinner:SetSkinOverrides(skinoverrides)
+    if self.skinoverrides then
+        for _, override in ipairs(self.skinoverrides) do
+            local overridedata = SKINOVERRIDES[override]
+            if overridedata and overridedata.onclearfn then
+                overridedata.onclearfn(self.inst)
+            end
+        end
+    end
+    local validated_skinoverrides = nil
+    if skinoverrides then
+        local canttags = {}
+        for _, override in ipairs(skinoverrides) do
+            if (not InGamePlay() or self.inst.userid and TheInventory:CheckClientOwnership(self.inst.userid, override)) then
+                local overridedata = SKINOVERRIDES[override]
+                if overridedata then
+                    if (overridedata.character == nil) or (overridedata.character == self.inst.prefab) then
+                        local forbidden = MergeCantTagsAndCheckForbidden(canttags, overridedata)
+                        if not forbidden then
+                            if not validated_skinoverrides then
+                                validated_skinoverrides = {override}
+                            else
+                                table.insert(validated_skinoverrides, override)
+                            end
+                            if overridedata.oninitfn then
+                                overridedata.oninitfn(self.inst)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    self.skinoverrides = validated_skinoverrides
+end
+
+function Skinner:SetItemIdleAnimation(item_type) -- Added automatically from SetSkinOverrides.
+    local anim = nil
+    if item_type then
+        if (not InGamePlay() or self.inst.userid and TheInventory:CheckClientOwnership(self.inst.userid, item_type)) then
+            local idleanimationdata = IDLEANIMATIONS_ITEMS[item_type]
+            if idleanimationdata and idleanimationdata.data and idleanimationdata.data.anim then
+                anim = idleanimationdata.data.anim
+            end
+        end
+    end
+
+    if anim then
+        self.itemidleanimationdata = {anim = anim, item_type = item_type}
+    else
+        self.itemidleanimationdata = nil
+    end
+
+    return (self.itemidleanimationdata ~= nil) == (item_type ~= nil)
+end
+
+function Skinner:GetItemIdleAnimationData()
+    return self.itemidleanimationdata
 end
 
 function Skinner:SetupNonPlayerData()
@@ -555,29 +672,37 @@ function Skinner:ClearClothing(type)
 	_InternalSetClothing(self, type, "", true)
 end
 
-function Skinner:CopySkinsFromPlayer(player)
+function Skinner:CopySkinsFromPlayer(player, nocurses)
 	-- NOTES(JBK): This assumes things please be careful.
 	local onto = self.inst
 
-	-- Grab skins and validate with AnimState.
-	local skins = player.components.skinner:GetClothing()
-	onto.AnimState:AssignItemSkins(player.userid, skins.base or "", skins.body or "", skins.hand or "", skins.legs or "", skins.feet or "")
+    -- Grab skins and validate with AnimState.
+    local skins = player.components.skinner:GetClothing()
+    onto.AnimState:AssignItemSkins(player.userid, skins.base or "", skins.body or "", skins.hand or "", skins.legs or "", skins.feet or "")
 
-	-- Grab details used to apply.
-	local monkey_curse = player.components.skinner:GetMonkeyCurse()
-	local skin_mode = player.components.skinner:GetSkinMode()
+    -- Grab details used to apply.
+    local monkey_curse = nil
+    if not nocurses then
+        monkey_curse = player.components.skinner:GetMonkeyCurse()
+    end
+    local skin_mode = player.components.skinner:GetSkinMode()
 
-	-- For legacy mod support, this part is like this.
-	local skindata = GetSkinData(skins.base)
-	local base_skin = player.prefab --.. "_none"
-	if skindata.skins ~= nil then
-		base_skin = skindata.skins[skin_mode] or base_skin
-	end
+    -- For legacy mod support, this part is like this.
+    local skindata = GetSkinData(skins.base)
+    local base_skin = player.prefab --.. "_none"
+    if skindata.skins ~= nil then
+        base_skin = skindata.skins[skin_mode] or base_skin
+    end
 
-	-- Paste it and hope nothing has went wrong.
-	SetSkinsOnAnim(onto.AnimState, player.prefab, base_skin, skins, monkey_curse, skin_mode, player.prefab)
+    -- Paste it and hope nothing has went wrong.
+    SetSkinsOnAnim(onto.AnimState, player.prefab, base_skin, skins, monkey_curse, skin_mode, player.prefab)
 
     -- Save it to the internal table to save later.
+	self.copiedplayer_data =
+	{
+		prefab = player.prefab,
+		userid = player.userid,
+	}
     self.skin_name = skins.base
     self.clothing.body = skins.body
     self.clothing.hand = skins.hand
@@ -587,8 +712,103 @@ function Skinner:CopySkinsFromPlayer(player)
     self.skintype = skin_mode
 end
 
+function Skinner:SwapCopiedPlayerSkins(copiedplayer, nocurses) -- e.g. between backup chassis and possessed chassis, neither of which are players themselves
+	local copiedskinner = copiedplayer.components.skinner
+	if not copiedskinner then
+		return
+	end
+
+	-- NOTES(OMAR): This assumes things! I think?
+	local ourskins = self:GetClothing()
+	local theirskins = copiedskinner:GetClothing()
+
+	local ourcopiedplayerdata = self:GetCopiedPlayerData()
+	local theircopiedplayerdata = copiedskinner:GetCopiedPlayerData()
+
+	-- Grab skins and validate with AnimState.
+	if ourcopiedplayerdata ~= nil then
+		copiedplayer.AnimState:AssignItemSkins(ourcopiedplayerdata.userid, ourskins.base or "", ourskins.body or "", ourskins.hand or "", ourskins.legs or "", ourskins.feet or "")
+	end
+
+	if theircopiedplayerdata ~= nil then
+		self.inst.AnimState:AssignItemSkins(theircopiedplayerdata.userid, theirskins.base or "", theirskins.body or "", theirskins.hand or "", theirskins.legs or "", theirskins.feet or "")
+	end
+
+    -- Grab details used to apply.
+    local ourmonkey_curse = nil
+    local theirmonkey_curse = nil
+    if not nocurses then
+        ourmonkey_curse = self:GetMonkeyCurse()
+        theirmonkey_curse = copiedskinner:GetMonkeyCurse()
+    end
+    local ourskin_mode = self:GetSkinMode()
+    local theirskin_mode = copiedskinner:GetSkinMode()
+	local ourplayerprefab = ourcopiedplayerdata ~= nil and ourcopiedplayerdata.prefab
+	local theirplayerprefab = theircopiedplayerdata ~= nil and theircopiedplayerdata.prefab
+
+    -- For legacy mod support, this part is like this.
+    local ourskindata = GetSkinData(ourskins.base)
+    local ourbase_skin = ourplayerprefab --.. "_none"
+    if ourskindata.skins ~= nil then
+        ourbase_skin = ourskindata.skins[ourskin_mode] or ourbase_skin
+    end
+
+   	local theirskindata = GetSkinData(theirskins.base)
+    local theirbase_skin = theirplayerprefab --.. "_none"
+    if theirskindata.skins ~= nil then
+        theirbase_skin = theirskindata.skins[theirskin_mode] or theirbase_skin
+    end
+
+    -- Paste it and hope nothing has went wrong.
+    SetSkinsOnAnim(self.inst.AnimState, theirplayerprefab, theirbase_skin, theirskins, theirmonkey_curse, theirskin_mode, theirplayerprefab)
+    SetSkinsOnAnim(copiedplayer.AnimState, ourplayerprefab, ourbase_skin, ourskins, ourmonkey_curse, ourskin_mode, ourplayerprefab)
+
+    -- Save it to the internal table to save later.
+	if theircopiedplayerdata ~= nil then
+		self.copiedplayer_data =
+		{
+			prefab = theirplayerprefab,
+			userid = theircopiedplayerdata.userid,
+		}
+	end
+    self.skin_name = theirskins.base
+    self.clothing.body = theirskins.body
+    self.clothing.hand = theirskins.hand
+    self.clothing.legs = theirskins.legs
+    self.clothing.feet = theirskins.feet
+    self.monkey_curse = theirmonkey_curse
+    self.skintype = theirskin_mode
+
+	if ourcopiedplayerdata ~= nil then
+		copiedskinner.copiedplayer_data =
+		{
+			prefab = ourplayerprefab,
+			userid = ourcopiedplayerdata.userid,
+		}
+	end
+
+    copiedskinner.skin_name = ourskins.base
+    copiedskinner.clothing.body = ourskins.body
+    copiedskinner.clothing.hand = ourskins.hand
+    copiedskinner.clothing.legs = ourskins.legs
+    copiedskinner.clothing.feet = ourskins.feet
+    copiedskinner.monkey_curse = ourmonkey_curse
+    copiedskinner.skintype = ourskin_mode
+end
+
+function Skinner:GetCopiedPlayerData()
+	return self.copiedplayer_data
+end
+
 function Skinner:OnSave()
-	return {skin_name = self.skin_name, clothing = self.clothing, monkey_curse = self.monkey_curse, skin_mode = self.skintype}
+	return {
+        skin_name = self.skin_name,
+        clothing = self.clothing,
+        monkey_curse = self.monkey_curse,
+        skin_mode = self.skintype,
+        copiedplayer_data = self.copiedplayer_data,
+        skinoverrides = self.skinoverrides,
+    }
 end
 
 function Skinner:OnLoad(data)
@@ -598,6 +818,10 @@ function Skinner:OnLoad(data)
     --     because the user is not actually logged in at that time.
 
     self.monkey_curse = data.monkey_curse
+
+	if data.copiedplayer_data ~= nil then
+		self.copiedplayer_data = data.copiedplayer_data
+	end
 
     if data.clothing ~= nil then
         self.clothing = data.clothing
@@ -628,6 +852,15 @@ function Skinner:OnLoad(data)
         end
 		self:SetSkinName(skin_name, true)
 	end
+
+    if data.skinoverrides then
+        self:SetSkinOverrides(data.skinoverrides)
+    else
+        -- FIXME(JBK): skinoverrides: HACK
+        if self.inst.prefab == "wx78" and (not InGamePlay() or self.inst.userid and TheInventory:CheckClientOwnership(self.inst.userid, "idleanimations_wx78_headadjust")) then
+            self:SetSkinOverrides({"idleanimations_wx78_headadjust"})
+        end
+    end
 end
 
 return Skinner

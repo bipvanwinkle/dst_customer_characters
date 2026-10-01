@@ -5,18 +5,12 @@ local assets =
 	Asset("INV_IMAGE", "carnival_prizeticket_largestack"),
 }
 
-local prefabs =
-{
-}
-
 local MERGE_NO_TAGS = {"INLIMBO"}
 
 local function MergeStacks(inst)
 	local function CanMergeTestFn(item)
-		return item.prefab == inst.prefab
-				and item.skinname == inst.skinname
-				and (item.components.inventoryitem ~= nil and item.components.inventoryitem.is_landed)
-				and (item.components.stackable ~= nil and (item.components.stackable:RoomLeft() >= inst.components.stackable:StackSize()))
+		return (item.components.inventoryitem ~= nil and item.components.inventoryitem.is_landed)
+				and (item.components.stackable ~= nil and item.components.stackable:CanStackWith(inst) and (item.components.stackable:RoomLeft() >= inst.components.stackable:StackSize()))
 	end
 
 	local item = FindEntity(inst, 1, function(item) return CanMergeTestFn(item) end, nil, MERGE_NO_TAGS)
@@ -39,7 +33,7 @@ local function OnStackSizeChanged(inst, data)
 	if data ~= nil then
 		local cur_state = GetAnimStateForStackSize(inst, data.oldstacksize)
 		local new_state = GetAnimStateForStackSize(inst, data.stacksize)
-		if data.stacksize > 1 and not POPULATING then
+		if data.stacksize > 1 and not POPULATING and not inst.components.inventoryitem:IsHeld() then
 			inst.AnimState:PlayAnimation("jostle"..new_state)
 			inst.AnimState:PushAnimation("idle"..new_state, false)
 		else

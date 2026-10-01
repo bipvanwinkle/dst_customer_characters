@@ -1,4 +1,5 @@
 local easing = require("easing")
+local SourceModifierList = require("util/sourcemodifierlist")
 
 local ZERO_DISTANCE = 10
 local ZERO_DISTSQ = ZERO_DISTANCE * ZERO_DISTANCE
@@ -67,13 +68,15 @@ function Temperature:SetOverheatHurtRate(rate)
     self.overheathurtrate = rate
 end
 
-function Temperature:DoDelta(delta)
-    local winterInsulation,summerInsulation = self:GetInsulation()
+function Temperature:DoDelta(delta, skipinsulation)
+    if not skipinsulation then
+        local winterInsulation,summerInsulation = self:GetInsulation()
 
-    if delta > 0 then
-        delta = delta * (TUNING.SEG_TIME / (TUNING.SEG_TIME + summerInsulation))
-    else
-        delta = delta * (TUNING.SEG_TIME / (TUNING.SEG_TIME + winterInsulation))
+        if delta > 0 then
+            delta = delta * (TUNING.SEG_TIME / (TUNING.SEG_TIME + summerInsulation))
+        else
+            delta = delta * (TUNING.SEG_TIME / (TUNING.SEG_TIME + winterInsulation))
+        end
     end
 
     self:SetTemperature(self.current + delta)
@@ -128,7 +131,7 @@ function Temperature:OnLoad(data)
     end
 
     if data.current ~= nil and self.current ~= data.current then
-        if self.inst:HasTag("player") then
+        if self.inst.isplayer then
             --world updates while players are logged off, so it looks glitchy
             --when you log off with winter temperature and log back into summer
             local world_temp = TheWorld.state.temperature
@@ -162,7 +165,7 @@ end
 
 function Temperature:SetTemperature(value)
     local last = self.current
-    self.current = value
+    self.current = math.clamp(value, self.mintemp, self.maxtemp)
 
     if (self.current < 0) ~= (last < 0) then
         self.inst:PushEvent(self.current < 0 and "startfreezing" or "stopfreezing")
@@ -172,7 +175,7 @@ function Temperature:SetTemperature(value)
         self.inst:PushEvent(self.current > self.overheattemp and "startoverheating" or "stopoverheating")
     end
 
-    self.inst:PushEvent("temperaturedelta", { last = last, new = self.current })
+    self.inst:PushEvent("temperaturedelta", { last = last, new = self.current, hasrate = self.rate ~= 0 })
 end
 
 function Temperature:GetDebugString()
@@ -225,6 +228,29 @@ function Temperature:RemoveModifier(name)
     end
 end
 
+function Temperature:SetInsulationModifier(insulationtype, src, insulation, key)
+    self.insulation_modifiers = self.insulation_modifiers or {}
+    local modifiers = self.insulation_modifiers[insulationtype]
+	if modifiers == nil then
+		modifiers = SourceModifierList(self.inst, 0, SourceModifierList.additive)
+		self.insulation_modifiers[insulationtype] = modifiers
+	end
+	modifiers:SetModifier(src, insulation, key)
+end
+
+function Temperature:RemoveInsulationModifier(insulationtype, src, key)
+	local modifiers = self.insulation_modifiers ~= nil and self.insulation_modifiers[insulationtype] or nil
+	if modifiers ~= nil then
+		modifiers:RemoveModifier(src, key)
+		if modifiers:IsEmpty() then
+			self.insulation_modifiers[insulationtype] = nil
+            if next(self.insulation_modifiers) == nil then
+                self.insulation_modifiers = nil
+            end
+		end
+	end
+end
+
 function Temperature:GetInsulation()
     local winterInsulation = self.inherentinsulation
     local summerInsulation = self.inherentsummerinsulation
@@ -255,10 +281,22 @@ function Temperature:GetInsulation()
         summerInsulation = summerInsulation + self.shelterinsulation
     end
 
-    if TheWorld.state.isdusk then
-        summerInsulation = summerInsulation + TUNING.DUSK_INSULATION_BONUS
-    elseif TheWorld.state.isnight then
-        summerInsulation = summerInsulation + TUNING.NIGHT_INSULATION_BONUS
+    if self.insulation_modifiers ~= nil then
+        if self.insulation_modifiers[SEASONS.WINTER] then
+            winterInsulation = winterInsulation + self.insulation_modifiers[SEASONS.WINTER]:Get()
+        end
+
+        if self.insulation_modifiers[SEASONS.SUMMER] then
+            summerInsulation = summerInsulation + self.insulation_modifiers[SEASONS.SUMMER]:Get()
+        end
+    end
+
+    if not TheWorld:HasTag("cave") then
+        if TheWorld.state.isdusk then
+            summerInsulation = summerInsulation + TUNING.DUSK_INSULATION_BONUS
+        elseif TheWorld.state.isnight then
+            summerInsulation = summerInsulation + TUNING.NIGHT_INSULATION_BONUS
+        end
     end
 
     return math.max(0, winterInsulation), math.max(0, summerInsulation)
@@ -286,11 +324,13 @@ function Temperature:OnUpdate(dt, applyhealthdelta)
     -- Can override range, e.g. in special containers
     local mintemp = self.mintemp
     local maxtemp = self.maxtemp
-    
+
     local owner = self.inst.components.inventoryitem ~= nil and self.inst.components.inventoryitem.owner or nil
     local inside_pocket_container = owner ~= nil and owner:HasTag("pocketdimension_container")
 
     local ambient_temperature = inside_pocket_container and TheWorld.state.temperature or GetTemperatureAtXZ(x, z)
+
+    local ratemult = owner and owner.components.preserver and owner.components.preserver:GetTemperatureRateMultiplier(self.inst) or 1
 
     if owner ~= nil and owner:HasTag("fridge") and not owner:HasTag("nocool") then
         -- Inside a fridge, excluding icepack ("nocool")
@@ -330,11 +370,11 @@ function Temperature:OnUpdate(dt, applyhealthdelta)
         if self.inst.components.inventory ~= nil then
             for k, v in pairs(self.inst.components.inventory.equipslots) do
                 if v.components.heater ~= nil then
-                    local heat = v.components.heater:GetEquippedHeat()
+                    local heat, carriedmult = v.components.heater:GetEquippedHeat()
                     if heat ~= nil and
                         ((heat > self.current and v.components.heater:IsExothermic()) or
                         (heat < self.current and v.components.heater:IsEndothermic())) then
-                        self.delta = self.delta + heat - self.current
+                        self.delta = self.delta + (heat - self.current) * carriedmult
                     end
                 end
             end
@@ -361,6 +401,15 @@ function Temperature:OnUpdate(dt, applyhealthdelta)
                     end
                 end
             end
+            local activeitem = self.inst.components.inventory:GetActiveItem()
+            if activeitem ~= nil and activeitem.components.heater ~= nil then
+	        	local heat, carriedmult = activeitem.components.heater:GetCarriedHeat()
+	        	if heat ~= nil and
+	        		((heat > self.current and activeitem.components.heater:IsExothermic()) or
+	        		(heat < self.current and activeitem.components.heater:IsEndothermic())) then
+	        		self.delta = self.delta + (heat - self.current) * carriedmult
+	        	end
+            end
         end
 
         --print(self.delta + self.current, "after carried/equipped")
@@ -384,13 +433,10 @@ function Temperature:OnUpdate(dt, applyhealthdelta)
         --print(self.delta + self.current, "after shelter")
         if not inside_pocket_container then
             for i, v in ipairs(ents) do
-                if v ~= self.inst and
-                    not v:IsInLimbo() and
-                    v.components.heater ~= nil and
-                    (v.components.heater:IsExothermic() or v.components.heater:IsEndothermic()) then
-
+				if v ~= self.inst and not v:IsInLimbo() and v.components.heater then
                     local heat = v.components.heater:GetHeat(self.inst)
-                    if heat ~= nil then
+					--V2C: GetHeat first. Some heaters update thermics in their heatfn.
+					if heat and (v.components.heater:IsExothermic() or v.components.heater:IsEndothermic()) then
                         local heatfactor, dsqtoinst
                         if v.components.heater:ShouldFalloff() then
                             -- This produces a gentle falloff from 1 to zero.
@@ -462,6 +508,8 @@ function Temperature:OnUpdate(dt, applyhealthdelta)
         --print(self.delta + self.current, "after insulation")
         --print(self.rate, "final rate\n\n")
     end
+
+    self.rate = self.rate * ratemult
 
     self:SetTemperature(math.clamp(self.current + self.rate * dt, mintemp, maxtemp))
 

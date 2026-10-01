@@ -325,13 +325,13 @@ local OnStartVote = _ismastershard and function(src, data)
     elseif data.starteruserid ~= nil and _squelched[data.starteruserid] ~= nil then
         print("Squelched user ("..data.starteruserid..") attempted to start a vote")
     else
-		local starterclient = TheNet:GetClientTableForUser(data.starteruserid)
+		local starterclient = data.starteruserid and TheNet:GetClientTableForUser(data.starteruserid) or nil
 		local canstartvote, reason
 		if starterclient ~= nil then
 			canstartvote, reason = UserCommands.CanUserStartVote(data.commandhash, starterclient, data.targetuserid)
 		end
 		if not canstartvote then
-			print("Blocked user ("..data.starteruserid..") from starting a vote due to: " .. (reason ~= nil and STRINGS.UI.PLAYERSTATUSSCREEN.VOTECANNOTSTART[reason] or "unknown"))
+			print("Blocked user ("..tostring(data.starteruserid)..") from starting a vote due to: " .. (reason ~= nil and STRINGS.UI.PLAYERSTATUSSCREEN.VOTECANNOTSTART[reason] or "unknown"))
 		else
 			local newdata = GetVoteDialogData(data.commandhash, data.targetuserid, data.starteruserid)
 			if newdata ~= nil then

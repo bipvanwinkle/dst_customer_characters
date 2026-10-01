@@ -14,6 +14,10 @@ local function on_inventory_disableable(self, newval, oldval)
     end
 end
 
+local function oncanselftarget(self, newval)
+    self.inst:AddOrRemoveTag("useabletargateditem_canselftarget", newval)
+end
+
 local function ontargetprefab(self, newprefab, oldprefab)
     if oldprefab then
         self.inst:RemoveTag(oldprefab.."_targeter")
@@ -24,13 +28,25 @@ local function ontargetprefab(self, newprefab, oldprefab)
     end
 end
 
+local function onuseablemounted(self, newuseablemounted, olduseablemounted)
+	if newuseablemounted then
+		self.inst:AddTag("useabletargeteditem_mounted")
+	else
+		self.inst:RemoveTag("useabletargeteditem_mounted")
+	end
+end
+
 local UseableTargetedItem = Class(function(self, inst)
     self.inst = inst
 
     self.inuse_targeted = false
     self.inventory_disableable = false
+    self.canselftarget = false
 
     self.useabletargetprefab = nil
+	--self.useablemounted = nil
+
+	--NOTE: can also configure with this fn on CLIENTS: inst.UseableTargetedItem_ValidTarget
 
     --self.onusefn = nil
     --self.onstopusefn = nil
@@ -39,7 +55,9 @@ nil,
 {
     inuse_targeted = oninuse_targeted,
     inventory_disableable = on_inventory_disableable,
+    canselftarget = oncanselftarget,
     useabletargetprefab = ontargetprefab,
+	useablemounted = onuseablemounted,
 })
 
 function UseableTargetedItem:OnRemoveFromEntity()
@@ -54,10 +72,18 @@ function UseableTargetedItem:OnRemoveFromEntity()
     if self.useabletargetprefab ~= nil then
         self.inst:RemoveTag(self.useabletargetprefab.."_targeter")
     end
+
+	if self.useablemounted then
+		self.inst:RemoveTag("useabletargeteditem_mounted")
+	end
 end
 
 function UseableTargetedItem:SetTargetPrefab(prefab_name)
     self.useabletargetprefab = prefab_name
+end
+
+function UseableTargetedItem:SetUseableMounted(enable)
+	self.useablemounted = enable
 end
 
 function UseableTargetedItem:SetOnUseFn(fn)
@@ -72,25 +98,34 @@ function UseableTargetedItem:SetInventoryDisable(value)
     self.inventory_disableable = value
 end
 
+function UseableTargetedItem:SetCanSelfTarget(value)
+    self.canselftarget = value
+end
+
+function UseableTargetedItem:SetUsingItemDoesNotToggleUseability(value)
+    self.usingdoesnottoggleuseability = value
+end
+
 function UseableTargetedItem:CanInteract()
     return not self.inuse_targeted
 end
 
 function UseableTargetedItem:StartUsingItem(target, doer)
-    local usesuccess = nil
-    local usefailreason = nil
+    local success, failreason
 
     if self.onusefn then
-        usesuccess, usefailreason = self.onusefn(self.inst, target, doer)
+        success, failreason = self.onusefn(self.inst, target, doer)
     else
-        usesuccess = true
+        success = true
     end
 
-    if usesuccess then
-        self.inuse_targeted = true
+	if success and self.inst:IsValid() then
+        if not self.usingdoesnottoggleuseability then
+            self.inuse_targeted = true
+        end
     end
 
-    return usesuccess, usefailreason
+    return success, failreason
 end
 
 function UseableTargetedItem:StopUsingItem()

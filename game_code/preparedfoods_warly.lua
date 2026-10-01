@@ -34,6 +34,7 @@ local foods =
 		foodtype = FOODTYPE.GOODIES,
 		health = TUNING.HEALING_SMALL,
 		hunger = TUNING.CALORIES_LARGE,
+        chargevalue = TUNING.WX78_CHARGE_SMALL,
 		perishtime = TUNING.PERISH_MED,
 		sanity = TUNING.SANITY_SMALL,
 		cooktime = 2,
@@ -138,7 +139,7 @@ local foods =
         perishtime = TUNING.PERISH_SLOW,
         cooktime = 0.5,
         potlevel = "low",
-        tags = { "masterfood" },
+        tags = { "masterfood", "fooddrink" },
         floater = {nil, 0.1, 0.7},
     },
 

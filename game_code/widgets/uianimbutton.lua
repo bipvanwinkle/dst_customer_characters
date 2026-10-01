@@ -37,8 +37,11 @@ function UIAnimButton:OnLoseFocus()
 
 	if self:IsSelected() or self:IsDisabledState() then return end
 
-    if self:IsEnabled() and self.idleanimation and not self.animstate:IsCurrentAnimation(self.idleanimation) then
+    if self:IsEnabled() and self.idleanimation and not self.animstate:IsCurrentAnimation(self.idleanimation) then        
         self.animstate:PlayAnimation(self.idleanimation, self.loops[self.idleanimation])
+        if self.onlosefocus then
+            self.onlosefocus()
+        end        
     end
 end
 
@@ -48,22 +51,24 @@ function UIAnimButton:OnControl(control, down)
 
     if control == self.control then
         if down then
-            if self.downanimation and not self.animstate:IsCurrentAnimation(self.downanimation) then
-                self.animstate:PlayAnimation(self.downanimation, self.loops[self.downanimation])
-            end
+			if not self.down then
+				if self.downanimation and not self.animstate:IsCurrentAnimation(self.downanimation) then
+					self.animstate:PlayAnimation(self.downanimation, self.loops[self.downanimation])
+				end
 
-            if not self.stopclicksound then
-				TheFrontEnd:GetSound():PlaySound(self.overrideclicksound or "dontstarve/HUD/click_move")
-            end
+				if not self.stopclicksound then
+					TheFrontEnd:GetSound():PlaySound(self.overrideclicksound or "dontstarve/HUD/click_move")
+				end
 
-            self.down = true
-            if self.whiledown then
-                self:StartUpdating()
-            end
-            if self.ondown then
-                self.ondown()
-            end
-        else
+				self.down = true
+				if self.whiledown then
+					self:StartUpdating()
+				end
+				if self.ondown then
+					self.ondown()
+				end
+			end
+		elseif self.down then
             if self.downanimation and not self.animstate:IsCurrentAnimation(self.focusanimation) then
                 self.animstate:PlayAnimation(self.focusanimation, self.loops[self.focusanimation])
             end
@@ -94,6 +99,12 @@ end
 function UIAnimButton:SetOnFocus(fn)
     if fn then
         self.onfocus = fn
+    end
+end
+
+function UIAnimButton:SetOnLoseFocus(fn)
+    if fn then
+        self.onlosefocus = fn
     end
 end
 

@@ -36,6 +36,10 @@ end
 
 --------------------------------------------------------------------------
 
+local function IsRotationValid(rot)
+	return rot > -math.huge and rot < math.huge
+end
+
 local function IsPointInRange(player, x, z)
     local px, py, pz = player.Transform:GetWorldPosition()
     return distsq(x, z, px, pz) <= 4096
@@ -55,23 +59,45 @@ end
 local RPC_HANDLERS =
 {
     LeftClick = function(player, action, x, z, target, isreleased, controlmods, noforce, mod_name, platform, platform_relative, spellbook, spell_id)
-        if not (checknumber(action) and
-                checknumber(x) and
-                checknumber(z) and
-                optentity(target) and
-                optbool(isreleased) and
-                optnumber(controlmods) and
-                optbool(noforce) and
-                optstring(mod_name) and
-				optentity(platform) and
-				checkbool(platform_relative) and
-				optentity(spellbook) and
-				optuint(spell_id)) then
+		if not (	(	--these are either all nil
+						action == nil and
+						x == nil and
+						z == nil and
+						target == nil and
+						isreleased == nil and
+						controlmods == nil and
+						noforce == nil and
+						mod_name == nil and
+						platform == nil and
+						platform_relative == nil and
+						spellbook == nil and
+						spell_id == nil
+					) or
+					(	--or all validated
+						checknumber(action) and
+						checknumber(x) and
+						checknumber(z) and
+						optentity(target) and
+						optbool(isreleased) and
+						optnumber(controlmods) and
+						optbool(noforce) and
+						optstring(mod_name) and
+						optentity(platform) and
+						checkbool(platform_relative) and
+						optentity(spellbook) and
+						optuint(spell_id)
+					)
+				)
+		then
             printinvalid("LeftClick", player)
             return
         end
 		local playercontroller = player.components.playercontroller
 		if playercontroller ~= nil then
+			if action == nil then
+				playercontroller:OnRemoteLeftClick()
+				return
+			end
 			printinvalidplatform("LeftClick", player, action, x, z, platform, platform_relative)
 			x, z = ConvertPlatformRelativePositionToAbsolutePosition(x, z, platform, platform_relative)
 			if x ~= nil then
@@ -85,26 +111,47 @@ local RPC_HANDLERS =
     end,
 
     RightClick = function(player, action, x, z, target, rotation, isreleased, controlmods, noforce, mod_name, platform, platform_relative)
-        if not (checknumber(action) and
-                checknumber(x) and
-                checknumber(z) and
-                optentity(target) and
-                optnumber(rotation) and
-                optbool(isreleased) and
-                optnumber(controlmods) and
-                optbool(noforce) and
-                optstring(mod_name) and
-				optentity(platform) and
-				checkbool(platform_relative)) then
+		if not (	(	--these are either all nil
+						action == nil and
+						x == nil and
+						z == nil and
+						target == nil and
+						rotation == nil and
+						isreleased == nil and
+						controlmods == nil and
+						noforce == nil and
+						mod_name == nil and
+						platform == nil and
+						platform_relative == nil
+					) or
+					(	--or all validated
+						checknumber(action) and
+						checknumber(x) and
+						checknumber(z) and
+						optentity(target) and
+						optnumber(rotation) and
+						optbool(isreleased) and
+						optnumber(controlmods) and
+						optbool(noforce) and
+						optstring(mod_name) and
+						optentity(platform) and
+						checkbool(platform_relative)
+					)
+				)
+		then
             printinvalid("RightClick", player)
             return
         end
 		local playercontroller = player.components.playercontroller
 		if playercontroller ~= nil then
+			if action == nil then
+				playercontroller:OnRemoteRightClick()
+				return
+			end
 			printinvalidplatform("RightClick", player, action, x, z, platform, platform_relative)
 			x, z = ConvertPlatformRelativePositionToAbsolutePosition(x, z, platform, platform_relative)
 			if x ~= nil then
-				if IsPointInRange(player, x, z) and (rotation == nil or (rotation > -360.1 and rotation < 360.1)) then
+				if IsPointInRange(player, x, z) and (rotation == nil or IsRotationValid(rotation)) then
 					playercontroller:OnRemoteRightClick(action, Vector3(x, 0, z), target, rotation, isreleased, controlmods, noforce, mod_name)
 				else
 					print("Remote right click out of range")
@@ -128,16 +175,19 @@ local RPC_HANDLERS =
         end
     end,
 
-    AttackButton = function(player, target, forceattack, noforce)
+	--V2C: isleftmouse & isreleased at the end because added a lot later
+	AttackButton = function(player, target, forceattack, noforce, isleftmouse, isreleased)
         if not (optentity(target) and
                 optbool(forceattack) and
-                optbool(noforce)) then
+				optbool(noforce) and
+				optbool(isleftmouse) and
+				optbool(isreleased)) then
             printinvalid("AttackButton", player)
             return
         end
         local playercontroller = player.components.playercontroller
         if playercontroller ~= nil then
-            playercontroller:OnRemoteAttackButton(target, forceattack, noforce)
+			playercontroller:OnRemoteAttackButton(target, forceattack, noforce, isleftmouse, isreleased)
         end
     end,
 
@@ -159,12 +209,34 @@ local RPC_HANDLERS =
         end
     end,
 
+	CharacterCommandWheelButton = function(player, target)
+		if not checkentity(target) then
+			printinvalid("CharacterCommandWheelButton", player)
+			return
+		end
+		local playercontroller = player.components.playercontroller
+		if playercontroller then
+			playercontroller:OnRemoteCharacterCommandWheelButton(target)
+		end
+	end,
+
     ControllerActionButton = function(player, action, target, isreleased, noforce, mod_name)
-        if not (checknumber(action) and
-                checkentity(target) and
-                optbool(isreleased) and
-                optbool(noforce) and
-                optstring(mod_name)) then
+		if not (	(	--these are either all nil
+						action == nil and
+						target == nil and
+						isreleased == nil and
+						noforce == nil and
+						mod_name == nil
+					) or
+					(	--or all validated
+						checknumber(action) and
+						checkentity(target) and
+						optbool(isreleased) and
+						optbool(noforce) and
+						optstring(mod_name)
+					)
+				)
+		then
             printinvalid("ControllerActionButton", player)
             return
         end
@@ -219,7 +291,7 @@ local RPC_HANDLERS =
 			printinvalidplatform("ControllerActionButtonDeploy", player, nil, x, z, platform, platform_relative)
 			x, z = ConvertPlatformRelativePositionToAbsolutePosition(x, z, platform, platform_relative)
 			if x ~= nil then
-				if IsPointInRange(player, x, z) and (rotation == nil or (rotation > -360.1 and rotation < 360.1)) then
+				if IsPointInRange(player, x, z) and (rotation == nil or IsRotationValid(rotation)) then
 					playercontroller:OnRemoteControllerActionButtonDeploy(invobject, Vector3(x, 0, z), rotation, isreleased)
 				else
 					print("Remote controller action button deploy out of range")
@@ -229,11 +301,22 @@ local RPC_HANDLERS =
     end,
 
     ControllerAltActionButton = function(player, action, target, isreleased, noforce, mod_name)
-        if not (checknumber(action) and
-                checkentity(target) and
-                optbool(isreleased) and
-                optbool(noforce) and
-                optstring(mod_name)) then
+		if not (	(	--these are either all nil
+						action == nil and
+						target == nil and
+						isreleased == nil and
+						noforce == nil and
+						mod_name == nil
+					) or
+					(	--or all validated
+						checknumber(action) and
+						checkentity(target) and
+						optbool(isreleased) and
+						optbool(noforce) and
+						optstring(mod_name)
+					)
+				)
+		then
             printinvalid("ControllerAltActionButton", player)
             return
         end
@@ -339,32 +422,52 @@ local RPC_HANDLERS =
         end
     end,
 
-    PredictWalking = function(player, x, z, isdirectwalking, isstart, platform, platform_relative)
-        if not (checknumber(x) and
-                checknumber(z) and
-                checkbool(isdirectwalking) and
-                checkbool(isstart) and
-				optentity(platform) and
-				checkbool(platform_relative)) then
+	PredictWalking = function(player, x, z, isdirectwalking, isstart, platform, platform_relative, overridemovetime, isstop)
+		if not (	(	(	--these are either all nil
+							x == nil and
+							z == nil and
+							isdirectwalking == nil and
+							platform == nil and
+							platform_relative == nil and
+							(isstart or isstop) -- one of these must be true
+						) or
+						(	--or all validated
+							checknumber(x) and
+							checknumber(z) and
+							checkbool(isdirectwalking) and
+							optentity(platform) and
+							checkbool(platform_relative)
+						)
+					) and
+					(	--common for both cases
+						checkbool(isstart) and
+						optnumber(overridemovetime) and
+						optbool(isstop)
+					)
+				)
+		then
             printinvalid("PredictWalking", player)
             return
         end
         local playercontroller = player.components.playercontroller
         if playercontroller ~= nil then
-			printinvalidplatform("PredictWalking", player, nil, x, z, platform, platform_relative)
-			x, z = ConvertPlatformRelativePositionToAbsolutePosition(x, z, platform, platform_relative)
-			if x ~= nil then
-				if IsPointInRange(player, x, z) then
-					playercontroller:OnRemotePredictWalking(x, z, isdirectwalking, isstart)
-				else
+			if not playercontroller.remote_predicting then
+				printinvalid("PredictWalking", player)
+				return
+			elseif x then
+				printinvalidplatform("PredictWalking", player, nil, x, z, platform, platform_relative)
+				local x1, z1 = ConvertPlatformRelativePositionToAbsolutePosition(x, z, platform, platform_relative)
+				if x1 and not IsPointInRange(player, x1, z1) then
 					print("Remote predict walking out of range")
+					return
 				end
 			end
+			playercontroller:OnRemotePredictWalking(x, z, isdirectwalking, isstart, platform_relative and platform or nil, overridemovetime, isstop)
         end
     end,
 
 	PredictOverrideLocomote = function(player, dir)
-		if not checknumber(dir) then
+		if not optnumber(dir) then
 			printinvalid("PredictOverrideLocomote", player)
 			return
 		end
@@ -499,6 +602,26 @@ local RPC_HANDLERS =
                 container = container.components.container
                 if container ~= nil and container:IsOpenedBy(player) then
                     container:TakeActiveItemFromHalfOfSlot(slot, player)
+                end
+            end
+        end
+    end,
+
+    TakeActiveItemFromCountOfSlot = function(player, slot, container, count)
+        if not (checkuint(slot) and
+                optentity(container) and
+                checkuint(count)) then
+            printinvalid("TakeActiveItemFromCountOfSlot", player)
+            return
+        end
+        local inventory = player.components.inventory
+        if inventory ~= nil then
+            if container == nil then
+                inventory:TakeActiveItemFromCountOfSlot(slot, count)
+            else
+                container = container.components.container
+                if container ~= nil and container:IsOpenedBy(player) then
+                    container:TakeActiveItemFromCountOfSlot(slot, count, player)
                 end
             end
         end
@@ -758,6 +881,19 @@ local RPC_HANDLERS =
         end
     end,
 
+    MoveInvItemFromCountOfSlot = function(player, slot, destcontainer, count)
+        if not (checkuint(slot) and
+                checkentity(destcontainer) and
+                checkuint(count)) then
+            printinvalid("MoveInvItemFromCountOfSlot", player)
+            return
+        end
+        local inventory = player.components.inventory
+        if inventory ~= nil then
+            inventory:MoveItemFromCountOfSlot(slot, destcontainer, count)
+        end
+    end,
+
     MoveItemFromAllOfSlot = function(player, slot, srccontainer, destcontainer)
         if not (checkuint(slot) and
                 checkentity(srccontainer) and
@@ -781,6 +917,20 @@ local RPC_HANDLERS =
         local container = srccontainer.components.container
         if container ~= nil and container:IsOpenedBy(player) then
             container:MoveItemFromHalfOfSlot(slot, destcontainer or player, player)
+        end
+    end,
+
+    MoveItemFromCountOfSlot = function(player, slot, srccontainer, destcontainer, count)
+        if not (checkuint(slot) and
+                checkentity(srccontainer) and
+                optentity(destcontainer) and
+                checkuint(count)) then
+            printinvalid("MoveItemFromCountOfSlot", player)
+            return
+        end
+        local container = srccontainer.components.container
+        if container ~= nil and container:IsOpenedBy(player) then
+            container:MoveItemFromCountOfSlot(slot, destcontainer or player, count, player)
         end
     end,
 
@@ -828,8 +978,7 @@ local RPC_HANDLERS =
 			printinvalidplatform("MakeRecipeAtPoint", player, nil, x, z, platform, platform_relative)
 			x, z = ConvertPlatformRelativePositionToAbsolutePosition(x, z, platform, platform_relative)
 			if x ~= nil then
-				--rot supported range really only needs to be [-180, 180]
-				if IsPointInRange(player, x, z) and rot >= -360 and rot <= 360 then
+				if IsPointInRange(player, x, z) and IsRotationValid(rot) then
 					for k, v in pairs(AllRecipes) do
 						if v.rpc_id == recipe then
 							builder:MakeRecipeAtPoint(v, Vector3(x, 0, z), rot, skin_index ~= nil and PREFAB_SKINS[v.name] ~= nil and PREFAB_SKINS[v.name][skin_index] or nil)
@@ -931,8 +1080,21 @@ local RPC_HANDLERS =
         local popup = GetPopupFromPopupCode(popupcode, mod_name)
         if not popup.validaterpcfn(...) then
             printinvalid("ClosePopup"..tostring(popup.id), player)
+			popup:Close(player)
+			return
         end
         popup:Close(player, ...)
+    end,
+
+    RecievePopupMessage = function(player, popupcode, mod_name, ...)
+        if not (checkuint(popupcode) and
+                optstring(mod_name) and
+                GetPopupFromPopupCode(popupcode, mod_name)) then
+            printinvalid("RecievePopupMessage", player)
+            return
+        end
+
+        GetPopupFromPopupCode(popupcode, mod_name):SendMessageToServer(player, ...)
     end,
 
     RepeatHeldAction = function(player)
@@ -965,17 +1127,32 @@ local RPC_HANDLERS =
 
     -- NOTES(JBK): OnMap RPCs are always world relative.
     DoActionOnMap = function(player, actioncode, x, z, maptarget, mod_name)
-        if not (checknumber(actioncode) and
-                checknumber(x) and
-                checknumber(z) and
-                optentity(maptarget) and
-                optstring(mod_name)) then
+		if not (	(	--these are either all nil
+						actioncode == nil and
+						x == nil and
+						z == nil and
+						checkentity(maptarget) and
+						mod_name == nil
+					) or
+					(	--or all validated
+						checknumber(actioncode) and
+						checknumber(x) and
+						checknumber(z) and
+						optentity(maptarget) and
+						optstring(mod_name)
+					)
+				)
+		then
             printinvalid("DoActionOnMap PARAMS", player)
             return
         end
-		local playercontroller = player.components.playercontroller
-		if playercontroller then
-			playercontroller:OnMapAction(actioncode, Vector3(x, 0, z), maptarget, mod_name)
+		if actioncode then
+			local playercontroller = player.components.playercontroller
+			if playercontroller then
+				playercontroller:OnMapAction(actioncode, Vector3(x, 0, z), maptarget, mod_name)
+			end
+		else
+			maptarget:PushEvent("cancelmaptarget", player)
         end
     end,
 
@@ -1041,6 +1218,170 @@ local RPC_HANDLERS =
         player:SetClientAuthoritativeSetting(variable, value)
     end,
 
+	AOECharging = function(player, rotation, startflag)
+		if not (checknumber(rotation) and
+				optuint(startflag)) then
+			printinvalid("AOECharging", player)
+			return
+		end
+		local playercontroller = player.components.playercontroller
+		if playercontroller then
+			playercontroller:OnRemoteAOECharging(rotation, startflag)
+		end
+	end,
+
+	DoubleTapAction = function(player, action, x, z, noforce, mod_name, platform, platform_relative)
+		if not (checknumber(action) and
+				checknumber(x) and
+				checknumber(z) and
+				optbool(noforce) and
+				optstring(mod_name) and
+				optentity(platform) and
+				checkbool(platform_relative)) then
+			printinvalid("DoubleTapAction", player)
+			return
+		end
+		local playercontroller = player.components.playercontroller
+		if playercontroller then
+			printinvalidplatform("DoubleTapAction", player, action, x, z, platform, platform_relative)
+			x, z = ConvertPlatformRelativePositionToAbsolutePosition(x, z, platform, platform_relative)
+			if x then
+				if IsPointInRange(player, x, z) then
+					playercontroller:OnRemoteDoubleTapAction(action, Vector3(x, 0, z), noforce, mod_name)
+				else
+					print("Remote left click out of range")
+				end
+			end
+		end
+	end,
+
+	WobyCommand = function(player, cmd)
+		if not checkuint(cmd) then
+			printinvalid("WobyCommand", player)
+			return
+		end
+		local playercontroller = player.components.playercontroller
+		if playercontroller then
+			if player.woby_commands_classified then
+				player.woby_commands_classified:ExecuteCommand(cmd)
+			else
+				print("Player cannot use Woby commands")
+			end
+		end
+	end,
+
+	InteractionTarget = function(player, action, target, x, z)
+		if not (optnumber(action) and
+				optentity(target) and
+                optnumber(x) and
+                optnumber(z))
+		then
+			printinvalid("InteractionTarget", player)
+			return
+		end
+		local playercontroller = player.components.playercontroller
+		if playercontroller then
+            local pos
+			if x then
+				-- local x1, z1 = ConvertPlatformRelativePositionToAbsolutePosition(x, z, platform, platform_relative)
+				if not IsPointInRange(player, x, z) then
+					print("Interaction Target out of range")
+					return
+                else
+                    pos = Vector3(x, 0, z)
+				end
+			end
+			playercontroller:OnRemoteInteractionTarget(action, target, pos)
+		end
+	end,
+
+	PredictGallopTrip = function(player, x, z, dir, speed, platform, platform_relative)
+		if not (checknumber(x) and
+				checknumber(z) and
+				checknumber(dir) and
+				optnumber(speed) and
+				optentity(platform) and
+				checkbool(platform_relative))
+		then
+			printinvalid("PredictGallopTrip", player)
+			return
+		end
+		printinvalidplatform("PredictGallopTrip", player, nil, x, z, platform, platform_relative)
+		local x1, z1 = ConvertPlatformRelativePositionToAbsolutePosition(x, z, platform, platform_relative)
+		if x1 then
+			if IsRotationValid(dir) and (speed == nil or speed > 0) then
+				player:PushEventImmediate("predict_gallop_trip", {
+					x = x1,
+					z = z1,
+					dir = dir,
+					speed = speed,
+				})
+			else
+				print("Predict gallop trip out of range")
+			end
+		end
+	end,
+
+	UnplugModule = function(player, modulebartype_or_socketposition, moduleindex)
+		if not (checknumber(modulebartype_or_socketposition) and
+				optnumber(moduleindex))
+		then
+			printinvalid("UnplugModule", player)
+			return
+		end
+
+        local skilltreeupdater = player.components.skilltreeupdater
+		if moduleindex then
+			local upgrademoduleowner = player.components.upgrademoduleowner
+			if upgrademoduleowner then
+				-- Ensure we have the skill.
+				if not (skilltreeupdater and skilltreeupdater:IsActivated("wx78_circuitry_betterunplug")) then
+					local nummodules = upgrademoduleowner:GetNumModules(modulebartype_or_socketposition)
+					if moduleindex ~= nummodules then
+						print(string.format("Cannot unplug module %i of %i", moduleindex, nummodules))
+						return
+					end
+				end
+				local _module = upgrademoduleowner:GetModule(modulebartype_or_socketposition, moduleindex)
+				if _module then
+					player:PushEventImmediate("unplugmodule", _module)
+				else
+					print(string.format("Module %i not found", moduleindex))
+				end
+			end
+		else
+			local socketholder = player.components.socketholder
+			if socketholder then
+				--Ensure we have the skill.
+				if not (skilltreeupdater and skilltreeupdater:IsActivated("wx78_allegiance_shadow")) then
+					print("Shadow socket inaccessible")
+					return
+				end
+				if socketholder:IsSocketNameForPosition(SOCKETNAMES.SHADOW, modulebartype_or_socketposition) then
+					socketholder:TryToUnsocket(modulebartype_or_socketposition)
+				else
+					print("Shadow socket [%i] not found", modulebartype_or_socketposition)
+				end
+			end
+		end
+    end,
+
+	StopUsingDrone = function(player)
+		if player.StopUsingDrone then
+			player:StopUsingDrone()
+		else
+			printinvalid("StopUsingDrone", player)
+		end
+	end,
+
+	StopInspectingModules = function(player)
+		if player.StopInspectingModules then
+			player:StopInspectingModules()
+		else
+			printinvalid("StopInspectingModules", player)
+		end
+	end,
+
     -- NOTES(JBK): RPC limit is at 128, with 1-127 usable.
 }
 
@@ -1070,6 +1411,14 @@ local CLIENT_RPC_HANDLERS =
 
         if popup then
             popup.fn(ThePlayer, show, ...)
+        end
+    end,
+
+    RecievePopupMessage = function(popupcode, mod_name, ...)
+        local popup = GetPopupFromPopupCode(popupcode, mod_name)
+
+        if popup then
+            popup:SendMessageToClient(ThePlayer, ...)
         end
     end,
 
@@ -1189,6 +1538,24 @@ end
 local WorldSettings_Overrides = require("worldsettings_overrides")
 local SHARD_RPC_HANDLERS =
 {
+    ShardTransactionSteps = function(shardid, shardpayload_string)
+        shardid = tostring(shardid) -- shardid is converted to an integer and must be back to string.
+        local shardtransactionsteps = TheWorld and TheWorld.components.shardtransactionsteps or nil
+        if shardtransactionsteps then
+            local success, shardpayload = RunInSandboxSafe(shardpayload_string)
+            if success and (shardid == shardpayload.originshardid or shardid == shardpayload.receivershardid) then
+                shardtransactionsteps:OnShardTransactionSteps(shardpayload)
+            end
+        end
+    end,
+    PruneShardTransactionSteps = function(shardid, newfinalizedid)
+        shardid = tostring(shardid) -- shardid is converted to an integer and must be back to string.
+        local shardtransactionsteps = TheWorld and TheWorld.components.shardtransactionsteps or nil
+        if shardtransactionsteps then
+            shardtransactionsteps:OnPruneShardTransactionSteps(shardid, newfinalizedid)
+        end
+    end,
+
     ReskinWorldMigrator = function(shardid, migrator, skin_theme, skin_id, sessionid)
         for i,v in ipairs(ShardPortals) do
             if v.components.worldmigrator.id == migrator then
@@ -1224,6 +1591,11 @@ local SHARD_RPC_HANDLERS =
 
     ResyncWorldSettings = function(shardid)
         Shard_SyncWorldSettings(shardid, true)
+    end,
+
+    SyncWorldStateTag = function(shardid, namespace, tag, enabled)
+        local worldstatetagobject = GetWorldStateTagObjectFromNamespace(namespace)
+        worldstatetagobject.SetTagEnabled(tag, enabled)
     end,
 
     SyncBossDefeated = function(shardid, bossprefab) -- NOTES(JBK): This should not be called often enough to warrant a lookup table for bossprefab as an enum.

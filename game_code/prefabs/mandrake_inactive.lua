@@ -11,7 +11,7 @@ local prefabs =
     "mandrake_active",
 }
 
-local function onpickup(inst)
+local function onputininventory(inst)
     inst.AnimState:PlayAnimation("object")
 end
 
@@ -52,9 +52,10 @@ local function oneaten_raw(inst, eater)
 end
 
 local function oncooked(inst, cooker, chef)
-    chef.SoundEmitter:PlaySound("dontstarve/creatures/mandrake/death")
-    chef:DoTaskInTime(0.5, function()
-        doareasleep(chef, TUNING.MANDRAKE_SLEEP_RANGE_COOKED, TUNING.MANDRAKE_SLEEP_TIME)
+    local target = chef or cooker
+    target.SoundEmitter:PlaySound("dontstarve/creatures/mandrake/death")
+    target:DoTaskInTime(0.5, function()
+        doareasleep(target, TUNING.MANDRAKE_SLEEP_RANGE_COOKED, TUNING.MANDRAKE_SLEEP_TIME)
     end)
 end
 
@@ -109,6 +110,9 @@ local function commonfn(anim, cookable)
         inst.components.cookable:SetOnCookedFn(oncooked)
     end
 
+	MakeSmallBurnable(inst)
+	MakeSmallPropagator(inst)
+
     return inst
 end
 
@@ -123,7 +127,7 @@ local function rawfn()
     inst.components.edible.hungervalue = TUNING.CALORIES_HUGE
     inst.components.edible:SetOnEatenFn(oneaten_raw)
 
-    inst.components.inventoryitem:SetOnPickupFn(onpickup)
+    inst.components.inventoryitem:SetOnPutInInventoryFn(onputininventory)
 
     return inst
 end

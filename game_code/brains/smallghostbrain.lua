@@ -1,3 +1,4 @@
+require "behaviours/approach"
 require "behaviours/follow"
 require "behaviours/wander"
 
@@ -5,8 +6,12 @@ local SmallGhostBrain = Class(Brain, function(self, inst)
     Brain._ctor(self, inst)
 end)
 
-local function get_follow_target(ghost)
-    return ghost.components.follower.leader
+local function GetLeader(inst)
+    return inst.components.follower and inst.components.follower:GetLeader()
+end
+
+local function get_follow_target(inst)
+    return GetLeader(inst)
 end
 
 local function get_closest_toy(toy_owner, dist_inst, dsq_gate)
@@ -42,13 +47,13 @@ end
 local MIN_HINT_DSQ = TUNING.GHOST_HUNT.MINIMUM_HINT_DIST * TUNING.GHOST_HUNT.MINIMUM_HINT_DIST
 local MAX_HINT_DSQ = TUNING.GHOST_HUNT.MAXIMUM_HINT_DIST * TUNING.GHOST_HUNT.MAXIMUM_HINT_DIST
 local function get_hint_location(inst)
-    local leader = (inst.components.follower ~= nil and inst.components.follower:GetLeader()) or nil
-    if leader == nil then
+    local leader = GetLeader(inst)
+    if not leader then
         return nil
     end
 
     local closest_toy = get_closest_toy(inst, leader)
-    if closest_toy == nil then
+    if not closest_toy then
         return nil
     end
 
@@ -59,7 +64,7 @@ local function get_hint_location(inst)
     end
 
     local position = closest_toy:GetPositionAdjacentTo(leader, TUNING.GHOST_HUNT.HINT_OFFSET)
-    if position ~= nil then
+    if position then
         -- Add a little bit of fuzziness so the offset isn't a perfect line to the target.
         local random_fuzziness_angle = math.random() * TWOPI
         position = position + Vector3(math.sin(random_fuzziness_angle), 0, math.cos(random_fuzziness_angle))
@@ -70,8 +75,8 @@ local function get_hint_location(inst)
 end
 
 local function test_for_finished_hinting(inst)
-    local leader = (inst.components.follower ~= nil and inst.components.follower:GetLeader()) or nil
-    if leader == nil then
+    local leader = GetLeader(inst)
+    if not leader then
         inst.sg.mem.is_hinting = false
         return
     end
@@ -85,7 +90,7 @@ local function test_for_finished_hinting(inst)
         -- If we get close enough, our behaviour will change, so that's acceptable. However, if we get too far away,
         -- we need to call it out and explicitly end the hinting. Having the ghost hint/hop around all the time can be annoying.
         local closest_toy = get_closest_toy(inst, leader)
-        if closest_toy == nil or leader:GetDistanceSqToInst(closest_toy) > MAX_HINT_DSQ then
+        if not closest_toy or leader:GetDistanceSqToInst(closest_toy) > MAX_HINT_DSQ then
             inst.sg.mem.is_hinting = false
             return
         end
@@ -93,12 +98,12 @@ local function test_for_finished_hinting(inst)
 end
 
 local function test_for_toy_in_search_range(inst)
-    local leader = (inst.components.follower ~= nil and inst.components.follower:GetLeader()) or nil
-    if leader == nil then
+    local leader = GetLeader(inst)
+    if not leader then
         return false
     end
 
-    -- If there is a toy within min hunt distance of our leader, we should do searching behaviour.
+    -- If there is a toy within min hint distance of our leader, we should do searching behaviour.
     local closest_toy = get_closest_toy(inst, leader, MIN_HINT_DSQ)
     return closest_toy ~= nil
 end
@@ -118,7 +123,7 @@ local function _avoidtargetfn(self, target)
         return false
     end
 
-    local owner = self.inst.components.follower.leader
+    local owner = GetLeader(self.inst)
     local owner_combat = owner ~= nil and owner.components.combat or nil
     local target_combat = target.components.combat
     if owner_combat == nil or target_combat == nil then
@@ -126,6 +131,10 @@ local function _avoidtargetfn(self, target)
     elseif target_combat:TargetIs(owner)
         or (target.components.grouptargeter ~= nil and target.components.grouptargeter:IsTargeting(owner)) then
         return true
+    end
+
+    if target.components.health ~= nil and target.components.health:IsDead() then
+        return false
     end
 
     local distsq = owner:GetDistanceSqToInst(target)
@@ -171,7 +180,7 @@ local function validate_combat_avoidance(self)
 end
 
 local function KeepFacingTarget(inst, target)
-    return inst.components.follower.leader == target
+    return GetLeader(inst) == target
 end
 
 local COMBAT_YES_TAGS = {"_combat", "_health"}

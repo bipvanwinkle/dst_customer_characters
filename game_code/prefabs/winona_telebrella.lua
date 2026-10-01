@@ -54,7 +54,12 @@ local function OnEquip(inst, owner)
 	owner.AnimState:Show("ARM_carry")
 	owner.AnimState:Hide("ARM_normal")
 
-	owner.DynamicShadow:SetSize(2.2, 1.4)
+	if not (owner.components.rider ~= nil and owner.components.rider:IsRiding()) then
+		owner.DynamicShadow:SetSize(2.2, 1.4)
+	end
+
+	inst.on_dismounted = function() owner.DynamicShadow:SetSize(2.2, 1.4) end
+	inst:ListenForEvent("dismounted", inst.on_dismounted, owner)
 	SetFxOwner(inst, owner)
 
 	inst.components.fueled:StartConsuming()
@@ -64,7 +69,15 @@ local function OnUnequip(inst, owner)
 	owner.AnimState:Hide("ARM_carry")
 	owner.AnimState:Show("ARM_normal")
 
-	owner.DynamicShadow:SetSize(1.3, 0.6)
+	if owner.components.rider ~= nil and owner.components.rider:IsRiding() then
+		owner.DynamicShadow:SetSize(6, 2)
+	else
+		owner.DynamicShadow:SetSize(1.3, 0.6)
+	end
+	if inst.on_dismounted ~= nil then
+		inst:RemoveEventCallback("dismounted", inst.on_dismounted, owner)
+		inst.on_dismounted = nil
+	end
 	SetFxOwner(inst, nil)
 
 	inst.components.fueled:StopConsuming()
@@ -133,6 +146,15 @@ local function OnUpdateChargingFuel(inst)
 	end
 end
 
+local function NotifyCircuitChanged(inst, node)
+	node:PushEvent("engineeringcircuitchanged")
+end
+
+local function OnCircuitChanged(inst)
+	--Notify other connected batteries
+	inst.components.circuitnode:ForEachNode(NotifyCircuitChanged)
+end
+
 local function SetCharging(inst, powered, duration)
 	if not powered then
 		if inst._powertask then
@@ -143,6 +165,7 @@ local function SetCharging(inst, powered, duration)
 			inst.components.fueled:SetUpdateFn(nil)
 			inst.components.powerload:SetLoad(0)
 			SetLedEnabled(inst, false)
+			OnCircuitChanged(inst)
 		end
 	else
 		local waspowered = inst._powertask ~= nil
@@ -158,6 +181,7 @@ local function SetCharging(inst, powered, duration)
 				inst.components.fueled:StartConsuming()
 				inst.components.powerload:SetLoad(TUNING.WINONA_TELEBRELLA_POWER_LOAD_CHARGING)
 				SetLedEnabled(inst, true)
+				OnCircuitChanged(inst)
 			end
 		end
 	end
@@ -326,15 +350,6 @@ local function DoWireSparks(inst)
 		inst._flash = 1
 		OnUpdateSparks(inst)
 	end
-end
-
-local function NotifyCircuitChanged(inst, node)
-	node:PushEvent("engineeringcircuitchanged")
-end
-
-local function OnCircuitChanged(inst)
-	--Notify other connected batteries
-	inst.components.circuitnode:ForEachNode(NotifyCircuitChanged)
 end
 
 local function OnConnectCircuit(inst)--, node)

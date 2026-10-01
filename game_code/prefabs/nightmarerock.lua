@@ -81,14 +81,14 @@ end
 
 local function updatephysics(inst)
     inst.Physics:SetCollisionGroup(COLLISION.OBSTACLES)
-    inst.Physics:ClearCollisionMask()
-    inst.Physics:CollidesWith(COLLISION.WORLD)
+	local mask = COLLISION.WORLD
 	if not inst.conceal then
-		inst.Physics:CollidesWith(COLLISION.ITEMS)
+		mask = bit.bor(mask, COLLISION.ITEMS)
 		if inst.active then
-			inst.Physics:CollidesWith(COLLISION.CHARACTERS)
+			mask = bit.bor(mask, COLLISION.CHARACTERS)
 		end
 	end
+	inst.Physics:SetCollisionMask(mask)
 end
 
 local function OnActiveStateChanged(inst)
@@ -259,6 +259,7 @@ local function sanityrock()
     local inst = commonfn({"sanityrock"})
 
     inst.scrapbook_anim = "idle_active" 
+	inst.scrapbook_speechstatus = "ACTIVE"
 
     inst.activeonsane = true
 

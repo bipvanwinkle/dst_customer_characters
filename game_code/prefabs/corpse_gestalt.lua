@@ -14,19 +14,48 @@ local function Spawn(inst)
     inst.sg:GoToState("spawn")
 end
 
+local rift_portal_defs = require("prefabs/rift_portal_defs")
+local RIFTPORTAL_CONST = rift_portal_defs.RIFTPORTAL_CONST
+rift_portal_defs = nil
+-- Just choose the first one, we don't fully support multiple rifts.
+local function GetFirstLunarRift()
+    local lunarrifts = TheWorld.components.riftspawner and TheWorld.components.riftspawner:GetRiftsOfAffinity(RIFTPORTAL_CONST.AFFINITY.LUNAR) or nil
+	return lunarrifts and lunarrifts[1]
+end
+
 local function GeSpawnPoint(inst, target)
     local pos = target:GetPosition()
+    pos.y = 0
+
     local offset = FindWalkableOffset(pos, TWOPI*math.random(), 30, 12, true, false, nil, true, true)
 
     return pos + (offset or Vector3(0,0,0))
+end
+
+local SCREEN_DIST_SQ = PLAYER_CAMERA_SEE_DISTANCE_SQ
+local function GetRiftToSpwanFrom()
+    local rift = GetFirstLunarRift()
+	if rift then
+		for i, player in ipairs(AllPlayers) do
+			if rift:GetDistanceSqToInst(player) < SCREEN_DIST_SQ then
+				return rift
+			end
+		end
+	end
 end
 
 local function SetTarget(inst, target)
     if target ~= nil and target:IsValid() then
         inst.components.entitytracker:TrackEntity(CORPSE_TRACK_NAME, target)
 
-        local pos = GeSpawnPoint(inst, target)
-        inst.Physics:Teleport(pos:Get())
+		local rift = GetRiftToSpwanFrom()
+		if rift then
+            rift.SoundEmitter:PlaySound("monkeyisland/portal/spit_item")
+            inst.Physics:Teleport(rift.Transform:GetWorldPosition())
+        else
+            local pos = GeSpawnPoint(inst, target)
+            inst.Physics:Teleport(pos:Get())
+        end
     else
         inst.components.entitytracker:ForgetEntity(CORPSE_TRACK_NAME)
     end
@@ -45,14 +74,15 @@ local function fn()
     phys:SetFriction(0)
     phys:SetDamping(5)
     phys:SetCollisionGroup(COLLISION.FLYERS)
-    phys:ClearCollisionMask()
-    phys:CollidesWith(COLLISION.GROUND)
+	phys:SetCollisionMask(COLLISION.GROUND)
     phys:SetCapsule(0.5, 1)
 
     inst:AddTag("brightmare")
     inst:AddTag("NOBLOCK")
     inst:AddTag("soulless") -- no wortox souls
     inst:AddTag("lunar_aligned")
+	--gestaltcapturable (from gestaltcapturable component) added to pristine state for optimization
+	inst:AddTag("gestaltcapturable")
 
     inst.Transform:SetFourFaced()
 
@@ -62,6 +92,7 @@ local function fn()
     inst.AnimState:SetMultColour(1,1,1,0.6)
 	inst.AnimState:SetLightOverride(0.1)
     inst.AnimState:UsePointFiltering(true)
+    inst.AnimState:SetRayTestOnBB(true)
 
     inst.AnimState:SetBloomEffectHandle("shaders/anim.ksh")
 
@@ -81,7 +112,12 @@ local function fn()
     inst.components.locomotor.runspeed = TUNING.CORPSE_GESTALT_RUN_SPEED
     inst.components.locomotor:EnableGroundSpeedMultiplier(false)
     inst.components.locomotor:SetTriggersCreep(false)
-    inst.components.locomotor.pathcaps = { ignorecreep = true }
+    inst.components.locomotor.pathcaps = { ignorecreep = true, allowocean = true }
+
+	inst:AddComponent("gestaltcapturable")
+	inst.components.gestaltcapturable:SetLevel(2)
+    inst.components.gestaltcapturable:SetIsPlanar(true)
+	inst.components.gestaltcapturable:SetOnCapturedFn(inst.Remove)
 
     inst.Spawn = Spawn
     inst.SetTarget = SetTarget

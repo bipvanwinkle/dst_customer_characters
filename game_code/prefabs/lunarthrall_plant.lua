@@ -384,7 +384,7 @@ local function keeptargetfn(inst, target)
         and target.components.health ~= nil
         and not target.components.health:IsDead()
         and not (inst.components.follower ~= nil and
-                (inst.components.follower.leader == target or inst.components.follower:IsLeaderSame(target)))
+                (inst.components.follower:GetLeader() == target or inst.components.follower:IsLeaderSame(target)))
 end
 
 local function CreateFlame()
@@ -412,7 +412,6 @@ local function CreateFlame()
     return inst
 end
 
-
 local function fn()
     local inst = CreateEntity()
 
@@ -423,6 +422,7 @@ local function fn()
     inst.entity:AddNetwork()
 
 	MakeObstaclePhysics(inst, .8)
+    MakeCollidesWithElectricField(inst)
 	inst:SetPhysicsRadiusOverride(.4) --V2C: WARNING intentionally reducing range for incoming attacks; make sure everyone can still reach!
 
     inst.MiniMapEntity:SetIcon("lunarthrall_plant.png")
@@ -447,6 +447,7 @@ local function fn()
     inst:AddTag("lunarthrall_plant")
     inst:AddTag("retaliates")
     inst:AddTag("NPCcanaggro")
+    inst:AddTag("gestaltmutant")
 
 	inst.highlightchildren = {}
 
@@ -463,6 +464,9 @@ local function fn()
     if not TheWorld.ismastersim then
         return inst
     end
+
+	inst.override_combat_fx_size = "med"
+	inst.override_combat_fx_height = "low"
 
     inst:customSetRandomFrame()
 
@@ -505,9 +509,12 @@ local function fn()
 
     MakeMediumFreezableCharacter(inst)
     inst.components.freezable:SetResistance(6)
-    MakeLargeBurnableCharacter(inst,"follow_gestalt_fx")
+    MakeLargeBurnableCharacter(inst, "follow_gestalt_fx")
+    inst.components.burnable:SetBurnTime(10 * TUNING.PLANTMOB_BURNTIME_MULT)
+    inst.components.health.fire_damage_scale = TUNING.PLANTMOB_FIRE_DAMAGE_SCALE
 
     inst:SetStateGraph("SGlunarthrall_plant")
+	inst.sg.mem.burn_on_electrocute = true
 
 	spawnback(inst)
 
@@ -599,16 +606,21 @@ local function vinefn()
         return inst
     end
 
+	inst.override_combat_fx_height = "low"
+
 	inst:AddComponent("colouradder")
 
     MakeMediumFreezableCharacter(inst)
     inst.components.freezable:SetResistance(6)
     MakeMediumBurnableCharacter(inst)
+    inst.components.burnable:SetBurnTime(8 * TUNING.PLANTMOB_BURNTIME_MULT)
+    -- inst.components.health.fire_damage_scale = TUNING.PLANTMOB_FIRE_DAMAGE_SCALE
 
     inst.persists = false
     inst.makeweak = makeweak
 
     inst:SetStateGraph("SGlunarthrall_plant_vine")
+	inst.sg.mem.burn_on_electrocute = true
 
 	inst.OnRemoveEntity = vine_onremoveentity
 
@@ -785,6 +797,8 @@ local function vineendfn()
         return inst
     end
 
+	inst.override_combat_fx_height = "low"
+
     inst:AddComponent("health")
     inst.components.health:SetMaxHealth(TUNING.LUNARTHRALL_PLANT_VINE_HEALTH)
 
@@ -837,8 +851,11 @@ local function vineendfn()
     MakeMediumFreezableCharacter(inst)
     inst.components.freezable:SetResistance(6)
     MakeMediumBurnableCharacter(inst)
+    inst.components.burnable:SetBurnTime(8 * TUNING.PLANTMOB_BURNTIME_MULT)
+    inst.components.health.fire_damage_scale = TUNING.PLANTMOB_FIRE_DAMAGE_SCALE
 
     inst:SetStateGraph("SGlunarthrall_plant_vine")
+	inst.sg.mem.burn_on_electrocute = true
 
     return inst
 end

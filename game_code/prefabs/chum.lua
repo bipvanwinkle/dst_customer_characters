@@ -23,7 +23,10 @@ local function OnHit(inst, attacker, target)
         SpawnPrefab("chum").Transform:SetPosition(x, y, z)
     else
         SpawnPrefab("splash_green").Transform:SetPosition(x, y, z)
-        SpawnPrefab("chum_aoe").Transform:SetPosition(x, y, z)
+
+        local chumaoe = SpawnPrefab("chum_aoe")
+        chumaoe.Transform:SetPosition(x, y, z)
+        chumaoe:SetThrower(attacker)
     end
 
     inst:Remove()
@@ -66,6 +69,10 @@ local function ReticuleTargetFn()
     return pos
 end
 
+local function ReticuleValidFn(inst, reticule, targetpos, alwayspassable, allowwater, deployradius)
+	return TheWorld.Map:IsOceanAtPoint(targetpos:Get()) or FindVirtualOceanEntity(targetpos:Get()) ~= nil
+end
+
 local function OnAddProjectile(inst)
     inst.components.complexprojectile:SetHorizontalSpeed(15)
     inst.components.complexprojectile:SetGravity(-35)
@@ -93,7 +100,12 @@ local function fn()
 
     inst:AddComponent("reticule")
     inst.components.reticule.targetfn = ReticuleTargetFn
+	inst.components.reticule.twinstickcheckscheme = true
+	inst.components.reticule.twinstickmode = 1
+	inst.components.reticule.twinstickrange = 8
     inst.components.reticule.ease = true
+	inst.components.reticule.ispassableatallpoints = true
+	inst.components.reticule.validfn = ReticuleValidFn
 
     inst:AddTag("allow_action_on_impassable")
 

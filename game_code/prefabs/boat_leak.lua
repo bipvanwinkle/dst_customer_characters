@@ -80,9 +80,7 @@ end
 
 local function JiggleItems(items)
     for item, _ in pairs(items) do
-        if item.components.mine ~= nil then
-            item.components.mine:Deactivate()
-        end
+        DeactivateInventoryItemBeforeLaunch(item)
 
         if not item.components.inventoryitem.nobounce and item.Physics ~= nil and item.Physics:IsActive() then
             item.Physics:SetVel(0, 3 ,0)
@@ -98,9 +96,7 @@ end
 
 local function LaunchItems(items, launcher)
     for item, _ in pairs(items) do
-        if item.components.mine ~= nil then
-            item.components.mine:Deactivate()
-        end
+        DeactivateInventoryItemBeforeLaunch(item)
 
         if not item.components.inventoryitem.nobounce and item.Physics ~= nil and item.Physics:IsActive() then
             SpikeLaunch(item, launcher, 3, .6, BLOCK_RADIUS + item:GetPhysicsRadius(0))
@@ -151,6 +147,8 @@ local function FindLeakBlocker(inst, dt)
                 inst._wettargets[ent] = true
                 moisture:AddRateBonus(inst, TUNING.BOATLEAK_PLUG_WETNESS)
             end
+        elseif ent.components.inventoryitem ~= nil then
+            ent.components.inventoryitem:AddMoisture(TUNING.BOATLEAK_PLUG_WETNESS_INVENTORYITEM * dt)
         end
 
         heavyitem = heavyitem or ent.components.floater == nil

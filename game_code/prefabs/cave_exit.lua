@@ -54,6 +54,8 @@ local function fn()
         return inst
     end
 
+	inst.scrapbook_speechstatus = "OPEN"
+
     if TheNet:GetServerIsClientHosted() and not (TheShard:IsMaster() or TheShard:IsSecondary()) then
         --On non-sharded servers we'll make these vanish for now, but still generate them
         --into the world so that they can magically appear in existing saves when sharded
@@ -69,6 +71,7 @@ local function fn()
     inst.components.inspectable.getstatus = GetStatus
 
     inst:AddComponent("worldmigrator")
+    inst.components.worldmigrator.shard_name = "Master" -- SERVER_LEVEL_SHARDS
     inst:ListenForEvent("migration_available", open)
     inst:ListenForEvent("migration_unavailable", close)
     inst:ListenForEvent("migration_full", full)

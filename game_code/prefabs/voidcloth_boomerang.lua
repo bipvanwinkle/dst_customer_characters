@@ -213,7 +213,7 @@ end
 
 local function OnProjectileCountChanged(inst)
     if #inst._projectiles >= inst.max_projectiles then
-        inst.components.rechargeable:Discharge(math.huge)
+        inst.components.rechargeable:Discharge(999999) -- NOTES(JBK): This is saved so do not make it math.huge.
     else
         inst.components.rechargeable:SetPercent(1)
     end
@@ -596,9 +596,13 @@ end
 local function FxOnEquipToggle(inst)
     local owner = inst.equiptoggle:value() and inst.entity:GetParent() or nil
     if owner ~= nil then
-        if inst.fx == nil then
+        -- We might have switched owners (e.g. wx backup <-> possessed chassis transition)
+        if inst.fx ~= nil then
+            FxRemoveAll(inst)
+        else
             inst.fx = {}
         end
+
         local frame = inst.AnimState:GetCurrentAnimationFrame()
         for i, v in ipairs(FX_DEFS) do
             local fx = inst.fx[i]

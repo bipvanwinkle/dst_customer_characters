@@ -32,6 +32,8 @@ local prefabs =
     "globalmapiconunderfog",
 	"frostbreath",
 	"shadow_chester_swirl_fx",
+
+	"chestercorpse",
 }
 
 local brain = require "brains/chesterbrain"
@@ -79,7 +81,10 @@ local function OnOpen(inst)
 end
 
 local function OnClose(inst)
-    if not inst.components.health:IsDead() and inst.sg.currentstate.name ~= "transition" then
+	if not inst.components.health:IsDead() and
+		inst.sg.currentstate.name ~= "transition" and
+		not inst.sg:HasStateTag("electrocute")
+	then
 		inst.sg.statemem.closing = true
         inst.sg:GoToState("close")
     end
@@ -439,9 +444,9 @@ local function MorphShadowChester(inst)
 		SwitchToShadowContainerProxy(inst)
 	end
 
-    local leader = inst.components.follower.leader
+    local leader = inst.components.follower.leader -- Getting leader directly special case.
     if leader ~= nil then
-        inst.components.follower.leader:MorphShadowEyebone()
+        leader:MorphShadowEyebone()
     end
 
 	inst.sg.mem.isshadow = true
@@ -459,9 +464,9 @@ local function MorphSnowChester(inst)
 
 	SwitchToContainer(inst)
 
-    local leader = inst.components.follower.leader
+    local leader = inst.components.follower.leader -- Getting leader directly special case.
     if leader ~= nil then
-        inst.components.follower.leader:MorphSnowEyebone()
+        leader:MorphSnowEyebone()
     end
 
 	inst.sg.mem.isshadow = nil
@@ -479,9 +484,9 @@ local function MorphNormalChester(inst)
 
 	SwitchToContainer(inst)
 
-    local leader = inst.components.follower.leader
+    local leader = inst.components.follower.leader -- Getting leader directly special case.
     if leader ~= nil then
-        inst.components.follower.leader:MorphNormalEyebone()
+        leader:MorphNormalEyebone()
     end
 
 	inst.sg.mem.isshadow = nil
@@ -602,10 +607,11 @@ local function create_chester()
 
     MakeCharacterPhysics(inst, 75, .5)
     inst.Physics:SetCollisionGroup(COLLISION.CHARACTERS)
-    inst.Physics:ClearCollisionMask()
-    inst.Physics:CollidesWith(COLLISION.WORLD)
-    inst.Physics:CollidesWith(COLLISION.OBSTACLES)
-    inst.Physics:CollidesWith(COLLISION.CHARACTERS)
+	inst.Physics:SetCollisionMask(
+		COLLISION.WORLD,
+		COLLISION.OBSTACLES,
+		COLLISION.CHARACTERS
+	)
 
     inst:AddTag("companion")
     inst:AddTag("character")
@@ -614,6 +620,7 @@ local function create_chester()
     inst:AddTag("notraptrigger")
     inst:AddTag("noauradamage")
     inst:AddTag("devourable")
+    inst:AddTag("NOBLOCK")
     
 
     inst.MiniMapEntity:SetIcon("chester.png")
@@ -687,7 +694,6 @@ local function create_chester()
     inst.sounds = sounds
 
     inst:SetStateGraph("SGchester")
-    inst.sg:GoToState("idle")
 
     inst:SetBrain(brain)
 

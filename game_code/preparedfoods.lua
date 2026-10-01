@@ -531,6 +531,7 @@ local foods =
 		cooktime = 0.5,
         potlevel = "low",
         floater = {nil, 0.1, 0.6},
+		tags = { "fooddrink" },
 	},
 
 	bananapop =
@@ -564,6 +565,7 @@ local foods =
         temperatureduration = TUNING.FOOD_TEMP_LONG,
         cooktime = 1,
         floater = {"small", 0.05, 0.7},
+		tags = { "fooddrink" },
     },
 
     bananajuice =
@@ -578,6 +580,7 @@ local foods =
 		sanity = TUNING.SANITY_LARGE,
         cooktime = 0.5,
         floater = {"med", 0.05, 0.55},
+		tags = { "fooddrink" },
     },
 
 	ceviche =
@@ -859,25 +862,26 @@ local foods =
         overridebuild = "cook_pot_food6",
         floater = {"med", 0.05, 1.0},
 
-        prefabs = { "buff_sleepresistance" },
+        prefabs = { "buff_sleepresistance", "buff_sleepimmunity" },
         oneat_desc = STRINGS.UI.COOKBOOK.FOOD_EFFECTS_SLEEP_RESISTANCE,
         oneatenfn = function(inst, eater)
             if eater.components.grogginess ~= nil and
-			not (eater.components.health ~= nil and eater.components.health:IsDead()) and
-			not eater:HasTag("playerghost") then
+					not (eater.components.health ~= nil and eater.components.health:IsDead()) and
+					not eater:HasTag("playerghost") then
 				eater.components.grogginess:ResetGrogginess()
             end
 
 			eater:AddDebuff("shroomsleepresist", "buff_sleepresistance")
+			eater:AddDebuff("shroomsleepimmunity", "buff_sleepimmunity")
         end,
     },
 
 	sweettea =
 	{
-		test = function(cooker, names, tags) return names.forgetmelots and tags.sweetener and tags.frozen and not tags.monster and not tags.veggie and not tags.meat and not tags.fish and not tags.egg and not tags.fat and not tags.dairy and not tags.inedible end,
+		test = function(cooker, names, tags) return (names.forgetmelots or names.forgetmelots_dried) and tags.sweetener and tags.frozen and not tags.monster and not tags.veggie and not tags.meat and not tags.fish and not tags.egg and not tags.fat and not tags.dairy and not tags.inedible end,
 		priority = 1,
 		overridebuild = "cook_pot_food7",
-		--foodtype = FOODTYPE.GOODIES,
+		foodtype = FOODTYPE.VEGGIE,
 		health = TUNING.HEALING_SMALL,
 		hunger = 0,
 		sanity = TUNING.SANITY_MED,
@@ -888,7 +892,7 @@ local foods =
         potlevel = "low",
         floater = {"med", 0.05, 0.65},
         prefabs = { "sweettea_buff" },
-		tags = {"honeyed"},
+		tags = { "honeyed", "fooddrink" },
         oneat_desc = STRINGS.UI.COOKBOOK.FOOD_EFFECTS_HOT_SANITY_REGEN,
         oneatenfn = function(inst, eater)
 			eater:AddDebuff("sweettea_buff", "sweettea_buff")
@@ -1048,7 +1052,7 @@ local foods =
 	beefalotreat = 
 	{
 		-- good beefalo food
-		test = function(cooker, names, tags) return tags.inedible and tags.seed and names.forgetmelots and not tags.monster and not tags.meat and not tags.fish and not tags.egg and not tags.fat and not tags.dairy and not tags.magic end,
+		test = function(cooker, names, tags) return tags.inedible and tags.seed and (names.forgetmelots or names.forgetmelots_dried) and not tags.monster and not tags.meat and not tags.fish and not tags.egg and not tags.fat and not tags.dairy and not tags.magic end,
 		priority = -4,
 		foodtype = FOODTYPE.ROUGHAGE,
 		overridebuild = "cook_pot_food11",

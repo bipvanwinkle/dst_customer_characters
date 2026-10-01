@@ -11,13 +11,20 @@ local mine_no_tags = { "notraptrigger", "flying", "ghost", "playerghost", "spawn
 local function MineTest(inst, self)
     if self.radius ~= nil then
 		local notags
-		if self.alignment ~= nil then
-			notags = { "notraptrigger", "flying", "ghost", "playerghost", "spawnprotection", self.alignment }
+        if self.alignment == "player" then
+            notags = JoinArrays({ "possessedbody", self.alignment }, mine_no_tags)
+		elseif self.alignment ~= nil then
+			notags = JoinArrays({ self.alignment }, mine_no_tags)
 		else
 			notags = mine_no_tags
 		end
 
-        local target = FindEntity(inst, self.radius, mine_test_fn, mine_must_tags, notags, mine_test_tags)
+        local target
+        if self.find_must_tags or self.find_oneof_tags then
+            target = FindEntity(inst, self.radius, self.search_test_fn or nil, self.find_must_tags, notags, self.find_oneof_tags)
+        else
+            target = FindEntity(inst, self.radius, self.search_test_fn or mine_test_fn, mine_must_tags, notags, mine_test_tags)
+        end
         if target ~= nil then
             self:Explode(target)
         end
@@ -118,6 +125,15 @@ function Mine:SetReusable(reusable)
     else
         self.inst:AddTag("mine_not_reusable")
     end
+end
+
+function Mine:SetSearchTags(musttags, oneoftags)
+    self.find_must_tags = musttags or nil
+    self.find_oneof_tags = oneoftags or nil
+end
+
+function Mine:SetSearchTestFn(searchtestfn)
+    self.search_test_fn = searchtestfn or nil
 end
 
 function Mine:Reset()

@@ -140,6 +140,7 @@ local function fn()
     inst:AddTag("show_spoilage")
     inst:AddTag("small_livestock")
     inst:AddTag("deployedplant")
+    inst:AddTag("lunar_aligned")
 
     inst:DoPeriodicTask(.1, OnUpdateFlicker, nil, GetTime())
     OnUpdateFlicker(inst)
@@ -177,6 +178,8 @@ local function fn()
 
     MakeSmallBurnableCharacter(inst, "butterfly_body")
     MakeTinyFreezableCharacter(inst, "butterfly_body")
+    inst.components.burnable:SetBurnTime(6 * TUNING.PLANTMOB_BURNTIME_MULT)
+    inst.components.health.fire_damage_scale = TUNING.PLANTMOB_FIRE_DAMAGE_SCALE
 
     inst:AddComponent("inspectable")
 
@@ -206,6 +209,7 @@ local function fn()
     inst.components.perishable:SetOnPerishFn(onperish)
 
     inst:SetStateGraph("SGbutterfly")
+	inst.sg.mem.burn_on_electrocute = true
     inst:SetBrain(brain)
 
 	inst:ListenForEvent("death", ondeath)

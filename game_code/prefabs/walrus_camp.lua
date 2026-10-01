@@ -55,7 +55,6 @@ local function SetOccupied(inst, occupied)
     inst.data.occupied = occupied
 
     if occupied then
-
         anim:SetBank("walrus_house")
         anim:SetBuild("walrus_house")
 
@@ -65,7 +64,11 @@ local function SetOccupied(inst, occupied)
         anim:SetLayer(LAYER_WORLD)
         anim:SetSortOrder(0)
 
-        MakeObstaclePhysics(inst, 3)
+		inst.Physics:SetCollisionMask(
+			COLLISION.ITEMS,
+			COLLISION.CHARACTERS,
+			COLLISION.GIANTS
+		)
     else
         UpdateLight(inst, false)
 
@@ -77,7 +80,6 @@ local function SetOccupied(inst, occupied)
         anim:SetSortOrder(3)
 
         inst.Physics:ClearCollisionMask()
-        inst.Physics:CollidesWith(COLLISION.WORLD)
     end
 end
 
@@ -399,12 +401,14 @@ local function OnMegaFlare(inst, data)
             end
 
             -- SPAWN THEM IN
-            if party_active and spawnpoint and not engaged and math.random() < 0.6 then
-                for k in pairs(inst.data.children) do
-                    local players = FindPlayersInRange(spawnpoint.x,spawnpoint.y,spawnpoint.z, 40)
-                    k.Transform:SetPosition(spawnpoint.x,spawnpoint.y,spawnpoint.z)
-                    k.components.combat:SuggestTarget(players[1])
-                    k:AddTag("flare_summoned")
+            if spawnpoint then
+                local players = FindPlayersInRange(spawnpoint.x,spawnpoint.y,spawnpoint.z, 40)
+                if party_active and not engaged and math.random() <= GetEntitiesLuckChance(players, TUNING.WALRUS_INVESTIGATE_MEGAFLARE_CHANCE, LuckFormulas.MegaFlareEvent) then
+                    for k in pairs(inst.data.children) do
+                        k.Transform:SetPosition(spawnpoint.x,spawnpoint.y,spawnpoint.z)
+                        k.components.combat:SuggestTarget(players[1])
+                        k:AddTag("flare_summoned")
+                    end
                 end
             end
         end

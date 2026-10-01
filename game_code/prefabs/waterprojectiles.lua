@@ -120,8 +120,7 @@ local function common_fn(bank, build, anim, tag, isinventoryitem)
         inst.Physics:SetFriction(0)
         inst.Physics:SetDamping(0)
         inst.Physics:SetCollisionGroup(COLLISION.CHARACTERS)
-        inst.Physics:ClearCollisionMask()
-        inst.Physics:CollidesWith(COLLISION.GROUND)
+		inst.Physics:SetCollisionMask(COLLISION.GROUND)
         inst.Physics:SetCapsule(0.2, 0.2)
         inst.Physics:SetDontRemoveOnSleep(true) -- so the object can land and put out the fire, also an optimization due to how this moves through the world
     end
@@ -132,6 +131,7 @@ local function common_fn(bank, build, anim, tag, isinventoryitem)
 
     --projectile (from complexprojectile component) added to pristine state for optimization
     inst:AddTag("projectile")
+	inst:AddTag("complexprojectile")
 
     inst.AnimState:SetBank(bank)
     inst.AnimState:SetBuild(build)
@@ -186,12 +186,19 @@ local function snowball_fn()
     inst.components.wateryprotection.witherprotectiontime = TUNING.FIRESUPPRESSOR_PROTECTION_TIME
     inst.components.wateryprotection.addcoldness = TUNING.FIRESUPPRESSOR_ADD_COLDNESS
     inst.components.wateryprotection:AddIgnoreTag("player")
+    inst.components.wateryprotection:AddIgnoreTag("shadow_fire")
 
     return inst
 end
 
 local function onequip(inst, owner)
-    owner.AnimState:OverrideSymbol("swap_object", "swap_waterballoon", "swap_waterballoon")
+    local skin_build = inst:GetSkinBuild()
+    if skin_build ~= nil then
+        owner:PushEvent("equipskinneditem", inst:GetSkinName())
+        owner.AnimState:OverrideItemSkinSymbol("swap_object", skin_build, "swap_waterballoon", inst.GUID, "swap_waterballoon")
+    else
+        owner.AnimState:OverrideSymbol("swap_object", "swap_waterballoon", "swap_waterballoon")
+    end
     owner.AnimState:Show("ARM_carry")
     owner.AnimState:Hide("ARM_normal")
 end
@@ -199,6 +206,10 @@ end
 local function onunequip(inst, owner)
     owner.AnimState:Hide("ARM_carry")
     owner.AnimState:Show("ARM_normal")
+    local skin_build = inst:GetSkinBuild()
+    if skin_build ~= nil then
+        owner:PushEvent("unequipskinneditem", inst:GetSkinName())
+    end
 end
 
 local function onthrown(inst)
@@ -212,10 +223,11 @@ local function onthrown(inst)
     inst.Physics:SetFriction(0)
     inst.Physics:SetDamping(0)
     inst.Physics:SetCollisionGroup(COLLISION.CHARACTERS)
-    inst.Physics:ClearCollisionMask()
-    inst.Physics:CollidesWith(COLLISION.GROUND)
-    inst.Physics:CollidesWith(COLLISION.OBSTACLES)
-    inst.Physics:CollidesWith(COLLISION.ITEMS)
+	inst.Physics:SetCollisionMask(
+		COLLISION.GROUND,
+		COLLISION.OBSTACLES,
+		COLLISION.ITEMS
+	)
 end
 
 local function ReticuleTargetFn()
@@ -247,6 +259,9 @@ local function waterballoon_fn()
 
     inst:AddComponent("reticule")
     inst.components.reticule.targetfn = ReticuleTargetFn
+	inst.components.reticule.twinstickcheckscheme = true
+	inst.components.reticule.twinstickmode = 1
+	inst.components.reticule.twinstickrange = 8
     inst.components.reticule.ease = true
 
     MakeInventoryFloatable(inst, "med", 0.05, 0.65)
@@ -268,6 +283,7 @@ local function waterballoon_fn()
     inst.components.wateryprotection.temperaturereduction = TUNING.WATERBALLOON_TEMP_REDUCTION
     inst.components.wateryprotection.witherprotectiontime = TUNING.WATERBALLOON_PROTECTION_TIME
     inst.components.wateryprotection.addwetness = TUNING.WATERBALLOON_ADD_WETNESS
+    inst.components.wateryprotection:AddIgnoreTag("shadow_fire")
 
     inst:AddComponent("weapon")
     inst.components.weapon:SetDamage(0)
@@ -315,6 +331,7 @@ local function ink_fn()
     inst.components.wateryprotection.witherprotectiontime = TUNING.FIRESUPPRESSOR_PROTECTION_TIME
     inst.components.wateryprotection.addcoldness = TUNING.FIRESUPPRESSOR_ADD_COLDNESS
     inst.components.wateryprotection:AddIgnoreTag("player")
+    inst.components.wateryprotection:AddIgnoreTag("shadow_fire")
 
     return inst
 end
@@ -349,6 +366,7 @@ local function waterstreak_fn()
     inst.components.wateryprotection.extinguishheatpercent = TUNING.FIRESUPPRESSOR_EXTINGUISH_HEAT_PERCENT
     inst.components.wateryprotection.addwetness = TUNING.WATERBALLOON_ADD_WETNESS
     inst.components.wateryprotection:AddIgnoreTag("player")
+    inst.components.wateryprotection:AddIgnoreTag("shadow_fire")
 
     return inst
 end
@@ -375,6 +393,7 @@ local function bile_fn()
     inst.components.wateryprotection.witherprotectiontime = TUNING.FIRESUPPRESSOR_PROTECTION_TIME
     inst.components.wateryprotection.addcoldness = TUNING.FIRESUPPRESSOR_ADD_COLDNESS
     inst.components.wateryprotection:AddIgnoreTag("player")
+    inst.components.wateryprotection:AddIgnoreTag("shadow_fire")
 
     return inst
 end

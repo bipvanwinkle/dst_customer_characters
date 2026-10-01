@@ -22,9 +22,10 @@ local function ChangeToObstacle(inst)
     local x, y, z = inst.Transform:GetWorldPosition()
     inst.Physics:Stop()
     inst.Physics:SetMass(0)
-    inst.Physics:ClearCollisionMask()
-    inst.Physics:CollidesWith(COLLISION.ITEMS)
-    inst.Physics:CollidesWith(COLLISION.CHARACTERS)
+	inst.Physics:SetCollisionMask(
+		COLLISION.ITEMS,
+		COLLISION.CHARACTERS
+	)
     inst.Physics:Teleport(x, 0, z)
 end
 
@@ -42,7 +43,7 @@ local function SpikeLaunch(inst, launcher, basespeed, startheight, startradius)
     end
     local sina, cosa = math.sin(angle), math.cos(angle)
     local speed = basespeed + math.random()
-    inst.Physics:Teleport(x0 + startradius * cosa, startheight, z0 + startradius * sina)
+	TryTeleportToLaunchPos(inst, x0 + startradius * cosa, startheight, z0 + startradius * sina)
     inst.Physics:SetVel(cosa * speed, speed * 5 + math.random() * 2, sina * speed)
 end
 
@@ -99,9 +100,7 @@ local function DoDamage(inst)
 
     local totoss = TheSim:FindEntities(x, 0, z, PHYSICS_RADIUS + DAMAGE_RADIUS_PADDING, TOSSITEM_MUST_TAGS, TOSSITEM_CANT_TAGS)
     for i, v in ipairs(totoss) do
-        if v.components.mine ~= nil then
-            v.components.mine:Deactivate()
-        end
+        DeactivateInventoryItemBeforeLaunch(v)
         if not v.components.inventoryitem.nobounce and v.Physics ~= nil and v.Physics:IsActive() then
             SpikeLaunch(v, inst, .8 + PHYSICS_RADIUS, PHYSICS_RADIUS * .4, PHYSICS_RADIUS + v:GetPhysicsRadius(0))
         end
@@ -189,10 +188,11 @@ local function fn()
 
     inst.Physics:SetMass(99999)
     inst.Physics:SetCollisionGroup(COLLISION.SMALLOBSTACLES)
-    inst.Physics:ClearCollisionMask()
-    inst.Physics:CollidesWith(COLLISION.ITEMS)
-    inst.Physics:CollidesWith(COLLISION.CHARACTERS)
-    inst.Physics:CollidesWith(COLLISION.WORLD)
+	inst.Physics:SetCollisionMask(
+		COLLISION.ITEMS,
+		COLLISION.CHARACTERS,
+		COLLISION.WORLD
+	)
     inst.Physics:SetCapsule(PHYSICS_RADIUS, 2)
 
     inst:AddTag("notarget")

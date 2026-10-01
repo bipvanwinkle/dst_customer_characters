@@ -209,6 +209,7 @@ local function HarvestPickable(inst, ent, doer)
             Launch(item, doer, 1.5)
         end
     end
+    return success
 end
 
 local function IsEntityInFront(inst, entity, doer_rotation, doer_pos)
@@ -218,8 +219,7 @@ local function IsEntityInFront(inst, entity, doer_rotation, doer_pos)
 end
 
 local HARVEST_MUSTTAGS  = {"pickable"}
-local HARVEST_CANTTAGS  = {"INLIMBO", "FX"}
-local HARVEST_ONEOFTAGS = {"plant", "lichen", "oceanvine", "kelp"}
+local HARVEST_CANTTAGS  = { "INLIMBO", "FX", "intense" }
 
 local function DoScythe(inst, target, doer)
     inst:SayRandomLine(STRINGS.VOIDCLOTH_SCYTHE_TALK.onharvest, doer)
@@ -230,23 +230,65 @@ local function DoScythe(inst, target, doer)
 
         local doer_rotation = doer.Transform:GetRotation()
 
-        local ents = TheSim:FindEntities(x, y, z, TUNING.VOIDCLOTH_SCYTHE_HARVEST_RADIUS, HARVEST_MUSTTAGS, HARVEST_CANTTAGS, HARVEST_ONEOFTAGS)
+        local harvestedcount = 0
+        local ents = TheSim:FindEntities(x, y, z, TUNING.VOIDCLOTH_SCYTHE_HARVEST_RADIUS, HARVEST_MUSTTAGS, HARVEST_CANTTAGS, HARVESTABLE_PLANT_TARGET_TAGS)
         for _, ent in pairs(ents) do
             if ent:IsValid() and ent.components.pickable ~= nil then
                 if inst:IsEntityInFront(ent, doer_rotation, doer_pos) then
-                    inst:HarvestPickable(ent, doer)
+                    if inst:HarvestPickable(ent, doer) then
+                        harvestedcount = harvestedcount + 1
+                    end
                 end
             end
+        end
+        if harvestedcount > 0 then
+            doer:PushEvent("picksomethingfromaoe", {harvestedcount = harvestedcount,})
         end
     end
 end
 
 local hitsparks_fx_colouroverride = {1, 0, 0}
-local function OnAttack(inst, attacker, target)
+local function TryToSparkOn(target, attacker)
     if target ~= nil and target:IsValid() then
         local spark = SpawnPrefab("hitsparks_fx")
         spark:Setup(attacker, target, nil, hitsparks_fx_colouroverride)
         spark.black:set(true)
+    end
+end
+
+--see winona_catapult_projectile
+local NO_TAGS_PVP = { "INLIMBO", "playerghost", "FX", "NOCLICK", "DECOR", "notarget", "companion", "decoy" }
+local NO_TAGS = shallowcopy(NO_TAGS_PVP)
+table.insert(NO_TAGS, "player")
+table.insert(NO_TAGS, "wall")
+
+local function ShadowAoEValidFn(target, attacker)
+	if attacker.components.combat:IsAlly(target) then
+		return false
+	end
+
+    TryToSparkOn(target, attacker)
+    return true
+end
+
+local function DoShadowAoE(inst, attacker, target)
+    if attacker.components.combat then
+        local range = TUNING.SKILLS.WORTOX.VOIDCLOTHSCYTHE_AOE_RANGE
+        local weapon = inst
+        local excludetags = TheNet:GetPVPEnabled() and NO_TAGS_PVP or NO_TAGS
+        local hitcount = attacker.components.combat:DoAreaAttack(target, range, weapon, ShadowAoEValidFn, nil, excludetags)
+        if hitcount == 0 and target:IsValid() then
+            attacker.components.combat:DoAreaAttack(target, range, weapon, ShadowAoEValidFn, nil, excludetags, true)
+        end
+    end
+end
+
+local function OnAttack(inst, attacker, target)
+    TryToSparkOn(target, attacker)
+    if attacker.components.skilltreeupdater and attacker.components.skilltreeupdater:IsActivated("wortox_allegiance_shadow") then
+        if attacker.finishportalhoptask ~= nil and attacker:TryToPortalHop(1, false) then
+            inst:DoShadowAoE(attacker, target)
+        end
     end
 end
 
@@ -431,6 +473,7 @@ local function ScytheFn()
     inst.DoScythe = DoScythe
     inst.IsEntityInFront = IsEntityInFront
     inst.HarvestPickable = HarvestPickable
+    inst.DoShadowAoE = DoShadowAoE
 
     return inst
 end
@@ -482,9 +525,13 @@ end
 local function FxOnEquipToggle(inst)
     local owner = inst.equiptoggle:value() and inst.entity:GetParent() or nil
     if owner ~= nil then
-        if inst.fx == nil then
+        -- We might have switched owners (e.g. wx backup <-> possessed chassis transition)
+        if inst.fx ~= nil then
+            FxRemoveAll(inst)
+        else
             inst.fx = {}
         end
+
         local frame = inst.AnimState:GetCurrentAnimationFrame()
         for i, v in ipairs(FX_DEFS) do
             local fx = inst.fx[i]

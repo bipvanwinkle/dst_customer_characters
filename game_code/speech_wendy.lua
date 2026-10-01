@@ -23,7 +23,15 @@ return{
             NOTMERM = "They only answer to Wurt.",
             NOKELP = "only_used_by_wurt",
 --fallback to speech_wilson.lua             HASMERMLEADER = "only_used_by_wurt",
+            NOTAROBOT = "I shouldn't touch the machine's things.",
+--fallback to speech_wilson.lua             NOTMYBACKUP = "only_used_by_wx78",
+--fallback to speech_wilson.lua             TOOMANYBACKUPBODIES = "only_used_by_wx78",
 		},
+        APPLYELIXIR =
+        {
+            TOO_SUPER = "It's too much.",
+            NO_ELIXIRABLE = "I need Abby's flower to pour it on.",
+        },
         APPLYMODULE =
         {
             COOLDOWN = "only_used_by_wx78",
@@ -59,6 +67,9 @@ return{
             HASPET = "I can only have one...",
 			TICOON = "The more friends you have, the shallower they are.",
             BUSY_STATION = "I have to wait.",
+--fallback to speech_wilson.lua             TOOMANYBACKUPBODIES = "only_used_by_wx78",
+--fallback to speech_wilson.lua             TOOMANYSHADOWDRONE_HARVESTER = "only_used_by_wx78",
+--fallback to speech_wilson.lua             TOOMANYSHADOWDRONE_DEBUFFER = "only_used_by_wx78",
         },
         CARNIVALGAME_FEED =
         {
@@ -70,6 +81,7 @@ return{
 --fallback to speech_wilson.lua 			REVIVE_FAILED = "only_used_by_wanda",
 --fallback to speech_wilson.lua 			WARP_NO_POINTS_LEFT = "only_used_by_wanda",
 --fallback to speech_wilson.lua 			SHARD_UNAVAILABLE = "only_used_by_wanda",
+--fallback to speech_wilson.lua 			NO_TELEPORT_ZONE = "only_used_by_wanda",
 		},
 		CAST_SPELLBOOK =
 		{
@@ -99,8 +111,8 @@ return{
         },
         CHARGE_FROM =
         {
-            NOT_ENOUGH_CHARGE = "only_used_by_wx78",
-            CHARGE_FULL = "only_used_by_wx78",
+            NOT_ENOUGH_CHARGE = "It's dead.",
+            CHARGE_FULL = "Full charge.",
         },
 		COMPARE_WEIGHABLE =
 		{
@@ -120,6 +132,13 @@ return{
             GENERIC = "Oh. No one ever taught me to cook.",
             INUSE = "What are you making...? Smells good...",
             TOOFAR = "It's so... far away...",
+        },
+        DEPLOY = {
+            HERMITCRAB_RELOCATE = "It's empty. I'll try again later.",
+        },
+        DIRECTCOURIER_MAP =
+        {
+--fallback to speech_wilson.lua             NOTARGET = "only_used_by_walter",
         },
 		DISMANTLE =
 		{
@@ -186,6 +205,7 @@ return{
             TERRARIUM_COOLDOWN = "I suppose it needs more time to recover from all it has been through.",
             NOTAMONKEY = "I'm sorry... I don't know what you're trying to say...",
             QUEENBUSY = "She doesn't have time for someone like me.",
+            CARNIVALGAME_GOLFGAME_NOTREADY = "It's incomplete. Like me.",
         },
         GIVE_TACKLESKETCH =
 		{
@@ -208,6 +228,7 @@ return{
         HARVEST =
         {
             DOER_ISNT_MODULE_OWNER = "It won't pay any attention to me...",
+--fallback to speech_wilson.lua             DOER_DOESNT_HAVE_SKILL = "only_used_by_wx78",
         },
         HEAL =
         {
@@ -262,6 +283,7 @@ return{
         PICK =
         {
             NOTHING_INSIDE = "It's empty inside.",
+			STUCK = "Of course it's stuck.",
         },
         PICKUP =
         {
@@ -297,6 +319,7 @@ return{
 --fallback to speech_wilson.lua             NOWATERNEARBY = "only_used_by_waxwell_and_wicker",
 --fallback to speech_wilson.lua             TOOMANYBIRDS = "only_used_by_waxwell_and_wicker",
 --fallback to speech_wilson.lua             WAYTOOMANYBIRDS = "only_used_by_waxwell_and_wicker",
+--fallback to speech_wilson.lua             BIRDSBLOCKED = "only_used_by_waxwell_and_wicker",
 --fallback to speech_wilson.lua             NOFIRES =       "only_used_by_waxwell_and_wicker",
 --fallback to speech_wilson.lua             NOSILVICULTURE = "only_used_by_waxwell_and_wicker",
 --fallback to speech_wilson.lua             NOHORTICULTURE = "only_used_by_waxwell_and_wicker",
@@ -305,6 +328,8 @@ return{
 --fallback to speech_wilson.lua             TOOMANYBEES = "only_used_by_waxwell_and_wicker",
 --fallback to speech_wilson.lua             NOMOONINCAVES = "only_used_by_waxwell_and_wicker",
 --fallback to speech_wilson.lua             ALREADYFULLMOON = "only_used_by_waxwell_and_wicker",
+--fallback to speech_wilson.lua             -- rifts5.1
+--fallback to speech_wilson.lua             DEADBIRDS = "only_used_by_waxwell_and_wicker",
 --fallback to speech_wilson.lua         },
 		REMOTE_TELEPORT =
 		{
@@ -336,6 +361,11 @@ return{
 			INUSE = "I can come back later...",
             NOTMASTERCHEF = "That belongs to Warly.",
             NOTAMERM = "There is nothing for me in there.",
+            NOTSOULJARHANDLER = "Not for me.",
+            RESTRICTED = "Can't always get what you want. Some never do.",
+            NOTAROBOT = "I shouldn't touch the machine's things.",
+--fallback to speech_wilson.lua             NOTMYBACKUP = "only_used_by_wx78",
+--fallback to speech_wilson.lua             TOOMANYBACKUPBODIES = "only_used_by_wx78",
 		},
         SADDLE =
         {
@@ -367,7 +397,22 @@ return{
 			NOTALLOWED = "I must mind my manners.",
 			INUSE = "Can I use that after you?",
             NOTMASTERCHEF = "That belongs to Warly.",
+            NOTSOULJARHANDLER = "Not for me.",
+            RESTRICTED = "Can't always get what you want. Some never do.",
+            NOTAROBOT = "I shouldn't touch the machine's things.",
+--fallback to speech_wilson.lua             NOTMYBACKUP = "only_used_by_wx78",
+--fallback to speech_wilson.lua             TOOMANYBACKUPBODIES = "only_used_by_wx78",
 		},
+		STARTMAPDELIVER =
+		{
+--fallback to speech_wilson.lua 			EMPTY = "only_used_by_wx78",
+--fallback to speech_wilson.lua 			INUSE = "only_used_by_wx78",
+--fallback to speech_wilson.lua 			NOSKILL_DRONE = "only_used_by_wx78", 
+		},
+        SWAPBODIES_MAP =
+        {
+--fallback to speech_wilson.lua             NOTARGET = "only_used_by_wx78",
+        },
         TEACH =
         {
             --Recipes/Teacher
@@ -396,6 +441,10 @@ return{
         {
 --fallback to speech_wilson.lua             BEDAZZLED = "only_used_by_webber",
         },
+        USEEQUIPPEDITEM =
+        {
+--fallback to speech_wilson.lua             BADPOSITION = "only_used_by_wx78",
+        },
         USEITEMON =
         {
             --GENERIC = "I can't use this on that!",
@@ -404,6 +453,12 @@ return{
             BEEF_BELL_INVALID_TARGET = "It cannot be so.",
             BEEF_BELL_ALREADY_USED = "It shares a bond with someone else.",
             BEEF_BELL_HAS_BEEF_ALREADY = "I will not replace my dear beefalo.",
+
+			NOT_MINE = "I can't do anything with that.",
+
+			CANNOT_FIX_DRONE = "It cannot be brought back.",
+
+--fallback to speech_wilson.lua             GESTALT_TOO_POWERFUL = "only_used_by_wx78",
         },
 		USEKLAUSSACKKEY =
         {
@@ -424,11 +479,51 @@ return{
         {
             DOESNTWORK = "Hello sir? He seems to be out.",
             ALREADYACTIVE = "He must be busy somewhere else.",
+            NORESPONSE = "It seems he's wandered away.",
+            RIGHTTHERE = "Does he not see us?",
         },
         YOTB_UNLOCKSKIN =
         {
             ALREADYKNOWN = "Ah. I've seen it before.",
         },
+		CARVEPUMPKIN =
+		{
+			INUSE = "That pumpkin is being stabbed already.",
+			BURNING = "It's burning.",
+		},
+		DECORATESNOWMAN =
+		{
+			INUSE = "I won't interrupt.",
+			HASHAT = "I can't crush that poor hat.",
+			STACKEDTOOHIGH = "It's too tall.",
+			MELTING = "It's no use. It's the end for this one.",
+		},
+        MUTATE = 
+        {
+            NOGHOST = "I need Abby for this.",
+            NONEWMOON = "The moon is not waning.",
+            NOFULLMOON = "The moon must be waxing.",
+            NOTNIGHT = "It won't work in the sun.",
+            CAVE = "It won't work without moonlight.",
+        },
+		MODSLINGSHOT =
+		{
+--fallback to speech_wilson.lua 			NOSLINGSHOT = "only_used_by_walter",
+		},
+		POUNCECAPTURE =
+		{
+			MISSED = "Failure.",
+		},
+        DIVEGRAB =
+        {
+            MISSED = "Failure.",
+        },
+
+		-- Winter 2025
+		SOAKIN =
+		{
+			NOSPACE = "That space is taken.",--there's someone in that space. there's no room there.
+		},
     },
 
 	ANNOUNCE_CANNOT_BUILD =
@@ -649,7 +744,7 @@ return{
 	},
 
     --hallowed nights
-    ANNOUNCE_SPOOKED = "Did you see that, Abigail?",
+    ANNOUNCE_SPOOKED = "Yuck!",
 	ANNOUNCE_BRAVERY_POTION = "Bats can't scare me anymore. I can return to my melancholy.",
 	ANNOUNCE_MOONPOTION_FAILED = "Sigh... I didn't really expect that to work.",
 
@@ -703,7 +798,23 @@ return{
 --fallback to speech_wilson.lua     {
 --fallback to speech_wilson.lua         "only_used_by_wortox",
 --fallback to speech_wilson.lua     },
+--fallback to speech_wilson.lua     ANNOUNCE_SOUL_EMPTY_NICE =
+--fallback to speech_wilson.lua     {
+--fallback to speech_wilson.lua         "only_used_by_wortox",
+--fallback to speech_wilson.lua     },
+--fallback to speech_wilson.lua     ANNOUNCE_SOUL_EMPTY_NAUGHTY =
+--fallback to speech_wilson.lua     {
+--fallback to speech_wilson.lua         "only_used_by_wortox",
+--fallback to speech_wilson.lua     },
 --fallback to speech_wilson.lua     ANNOUNCE_SOUL_FEW =
+--fallback to speech_wilson.lua     {
+--fallback to speech_wilson.lua         "only_used_by_wortox",
+--fallback to speech_wilson.lua     },
+--fallback to speech_wilson.lua     ANNOUNCE_SOUL_FEW_NICE =
+--fallback to speech_wilson.lua     {
+--fallback to speech_wilson.lua         "only_used_by_wortox",
+--fallback to speech_wilson.lua     },
+--fallback to speech_wilson.lua     ANNOUNCE_SOUL_FEW_NAUGHTY =
 --fallback to speech_wilson.lua     {
 --fallback to speech_wilson.lua         "only_used_by_wortox",
 --fallback to speech_wilson.lua     },
@@ -711,17 +822,52 @@ return{
 --fallback to speech_wilson.lua     {
 --fallback to speech_wilson.lua         "only_used_by_wortox",
 --fallback to speech_wilson.lua     },
+--fallback to speech_wilson.lua     ANNOUNCE_SOUL_MANY_NICE =
+--fallback to speech_wilson.lua     {
+--fallback to speech_wilson.lua         "only_used_by_wortox",
+--fallback to speech_wilson.lua     },
+--fallback to speech_wilson.lua     ANNOUNCE_SOUL_MANY_NAUGHTY =
+--fallback to speech_wilson.lua     {
+--fallback to speech_wilson.lua         "only_used_by_wortox",
+--fallback to speech_wilson.lua     },
 --fallback to speech_wilson.lua     ANNOUNCE_SOUL_OVERLOAD =
+--fallback to speech_wilson.lua     {
+--fallback to speech_wilson.lua         "only_used_by_wortox",
+--fallback to speech_wilson.lua     },
+--fallback to speech_wilson.lua     ANNOUNCE_SOUL_OVERLOAD_NICE =
+--fallback to speech_wilson.lua     {
+--fallback to speech_wilson.lua         "only_used_by_wortox",
+--fallback to speech_wilson.lua     },
+--fallback to speech_wilson.lua     ANNOUNCE_SOUL_OVERLOAD_NAUGHTY =
+--fallback to speech_wilson.lua     {
+--fallback to speech_wilson.lua         "only_used_by_wortox",
+--fallback to speech_wilson.lua     },
+--fallback to speech_wilson.lua     ANNOUNCE_SOUL_OVERLOAD_WARNING =
+--fallback to speech_wilson.lua     {
+--fallback to speech_wilson.lua         "only_used_by_wortox",
+--fallback to speech_wilson.lua     },
+--fallback to speech_wilson.lua     ANNOUNCE_SOUL_OVERLOAD_AVOIDED =
+--fallback to speech_wilson.lua     {
+--fallback to speech_wilson.lua         "only_used_by_wortox",
+--fallback to speech_wilson.lua     },
+--fallback to speech_wilson.lua     ANNOUNCE_PANFLUTE_BUFF_ACTIVE =
+--fallback to speech_wilson.lua     {
+--fallback to speech_wilson.lua         "only_used_by_wortox",
+--fallback to speech_wilson.lua     },
+--fallback to speech_wilson.lua     ANNOUNCE_PANFLUTE_BUFF_USED =
 --fallback to speech_wilson.lua     {
 --fallback to speech_wilson.lua         "only_used_by_wortox",
 --fallback to speech_wilson.lua     },
 
     --walter specfic
+--fallback to speech_wilson.lua 	ANNOUNCE_AMMO_SLOT_OVERSTACKED = "only_used_by_walter",
 --fallback to speech_wilson.lua 	ANNOUNCE_SLINGHSOT_OUT_OF_AMMO =
 --fallback to speech_wilson.lua 	{
 --fallback to speech_wilson.lua 		"only_used_by_walter",
 --fallback to speech_wilson.lua 		"only_used_by_walter",
 --fallback to speech_wilson.lua 	},
+--fallback to speech_wilson.lua 	ANNOUNCE_SLINGHSOT_NO_AMMO_SKILL = "only_used_by_walter",
+--fallback to speech_wilson.lua 	ANNOUNCE_SLINGHSOT_NO_PARTS_SKILL = "only_used_by_walter",
 --fallback to speech_wilson.lua 	ANNOUNCE_STORYTELLING_ABORT_FIREWENTOUT =
 --fallback to speech_wilson.lua 	{
 --fallback to speech_wilson.lua         "only_used_by_walter",
@@ -729,6 +875,38 @@ return{
 --fallback to speech_wilson.lua 	ANNOUNCE_STORYTELLING_ABORT_NOT_NIGHT =
 --fallback to speech_wilson.lua 	{
 --fallback to speech_wilson.lua         "only_used_by_walter",
+--fallback to speech_wilson.lua 	},
+--fallback to speech_wilson.lua 	ANNOUNCE_WOBY_RETURN =
+--fallback to speech_wilson.lua 	{
+--fallback to speech_wilson.lua 		"only_used_by_walter",
+--fallback to speech_wilson.lua 	},
+--fallback to speech_wilson.lua 	ANNOUNCE_WOBY_SIT =
+--fallback to speech_wilson.lua 	{
+--fallback to speech_wilson.lua 		"only_used_by_walter",
+--fallback to speech_wilson.lua 	},
+--fallback to speech_wilson.lua 	ANNOUNCE_WOBY_FOLLOW =
+--fallback to speech_wilson.lua 	{
+--fallback to speech_wilson.lua 		"only_used_by_walter",
+--fallback to speech_wilson.lua 	},
+--fallback to speech_wilson.lua 	ANNOUNCE_WOBY_PRAISE =
+--fallback to speech_wilson.lua 	{
+--fallback to speech_wilson.lua 		"only_used_by_walter",
+--fallback to speech_wilson.lua 	},
+--fallback to speech_wilson.lua 	ANNOUNCE_WOBY_FORAGE =
+--fallback to speech_wilson.lua 	{
+--fallback to speech_wilson.lua 		"only_used_by_walter",
+--fallback to speech_wilson.lua 	},
+--fallback to speech_wilson.lua 	ANNOUNCE_WOBY_WORK =
+--fallback to speech_wilson.lua 	{
+--fallback to speech_wilson.lua 		"only_used_by_walter",
+--fallback to speech_wilson.lua 	},
+--fallback to speech_wilson.lua 	ANNOUNCE_WOBY_COURIER =
+--fallback to speech_wilson.lua 	{
+--fallback to speech_wilson.lua 		"only_used_by_walter",
+--fallback to speech_wilson.lua 	},
+--fallback to speech_wilson.lua 	ANNOUNCE_WOBY_REMEMBERCHEST_FAIL =
+--fallback to speech_wilson.lua 	{
+--fallback to speech_wilson.lua 		"only_used_by_walter",
 --fallback to speech_wilson.lua 	},
 
     -- wx specific
@@ -741,12 +919,18 @@ return{
     QUAGMIRE_ANNOUNCE_LOSE = "What a horrible place to have a curse.",
     QUAGMIRE_ANNOUNCE_WIN = "Let us depart this terrible place.",
 
---fallback to speech_wilson.lua     ANNOUNCE_ROYALTY =
---fallback to speech_wilson.lua     {
---fallback to speech_wilson.lua         "Your majesty.",
---fallback to speech_wilson.lua         "Your highness.",
---fallback to speech_wilson.lua         "My liege!",
---fallback to speech_wilson.lua     },
+    ANNOUNCE_ROYALTY =
+    {
+        "Your Majesty.",
+        "Your Highness.",
+        "My kingdom for another day with her.",
+    },
+    ANNOUNCE_ROYALTY_JOKER =
+    {
+        "I'm not in the mood for jokes.",
+        "Thanks for trying.",
+        "I only laugh to be polite.",
+    },
 
     ANNOUNCE_ATTACH_BUFF_ELECTRICATTACK    = "I feel the thrill of power!",
     ANNOUNCE_ATTACH_BUFF_ATTACK            = "It must be my imagination, but I feel a little stronger...",
@@ -832,6 +1016,8 @@ return{
         "Am I getting warmer?",
     },
 	ANNOUNCE_SISTURN_FULL = "Now Abigail can find her way back to me faster.",
+    ANNOUNCE_SISTURN_FULL_EVIL = "This gives me goosebumps. I hope it was worth it.",
+    ANNOUNCE_SISTURN_FULL_BLOSSOM = "This might be as close as we've ever come, Abigail.",
     ANNOUNCE_ABIGAIL_DEATH = "No... don't leave me alone again!",
     ANNOUNCE_ABIGAIL_RETRIEVE = "I'm sorry... it's not safe for you out here.",
 	ANNOUNCE_ABIGAIL_LOW_HEALTH = "Be careful, Abigail!",
@@ -1001,6 +1187,76 @@ return{
 
 	-- Hallowed Nights 2024
 	ANNOUNCE_NOPUMPKINCARVINGONFIRE = "Oh well.",
+
+	-- Winter's Feast 2024
+	ANNOUNCE_SNOWBALL_TOO_BIG = "There's no use rolling it more.",
+	ANNOUNCE_SNOWBALL_NO_SNOW = "The ground lies barren, stripped of its winter coat.",
+
+    -- Meta 5
+    ANNOUNCE_WENDY_BABYSITTER_SET = "I'll come back for you, Abby.", 
+    ANNOUNCE_WENDY_BABYSITTER_STOP = "Abby, let's go!",
+
+	ANNOUNCE_WORTOX_REVIVER_FAILTELEPORT = "That got us nowhere.",
+
+    ANNOUNCE_NO_ABIGAIL_FLOWER = "I need Abby's flower to pour it on.",
+
+    ANNOUNCE_ELIXIR_BOOSTED = "All comfort is fleeting.",
+    ANNOUNCE_ELIXIR_GHOSTVISION = "My world is just as cold and dark without you, Abby.",
+    ANNOUNCE_ELIXIR_PLAYER_SPEED = "My heart is still heavy.",
+
+    ANNOUNCE_ELIXIR_TOO_SUPER = "It's too much.",
+
+    -- Rift 5
+
+    ANNOUNCE_LUNARGUARDIAN_INCOMING = "It remembers.",
+    ANNOUNCE_FLOATER_HELD = "What now?",
+    ANNOUNCE_FLOATER_LETGO = "It's time.",
+
+    -- rifts5.1
+    ANNOUNCE_LUNARHAIL_BIRD_SOUNDS = "Those birds are singing their last.",
+    ANNOUNCE_LUNARHAIL_BIRD_CORPSES = "Birds of a feather fall together.",
+    ANNOUNCE_FLOAT_SWIM_TIRED = "Just need a rest.",
+    ANOUNCE_MUTATED_BIRD_ATTACK = "Let them come.",
+
+    -- Rift 6
+    ANNOUNCE_WEAPON_TOOWEAK = "This is futile. I need something stronger.",
+    ANNOUNCE_VAULT_TELEPORTER_DOES_NOTHING = "What now?",
+
+	-- Rift 6.1
+	ANNOUNCE_LIGHTSOUT_SHADOWHAND = "Like the death's own hand, come to snuff our fragile flame.",
+
+    -- Hallowed Nights 2025
+    ANNOUNCE_MUTATED_BUZZARD_ARRIVAL = "Buzzards. Something off about them.", -- Mutated buzzards arrive to lurk and circle the player
+
+    -- Winter's Feast 2025
+    ANNOUNCE_HERMITCRAB_SHELL_BADTELEPORTPOINT = "I'm still here...",
+    ANNOUNCE_HERMITCRAB_SHELL_ARRIVE = "Here we are.",
+
+    -- Year of the Clockwork Knight
+    ANNOUNCE_YOTH_ONCOOLDOWN = "The knights must not be ready to return yet.",
+	-- Post-YOTH
+	ANNOUNCE_MAX_CLOCKWORKS = "This one will be left behind.",
+
+    -- wx specific
+--fallback to speech_wilson.lua     ANNOUNCE_WX_SCANNER_HITDOWN_BY_CAT = "only_used_by_wx78",
+--fallback to speech_wilson.lua     ANNOUNCE_WX_TASER_BUILDUP = "only_used_by_wx78", -- Wx is building up charge when getting hit, nearing EMP blast
+--fallback to speech_wilson.lua     ANNOUNCE_WX_TASER_ABOUTTOEXPLODE = "only_used_by_wx78", -- Wx is fully charged and about to release it. Take cover!
+--fallback to speech_wilson.lua     ANNOUNCE_WX_TASER_POSTEXPLOSION = "only_used_by_wx78", -- Wx has exploded and released all the build up, now they can say something about how invigorating it was.
+--fallback to speech_wilson.lua     ANNOUNCE_WX_NIGHTMARECHARGE = "only_used_by_wx78", -- WX ate/used a nightmare fuel, giving them full charge temporarily
+--fallback to speech_wilson.lua 	ANNOUNCE_WX_NIGHTMAREDISCHARGE = "only_used_by_wx78", -- WX's temporary full charge ran out.
+
+    -- Rifts 7
+
+    ANNOUNCE_MITEGLAND_DEBUFF =
+	{
+		"I'm burning with fever...",
+		"It's burning in my stomach...",
+	},
+	ANNOUNCE_MITEGLAND_DEBUFF_DONE = "I survived. Oh well, there's always next time.",
+    ANNOUNCE_GOT_DECON_MISTED = "Can it truly purge all the darkness from my heart?",
+	ANNOUNCE_VAULT_SHADOW_ASSIST = "Strange... I wonder what price we shall pay for this assistance.",
+    ANNOUNCE_HEALINGSALVE_FUMAROLEBUFF_DONE = "The flames may consume me once again.",--fire immunity expired
+    ANNOUNCE_SECURITY_PULSE_FOLLOWING = "Seems we have a new friend, Abigail.", -- Security spark attached to us due to us holding Waymark Compass.
 
 	BATTLECRY =
 	{
@@ -1585,6 +1841,8 @@ return{
 		TURF_FUNGUS="Some ground.",
 		TURF_FUNGUS_MOON = "Some ground.",
 		TURF_ARCHIVE = "Some ground.",
+        TURF_VAULT = "Some ground.",
+        TURF_VENT = "Some ground.",
 		TURF_SINKHOLE="Some ground.",
 		TURF_UNDERROCK="Some ground.",
 		TURF_MUD="Some ground.",
@@ -1926,10 +2184,17 @@ return{
         CHESSPIECE_EYEOFTERROR = "Its stony gaze will glare for eternity.",
         CHESSPIECE_TWINSOFTERROR = "I still remember watching the light leave their eyes.",
         CHESSPIECE_DAYWALKER = "A reminder that kindness only leads to pain.",
+        CHESSPIECE_DAYWALKER2 = "His pain led to anger.",
         CHESSPIECE_DEERCLOPS_MUTATED = "The beast came back even colder than before.",
         CHESSPIECE_WARG_MUTATED = "Why was it able to come back? It's not fair...",
         CHESSPIECE_BEARGER_MUTATED = "Its new lease on life was, well, short-lived.",
         CHESSPIECE_SHARKBOI = "Their cold shark heart was just misunderstood.",
+        CHESSPIECE_WORMBOSS = "It consumed to fill its endless void.",
+        CHESSPIECE_YOTS = "How curious, the things we choose to commemorate.",
+        CHESSPIECE_WAGBOSS_ROBOT = "It was built to bring death.",
+        CHESSPIECE_WAGBOSS_LUNAR = "This doesn't capture its pain.",
+        CHESSPIECE_YOTH = "Not quite the fairy tale version.",
+        CHESSPIECE_VAULT_PILLAR_GUARD = "There's no life in this small sentry.",
 
         CHESSJUNK1 = "Cold, dead artificial life.",
         CHESSJUNK2 = "Cold, dead artificial life.",
@@ -1970,6 +2235,8 @@ return{
         CRITTER_KITTEN = "Cursed with nine lives. Poor thing.",
         CRITTER_PERDLING = "It's so happy.",
 		CRITTER_LUNARMOTHLING = "Your beauty will fade too, you know.",
+        CRITTER_BULBIN = "Its adorable face nearly brings me to tears.",
+        CRITTER_EETS = "It likes to bounce along with Abigail.",
 
 		CROW =
 		{
@@ -2602,7 +2869,11 @@ return{
         ROCKS = "Some small rocks.",
         ROOK = "A Rook? Or is it a Castle?",
         ROPE = "That would be the easy way out of this place.",
-        ROTTENEGG = "The way of all things.",
+        ROTTENEGG =
+        {
+            GENERIC = "The way of all things.",
+--fallback to speech_wilson.lua             CAN_PROCESS = "only_used_by_wx78",
+        },
         ROYAL_JELLY = "We stole it out of the mouths of baby bees.",
         JELLYBEAN = "Beans that shall never know life.",
         SADDLE_BASIC = "As if it wasn't already burdened by the yoke of life...",
@@ -2704,7 +2975,11 @@ return{
 			GENERIC = "A warrior of the night!",
 			SLEEPING = "I must beware.",
 		},
-		SPOILED_FOOD = "Everything turns to waste, eventually.",
+        SPOILED_FOOD =
+        {
+            GENERIC = "Everything turns to waste, eventually.",
+--fallback to speech_wilson.lua             CAN_PROCESS = "only_used_by_wx78",
+        },
         STAGEHAND =
         {
 			AWAKE = "A creature of shadow that seeks the light... how sad...",
@@ -3151,6 +3426,7 @@ return{
         WINTER_ORNAMENTBOSS = "This is one of my favorites.",
 		WINTER_ORNAMENTFORGE = "A remembrance of past carnage.",
 		WINTER_ORNAMENTGORGE = "Should old acquaintance be forgot.",
+        WINTER_ORNAMENTPEARL = "Just lovely.",
 
         WINTER_FOOD1 = "I'm going to eat you.", --gingerbread cookie
         WINTER_FOOD2 = "Not nearly sweet enough to balance out this bitter world.", --sugar cookie
@@ -3865,7 +4141,11 @@ return{
         FISHMEAT_COOKED = "A proper grilling puts a stop to the flopping.",
         FISHMEAT_SMALL = "There are other fish in the sea. Bigger ones, hopefully.",
         FISHMEAT_SMALL_COOKED = "It will... tide... me over for now.",
-		SPOILED_FISH = "Farewell, chum.",
+		SPOILED_FISH =
+        {
+            GENERIC = "Farewell, chum.",
+--fallback to speech_wilson.lua             CAN_PROCESS = "only_used_by_wx78",
+        },
 
 		FISH_BOX = "It feels a bit cruel to trap them within sight of freedom.",
         POCKET_SCALE = "What is the weight of my actions?",
@@ -3959,14 +4239,28 @@ return{
             "I wonder how she came to this miserable place.",
         },
 		WALTERHAT = "It doesn't suit me.",
-		SLINGSHOT = "Abigail used to play with one of these.",
+		SLINGSHOT =
+		{
+			GENERIC = "Abigail used to play with one of these.",
+--fallback to speech_wilson.lua 			NOT_MINE = "only_used_by_walter",
+		},
 		SLINGSHOTAMMO_ROCK = "Someone could trip and break their neck. Maybe it will be me.",
 		SLINGSHOTAMMO_MARBLE = "Someone could trip and break their neck. Maybe it will be me.",
 		SLINGSHOTAMMO_THULECITE = "Someone could trip and break their neck. Maybe it will be me.",
         SLINGSHOTAMMO_GOLD = "Someone could trip and break their neck. Maybe it will be me.",
+		SLINGSHOTAMMO_HONEY = "Someone could trip and break their neck. Maybe it will be me.",
         SLINGSHOTAMMO_SLOW = "Someone could trip and break their neck. Maybe it will be me.",
         SLINGSHOTAMMO_FREEZE = "Someone could trip and break their neck. Maybe it will be me.",
 		SLINGSHOTAMMO_POOP = "I suppose it has its uses.",
+		SLINGSHOTAMMO_STINGER = "Someone could trip and break their neck. Maybe it will be me.",
+		SLINGSHOTAMMO_MOONGLASS = "Someone could trip and break their neck. Pretty though.",
+		SLINGSHOTAMMO_GELBLOB = "Someone could trip and break their neck. Maybe it will be me.",
+		SLINGSHOTAMMO_SCRAPFEATHER = "Someone could trip and break their neck. Maybe it will be me.",
+        SLINGSHOTAMMO_DREADSTONE = "Someone could trip and break their neck. Maybe it will be me.",
+        SLINGSHOTAMMO_GUNPOWDER = "Someone could trip and break their neck. Maybe it will be me.",
+        SLINGSHOTAMMO_LUNARPLANTHUSK = "Someone could trip and break their neck. Maybe it will be me.",
+        SLINGSHOTAMMO_PUREBRILLIANCE = "Someone could trip and break their neck. Maybe it will be me.",
+        SLINGSHOTAMMO_HORRORFUEL = "Someone could trip and break their neck. Maybe it will be me.",
         PORTABLETENT = "It makes no difference where I rest my head, my nights are filled with bad dreams.",
         PORTABLETENT_ITEM = "Abigail and I set up a tent in our backyard once. It was... fun.",
 
@@ -3999,15 +4293,22 @@ return{
 		GHOSTLYELIXIR_ATTACK = "Abigail was always the strong one.",
 		GHOSTLYELIXIR_SPEED = "It's quite sugary.",
 		GHOSTLYELIXIR_RETALIATION = "It has a bitter aftertaste.",
+        GHOSTLYELIXIR_REVIVE = "You'll feel like yourself again soon, Abby.",
 		SISTURN =
 		{
 			GENERIC = "It's a memorial to my sister... but it's so bare...",
 			SOME_FLOWERS = "Abigail always loved flowers...",
 			LOTS_OF_FLOWERS = "I won't let you fade away, Abigail. Never.",
+            LOTS_OF_FLOWERS_EVIL = "These don't make me feel good, but they help Abigail.",
+            LOTS_OF_FLOWERS_BLOSSOM = "I can almost hear your voice, Abby.",   
 		},
 
         --Wortox
 --fallback to speech_wilson.lua         WORTOX_SOUL = "only_used_by_wortox", --only wortox can inspect souls
+        --WORTOX_DECOY is not needed because it uses the default WORTOX inspection.
+        WORTOX_NABBAG = "He's becoming more like Krampus.",
+        WORTOX_REVIVER = "Of course it won't work for Abigail.",
+        WORTOX_SOULJAR = "You can hear the souls screaming inside.",
 
         PORTABLECOOKPOT_ITEM =
         {
@@ -4226,6 +4527,13 @@ return{
             LINE_4 = "It was important enough to carve into stone, but we'll never know the meaning.",
             LINE_5 = "What a pity.",
         },
+		VAULT_RUNE = "What's the point?",
+		VAULT_STATUE =
+		{
+			LORE1 = "He gave in.",
+			LORE2 = "So much death.",
+			LORE3 = "We aren't meant to leave this place.",
+		},
 
         ARCHIVE_RESONATOR = {
             GENERIC = "All paths lead to suffering.",
@@ -4477,6 +4785,7 @@ return{
 		},
 		CARNIVALDECOR_FIGURE_KIT = "What secrets does it hide?",
 		CARNIVALDECOR_FIGURE_KIT_SEASON2 = "What secrets does it hide?",
+		CARNIVALDECOR_FIGURE_KIT_SEASON3 = "What secrets does it hide?",
 
         CARNIVAL_BALL = "Won't you play with me, Abigail?", --unimplemented
 		CARNIVAL_SEEDPACKET = "It tastes like disappointment.",
@@ -4614,6 +4923,7 @@ return{
 
         MOONSTORM_STATIC = "That looks rather dangerous... I wonder if he'd let me try.",
         MOONSTORM_STATIC_ITEM = "I can see a little spark inside.",
+        MOONSTORM_STATIC_ROAMER = "Like a roaming little spirit.",
         MOONSTORM_SPARK = "It doesn't feel of this world.",
 
         BIRD_MUTANT = "Mr. Crow, you don't look well.",
@@ -4927,6 +5237,7 @@ return{
 
         PLAYBILL_THE_DOLL = "What a strange little story.",
         PLAYBILL_THE_VEIL = "Fun!",
+        PLAYBILL_THE_VAULT = "It was written with a sorrowful pen.",
         STATUEHARP_HEDGESPAWNER = "Overgrown and abandoned.",
         HEDGEHOUND = "Its beauty hid the beast within.",
         HEDGEHOUND_BUSH = "They're... beautiful.",
@@ -5188,6 +5499,7 @@ return{
         RECORD_MAIN = "I wonder if father still listens to his record collection.", -- Unused.
         RECORD_WORKTOBEDONE = "I wonder if father still listens to his record collection.", -- Unused.
         RECORD_HALLOWEDNIGHTS = "Love it.",
+        RECORD_BALATRO = "It brightens my mood, if only for a while.",
 
         ARCHIVE_ORCHESTRINA_MAIN = "Abigail was better at these things.",
 
@@ -5276,8 +5588,11 @@ return{
 
         FENCE_JUNK = "Even these discarded pieces can manage to be useful.",
         JUNK_PILE = "Could there be something worthwhile hiding deep inside?",
-        JUNK_PILE_BIG = "It's about to collapse... maybe I'll be here when it does.",
-
+        JUNK_PILE_BIG = {
+            BLUEPRINT = "Do you see what's up there, Abigail?",
+            GENERIC = "It's about to collapse... maybe I'll be here when it does.",
+        },
+        
         ARMOR_LUNARPLANT_HUSK = "I'd find it useful if I feared death.",
 
         -- Meta 4 / Ocean QoL
@@ -5344,8 +5659,8 @@ return{
         MERM_ARMORY_UPGRADED = "\"Mermfolk Ownlee\"... hmph. How childish.",
         MERM_TOOLSHED = "Father had a tool shed, though he hardly used it.",
         MERM_TOOLSHED_UPGRADED = "Father had a tool shed, though he hardly used it.",
-        MERMARMORHAT = "I’m not a merm.",
-        MERMARMORUPGRADEDHAT = "I’m not a merm.",
+        MERMARMORHAT = "I'm not a merm.",
+        MERMARMORUPGRADEDHAT = "I'm not a merm.",
         MERM_TOOL = "It's only slightly better than useless.",
         MERM_TOOL_UPGRADED = "It's only slightly better than useless.",
 
@@ -5398,7 +5713,7 @@ return{
 
         CHEST_MIMIC_REVEALED = "I did not expect that.",
 
-        GELBLOB_STORAGE = { 
+        GELBLOB_STORAGE = {
             GENERIC  = "Not so dangerous now...",
             FULL = "Some things can't be preserved.",
         },
@@ -5406,7 +5721,7 @@ return{
         GELBLOB_BOTTLE = "I have an urge to toss it.",
 
         PLAYER_HOSTED =
-        {        
+        {
             GENERIC = "A souless existence.",
             ME = "I don't need another dead twin.",
         },
@@ -5418,6 +5733,548 @@ return{
         SHADOWTHRALL_PARASITE = "Parasite.",
 
         PUMPKINCARVER = "I love a pumpkin gutting contest.",
+		SNOWMAN =
+		{
+			GENERIC = "The cold keeps it.",
+			SNOWBALL = "It has potential.",
+		},
+        SNOWBALL_ITEM = "I remember fun.",
+
+        -- Year of the Snake
+        YOTS_SNAKESHRINE =
+        {
+            GENERIC = "Abigail loved surprises.",
+            EMPTY = "Perhaps like consumes like.",
+            BURNT = "Inevitable, really.",
+        },
+        YOTS_WORM = "It's actually quite beautiful.",
+        YOTS_LANTERN_POST = 
+        {
+            GENERIC = "It does seem to bring some cheer.",
+            BURNT = "Shame, it was pretty.",
+        },
+        YOTS_LANTERN_POST_ITEM = "Shall I cast some light upon the darkness?",
+        CHESSPIECE_DEPTHWORM  = "How curious, the things we choose to commemorate.",
+
+        -- Meta 5
+        GHOSTLYELIXIR_LUNAR = "You'll leave them reeling, Abby.",
+        GHOSTLYELIXIR_SHADOW = "Abby will make a big impression.",
+
+		SLINGSHOTMODKIT = "Walter is getting serious with his slingshotting.",
+		SLINGSHOT_BAND_PIGSKIN = "Walter is getting serious with his slingshotting.",
+		SLINGSHOT_BAND_TENTACLE = "Walter is getting serious with his slingshotting.",
+		SLINGSHOT_BAND_MIMIC = "Walter is getting serious with his slingshotting.",
+		SLINGSHOT_FRAME_BONE = "Walter is getting serious with his slingshotting.",
+		SLINGSHOT_FRAME_GEMS = "Walter is getting serious with his slingshotting.",
+		SLINGSHOT_FRAME_WAGPUNK_0 = "Walter is getting serious with his slingshotting.",
+		SLINGSHOT_FRAME_WAGPUNK = "Walter is getting serious with his slingshotting.",
+		SLINGSHOT_HANDLE_STICKY = "Walter is getting serious with his slingshotting.",
+		SLINGSHOT_HANDLE_JELLY = "Walter is getting serious with his slingshotting.",
+		SLINGSHOT_HANDLE_SILK = "Walter is getting serious with his slingshotting.",
+		SLINGSHOT_HANDLE_VOIDCLOTH = "Walter is getting serious with his slingshotting.",
+
+		WOBY_TREAT = "Woby loves these.",
+		BANDAGE_BUTTERFLYWINGS = "An ephemeral remedy woven from vanitas itself.",
+		PORTABLEFIREPIT_ITEM = "I may carry warmth with me, yet I am ever cold.",
+        SLINGSHOTAMMO_CONTAINER = "Grief takes up no space, yet weighs far more.",
+
+        ELIXIR_CONTAINER = "If only I could have helped you then.",
+        GHOSTFLOWERHAT = "That I may walk a mile under your veil, Abby.",
+        WENDY_RESURRECTIONGRAVE = "If only...",
+        GRAVEURN =
+        {
+            GENERIC = "Empty. Sigh.",
+            HAS_SPIRIT = "Let's find you a new place to rest.",
+        },
+
+        SHALLOW_GRAVE = "What difference does it make?",
+        THULECITEBUGNET = "The net comes for us all.",
+
+        -- Deck of Cards
+        DECK_OF_CARDS = "Suppose I can play Solitaire.",
+        PLAYING_CARD = "A single playing card. Great.",
+        BALATRO_MACHINE = "What more can I lose?",
+
+		-- Rifts 5
+		GESTALT_CAGE =
+		{
+			GENERIC = "Empty.",
+			FILLED = "It's trapped inside.",
+		},
+		WAGBOSS_ROBOT_SECRET = "Is it better not to know?",
+        WAGBOSS_ROBOT = "I have a bad feeling about this.",
+        WAGBOSS_ROBOT_POSSESSED = "I would be angry too.",
+		WAGBOSS_ROBOT_LEG = "A piece of its physical body discarded and forgotten.",
+		ALTERGUARDIAN_PHASE1_LUNARRIFT = "The ball of death burns brighter than ever.",
+		ALTERGUARDIAN_PHASE1_LUNARRIFT_GESTALT = "It was so beautiful at its core.",
+        ALTERGUARDIAN_PHASE4_LUNARRIFT = "So much pain.",
+		WAGDRONE_ROLLING =
+        {
+            GENERIC = "They are compelled by a greater entity.",
+            INACTIVE = "Does it dream?",
+            DAMAGED = "It can live again or sacrifice its parts for another.",
+            FRIENDLY = "It kind of lost its spark.",
+        },
+        WAGDRONE_FLYING =
+        {
+            GENERIC = "They're starting to irritate me.",
+            INACTIVE = "Does it dream?",
+            DAMAGED = "It cannot be brought back but its parts may be gifted to another.",
+        },
+		WAGDRONE_PARTS = "A shame we don't come with spare parts.",
+		WAGDRONE_BEACON = "It prevents the little machine from crossing over.",
+
+        WAGPUNK_WORKSTATION = "Still so much we don't understand.",
+        WAGPUNK_LEVER = "Let's pull it come what may.",
+        WAGPUNK_FLOOR_KIT = "I wonder how the ocean feels about this.",
+        WAGPUNK_CAGEWALL = "I guess we're not going anywhere.",
+
+		WAGSTAFF_ITEM_1 = "A single glove left behind... Sigh.",
+		WAGSTAFF_ITEM_2 = "How can it be real?",
+
+        HERMITCRAB_RELOCATION_KIT = "She deserves to live in a nicer place.",
+
+        WANDERINGTRADER =
+        {
+            REVEALED = "I wonder how long he's been here.",
+            GENERIC = "Looks unusual. Maybe it's dying.",
+        },
+
+        GESTALT_GUARD_EVOLVED = "I would be angry too.",
+        FLOTATIONCUSHION = "One does not need water to drown.",
+        LUNAR_SEED = "All that remains is its crown.",
+
+        -- rifts5.1
+        WAGBOSS_ROBOT_CONSTRUCTIONSITE = "It destroys, is destroyed and rises anew. The cycle endures.",
+        WAGBOSS_ROBOT_CONSTRUCTIONSITE_KIT = "All that death in such a tiny package.",
+        WAGBOSS_ROBOT_CREATION_PARTS = "It is soon complete.",
+        MOONSTORM_STATIC_CATCHER = "Empty.",
+        COOLANT = "It seems alive but not.",
+
+        FENCE_ELECTRIC = {
+            LINKED = "It fulfills its purpose in connection.",      --NOTE: the fence post is fully linked to two other posts
+            GENERIC = "What a lonely post.",           --NOTE: no links or electricity, just boring ol fence post
+        },
+        FENCE_ELECTRIC_ITEM = "It's no use to anyone like that.",
+
+        MUTATEDBIRD = "There's no life in its eyes.",
+
+        BIRDCORPSE =
+        {
+            GENERIC  = "Poor bird.", --witnessing the corpse
+            BURNING  = "Now it is truly free.", --when its burning
+            REVIVING = "There can be a fate worse than death.", --when its mutating and being revived
+        },
+
+        BUZZARDCORPSE = {
+            GENERIC  = "Poor bird.", --witnessing the corpse
+            BURNING  = "Now it is truly free.", --when its burning
+            REVIVING = "There can be a fate worse than death.", --when its mutating and being revived
+        },
+
+        MUTATEDBUZZARD_GESTALT = {
+            GENERIC = "A truly bad omen.", -- Generic string
+            EATING_CORPSE = "Even in death, it consumes.", -- Eating from a fresh corpse (might be from the players kill or another creatures kill)
+        },
+
+        -- Rifts 6
+
+        SHADOWTHRALL_CENTIPEDE = {
+            HEAD = "Are the two heads aware of each other?", --The head segment
+            BODY = "Such power.", --The body segment
+            FLIPPED = "For me, the world feels upside down.", --When it's flipped over (either head or body segment)
+        },
+
+        TREE_ROCK =
+		{
+			BURNING = "The fall is inevitable.", --It's vines are burning, it will collapse
+			CHOPPED = "It lost its only support.", --It's 'chopped', so the rock fell
+			GENERIC = "Those vines carry a heavy burden.", --Rock is still on tree
+		},
+
+        -- NOTE: Unsure about HOT and COLD, just do GENERIC, GAS, MIASMA for now!
+        CAVE_VENT_ROCK =
+        {
+            GENERIC = "There's nothing coming out... for now.", -- Not ventilating anything
+            HOT     = "I prefer the cold's quiet embrace.", -- Ventiliating hot air, making the area warm
+            GAS     = "That's unpleasant.", -- Ventiliating Toadstools gas fumes and spores
+            MIASMA  = "One could drown in that black fog.", -- Ventiliating the shadow rift miasma
+        },
+        CAVE_FERN_WITHERED = "It's dead.",
+        FLOWER_CAVE_WITHERED = "There's a sadness about how it flickers.",
+
+		ABYSSPILLAR_MINION =
+		{
+			GENERIC = "A lifeless statue.", --off, looks like decor/statue
+			ACTIVATED = "It follows.", --turned on and hopping over puzzle pillars
+		},
+		ABYSSPILLAR_TRIAL = "Shall we?",
+
+        VAULT_TELEPORTER =
+        {
+            GENERIC = "I wonder what happens to us in-between.",
+            BROKEN = "Broken.",
+            UNPOWERED = "There's no power.",
+        },
+--fallback to speech_wilson.lua 		VAULT_TELEPORTER_UNDERCONSTRUCTION = "\"This Waymark is under development for a future update.\"",
+		VAULT_ORB = "It's quite pretty.",
+        VAULT_LOBBY_EXIT = "A sturdy rope and a quick drop will see me to the other side.",
+		VAULT_CHANDELIER_BROKEN = "A bad omen?",
+
+		ANCIENT_HUSK = "That's dark even for me.",
+		MASK_ANCIENT_HANDMAIDHAT = "She bears the look of one fated to be reckoned with.",
+		MASK_ANCIENT_ARCHITECTHAT = "Did the wearer know what would become of their people?",
+		MASK_ANCIENT_MASONHAT = "There is a quiet strength about this one.",
+
+        TREE_ROCK_SEED = "Everything is born to one day die.",
+        TREE_ROCK_SAPLING = "It can only go wrong from here.",
+
+        -- Rifts 6.1
+        OCEANWHIRLBIGPORTALEXIT = "Is it even worth digging through?", -- The flotsam pickable not the waterfall.
+
+		VAULT_TORCH =
+		{
+			GENERIC = "A light in the darkness.",
+			BROKEN = "It's broken.", --the torch still functions, just the lever is broken
+		},
+
+        CAVE_VENT_MITE =
+		{
+			DEAD = "It's dead.",
+			GENERIC = "Has it ever been above ground?",
+			SLEEPING = "It's asleep.",
+            VENTING = "It smells terrible.", -- in the shield state and venting out gasses
+        },
+
+		--Hallowed Nights 2025
+
+		PUMPKINHAT =
+		{
+			GENERIC = "I know that emptiness behind those eyes.",
+			UNCARVED = "It lacks character.",--can't wear it unless it's carved.
+		},
+
+        PENGUINCORPSE =
+		{
+            GENERIC  = "Poor bird.", --witnessing the corpse
+            BURNING  = "Now it is truly free. Well, as free as a flightless bird.", --when its burning
+            REVIVING = "There can be a fate worse than death.", --when its mutating and being revived
+		},
+        SPIDERCORPSE =
+		{
+			GENERIC = "I hope it wasn't one of Webber's friends.",
+			BURNING = "It's for the best.",
+			REVIVING = "That's not good.",
+		},
+        SPIDERQUEENCORPSE =
+		{
+			GENERIC = "She was just protecting her children.",
+			BURNING = "She can rest now.",
+			REVIVING = "Sometimes dead is better.",
+		},
+        MERMCORPSE =
+		{
+			GENERIC = "I can't help feeling sorry for the horrid swamp thing.",
+			BURNING = "Their ashes belong in the swamp.",
+			REVIVING = "It's unnatural.",
+		},
+        GENERIC_CORPSE = -- A generic set of lines for ANY corpse, until they get their own unique lines at least.
+        {
+            GENERIC = "The shadow of death lies upon it.",
+            BURNING = "May you find peace.",
+            REVIVING = "Awakened from its eternal slumber.",
+        },
+
+		--Winter's Feast 2025
+
+		W_RADIO = "What does it do?",
+
+		HERMITHOTSPRING  =
+        {
+            BOMBED = "Perhaps it will soothe my soul, if only for a moment.",
+            GENERIC = "When I gaze upon my reflection, a ghost stares back at me.",
+            EMPTY = "Nothing left for me here...",
+        },
+		HERMITHOTSPRING_CONSTR = "I don't mind waiting.",
+		MEATRACK_HERMIT_MULTI = --talk to vito; want to reuse MEATRACK, but less meat focused; more fish/tea
+        {
+            DONE = "The drying is over.",
+            DRYING = "It sways in the drying wind.",
+            DRYINGINRAIN = "The rain is keeping it from drying.",
+            GENERIC =  "One can dry much on there. How optimistic.",
+            BURNT = "It's done drying. Forever.",
+            DONE_NOTMEAT = "The drying is over.",
+            DRYING_NOTMEAT = "It sways in the drying wind.",
+            DRYINGINRAIN_NOTMEAT = "The rain is keeping it from drying.",
+            DONE_SALT = "Food without salt is like life without...",
+			ABANDONED = "Broken and abandoned.",
+        },
+		HERMITHOUSE_ORNAMENT = "It's pleasant.",
+		HERMITHOUSE_LAUNDRY = "Chores keep the mind occupied.",
+
+        PETALS_DRIED = "I like how they smell.",
+        PETALS_EVIL_DRIED = "I like how they smell.",
+        FOLIAGE_DRIED = "I like how they smell.",
+        SUCCULENT_PICKED_DRIED = "I like how they smell.",
+        FIRENETTLES_DRIED = "I like how they smell.",
+        TILLWEED_DRIED = "I like how they smell.",
+        MOON_TREE_BLOSSOM_DRIED = "I like how they smell.",
+        FORGETMELOTS_DRIED = "I like how they smell.",
+
+        HERMITCRABTEA_PETALS = "It quiets the mind.",
+        HERMITCRABTEA_PETALS_EVIL = "This takes me to a dark place.",
+        HERMITCRABTEA_FOLIAGE = "My mind is not what needs protecting.",
+        HERMITCRABTEA_SUCCULENT_PICKED = "For when I miss the cold.",
+        HERMITCRABTEA_FIRENETTLES = "It warms all but my soul.",
+        HERMITCRABTEA_TILLWEED = "This tea will make me live longer. Sigh.",
+        HERMITCRABTEA_MOON_TREE_BLOSSOM = "They will merely tolerate my presence.",
+        HERMITCRABTEA_FORGETMELOTS = "To keep the demons at bay.",
+        SHELLWEAVER = "What should I make, Abigail?",
+        ICESTAFF2 = "Cold and misery.",
+        ICESTAFF3 = "My heart is already cold as ice.",
+        NONSLIPGRIT = "At least one thing won't slip away from me...",
+        NONSLIPGRITBOOSTED = "I will salt the earth.",
+        DESICCANT = "It can't dry away all my tears.",
+        DESICCANTBOOSTED = "I can't remember the last time my eyes were dry.",
+        HERMITCRAB_SHELL = "If only it would take me to Abigail.",
+        SALTY_DOGHAT = "It is my turn to play the captain.",
+        SALTY_DOG = "You are no hound... but I'll overlook it.",
+
+        HERMITCRAB_TEASHOP =
+        {
+            GENERIC = "She's not in.", -- Inactive state, no Pearl inside.
+            ACTIVE = "It's been a while since my last tea party.", -- Active, Pearl is inside, can buy from her
+            BREWING = "One of my few joys in this life.", -- A trade just happened and she's brewing the tea!|
+            BURNT = "It makes me extra sad.", -- burnt strings.
+        },
+
+        FISHMEAT_DRIED = "The dessicated remains of a fish.",
+        FISHMEAT_SMALL_DRIED = "Withered away to almost nothing.",
+
+        HERMITCRAB_LIGHTPOST = -- Similar to YOTS_LANTERN_POST
+        {
+            GENERIC = "A bit of light in the darkness.",
+            ABANDONED = "The light could not last.",
+        },
+        HERMITCRAB_LIGHTPOST_ITEM = "Where should you go?",
+
+        -- Year of the Clockwork Knight
+
+        YOTH_KNIGHTSHRINE =
+        {
+            GENERIC = "I wonder what I'll get?", -- Has an offering of either gears, wires or doodad.
+            EMPTY = "An offering must be made.", -- No offering. Character should hint at it wanting an offering.
+            BURNT = "What a pity.", -- Burnt.
+        },
+
+        MASK_PRINCESSHAT = "There's a loneliness in her expression.",
+        COSTUME_PRINCESS_BODY = "So pretty.",
+
+        PLAYBILL_THE_PRINCESS_YOTH = "I do love horses.",
+
+        KNIGHT_YOTH =
+        {
+            GENERIC = "Brutes, all of you!", -- Generic quote. It's aggressive.
+            FOLLOWING = "How loyal you are.", -- Following the character examining
+            FOLLOWING_OTHER = "Whom do you serve, dear knight?", -- Following another character or mannequin
+        },
+
+        YOTH_KNIGHTHAT = "One may become the knight and save themselves.",
+        ARMOR_YOTH_KNIGHT = "It's beautiful armor.",
+        HORSESHOE = "Will it make a difference for me?",
+        YOTH_LANCE = "Death rides at its tip.",
+
+        FLOATINGLANTERN =
+        {
+            DEFLATED = "I knew it couldn't last.", -- Depleted and on the ground
+            HELD = "I should save this for when it's darkest.", -- In the players inventory
+            GENERIC = "It does lift my spirits... a little.", -- Floating in the sky!
+        },
+
+        YOTH_KNIGHTSTICK = "Hmm. It does look kind of fun.",
+        YOTH_CHAIR_ROCKING_ITEM = "Ah, the innocence of childhood.", -- The chair itself uses WOOD_CHAIR inspect states.
+
+		-- Meta 6
+
+		WX78_DRONE_SCOUT = "Are you ever afraid?",
+		WX78_DRONE_DELIVERY = "And they say you can't take it with you.",
+		WX78_DRONE_ZAP = "Feels impersonal.",
+		WX78_DRONE_ZAP_REMOTE =
+		{
+			GENERIC = "Are we all just being controlled?",
+--fallback to speech_wilson.lua 			CANUSE = "only_used_by_wx78",
+		},
+
+        -- All other characters but Wx-78 share one quote.
+        WX78MODULE_RADAR = "It looks so fragile... hopefully no tragic accidents befall it.",
+        WX78MODULE_STACKSIZE = "It looks so fragile... hopefully no tragic accidents befall it.",
+        WX78MODULE_DIGESTION = "It looks so fragile... hopefully no tragic accidents befall it.",
+        WX78MODULE_SCREECH = "It looks so fragile... hopefully no tragic accidents befall it.",
+        WX78MODULE_LIGHT2 = "It looks so fragile... hopefully no tragic accidents befall it.",
+        WX78MODULE_SHIELDING = "It looks so fragile... hopefully no tragic accidents befall it.",
+        WX78MODULE_SPIN = "It looks so fragile... hopefully no tragic accidents befall it.",
+		WX78MODULE_CHESS = "It looks so fragile... hopefully no tragic accidents befall it.",
+
+        WX78_INVENTORYCONTAINER =
+        {
+            HELD = "only_used_by_wx78", -- Held, and working as a container
+--fallback to speech_wilson.lua 			NOPOWER = "only_used_by_wx78", -- Held but can't open due to wx charge level too low
+            GENERIC = "I wonder what remains.", -- It was dropped, treat it as if its broken down, and is rummagable
+        },
+
+        WX78_FOODBRICK =
+        {
+            WET = "I've eaten worse.",
+            GENERIC = "It's impossible to eat like that.",
+        },
+
+        WX78_BACKUPBODY =
+        {
+            GENERIC = "Does this mean WX has a soul?", -- We are examining a claimed body belonging to a WX. We can use their display name if we want to.
+--fallback to speech_wilson.lua             UNCLAIMED = "only_used_by_wx78", -- We are examining an unclaimed body.
+--fallback to speech_wilson.lua             VIEWERS_BODY = "only_used_by_wx78", -- We (WX) are examining our own body.
+        },
+
+        WX78_POSSESSEDBODY = "Too bad Abby can't do the same.",
+
+        WX78_GESTALTTRAPPER = "I've thought about it too, Abby.",
+
+        SHADOW_HEART_VEIN = "From a heart that knows no peace.",
+
+        WX78_SHADOWDRONE_DEBUFFER = "What if the enemy is my own heart?",
+        WX78_SHADOWDRONE_HARVESTER = "When will it be enough?",
+
+        -- Rifts 7
+        STALKER_NPC = "He's haunted by the past...",
+
+        MITEGLAND =
+        {
+            GENERIC = "It still possesses the warmth of life.",
+            COLD = "Cold and lifeless.",
+        },
+        MITEGLAND_COOKED = "It has an overpowering, spicy smell...",
+
+        BROKEN_FUMAROLETOOLITEM = "It needs someplace warm to become whole again.", -- character should comment that they could melt the pieces back together by heating it.
+        FUMAROLEAXE =
+		{
+			GENERIC = "It's not long for this world...", -- This is the coldest state, the heat tool is about to break and shatter into the broken state if used a bit more, there are visible cracks.
+			LUKEWARM = "It has lost the warmth it once had.", -- The next state, its lukewarm, no cracks.
+			WARM = "I can find some small comfort in its warmth.", -- It's starting to get red hot, it's a bit more efficient in the action it does, and keeps the player cozy.
+			HOT = "The hottest flames burn out the quickest...", -- SUPER HOT, it's very efficient in the action it does, e.g. the axe fells trees in half the hits needed, keeps the player cozy, maybe too cozy! (e.g. overheat in summer)
+		},
+
+        FUMAROLEPICKAXE =
+		{
+			GENERIC = "It's not long for this world...", -- This is the coldest state, the heat tool is about to break and shatter into the broken state if used a bit more, there are visible cracks.
+			LUKEWARM = "It has lost the warmth it once had.", -- The next state, its lukewarm, no cracks.
+			WARM = "I can find some small comfort in its warmth.", -- It's starting to get red hot, it's a bit more efficient in the action it does, and keeps the player cozy.
+			HOT = "The hottest flames burn out the quickest...", -- SUPER HOT, it's very efficient in the action it does, e.g. the axe fells trees in half the hits needed, keeps the player cozy, maybe too cozy! (e.g. overheat in summer)
+		},
+
+        FUMAROLEHAMMER =
+		{
+			GENERIC = "It's not long for this world...", -- This is the coldest state, the heat tool is about to break and shatter into the broken state if used a bit more, there are visible cracks.
+			LUKEWARM = "It has lost the warmth it once had.", -- The next state, its lukewarm, no cracks.
+			WARM = "I can find some small comfort in its warmth.", -- It's starting to get red hot, it's a bit more efficient in the action it does, and keeps the player cozy.
+			HOT = "The hottest flames burn out the quickest...", -- SUPER HOT, it's very efficient in the action it does, e.g. the axe fells trees in half the hits needed, keeps the player cozy, maybe too cozy! (e.g. overheat in summer)
+		},
+
+        FUMAROLESHOVEL =
+		{
+			GENERIC = "It's not long for this world...", -- This is the coldest state, the heat tool is about to break and shatter into the broken state if used a bit more, there are visible cracks.
+			LUKEWARM = "It has lost the warmth it once had.", -- The next state, its lukewarm, no cracks.
+			WARM = "I can find some small comfort in its warmth.", -- It's starting to get red hot, it's a bit more efficient in the action it does, and keeps the player cozy.
+			HOT = "The hottest flames burn out the quickest...", -- SUPER HOT, it's very efficient in the action it does, e.g. the axe fells trees in half the hits needed, keeps the player cozy, maybe too cozy! (e.g. overheat in summer)
+		},
+
+        FUMAROLE_FARM_HOE =
+		{
+			GENERIC = "It's not long for this world...", -- This is the coldest state, the heat tool is about to break and shatter into the broken state if used a bit more, there are visible cracks.
+			LUKEWARM = "It has lost the warmth it once had.", -- The next state, its lukewarm, no cracks.
+			WARM = "I can find some small comfort in its warmth.", -- It's starting to get red hot, it's a bit more efficient in the action it does, and keeps the player cozy.
+			HOT = "The hottest flames burn out the quickest...", -- SUPER HOT, it's very efficient in the action it does, e.g. the axe fells trees in half the hits needed, keeps the player cozy, maybe too cozy! (e.g. overheat in summer)
+		},
+
+        -- This trap is a cluster of rocks gets heated and deals fire damage to creatures (including players!) on top
+        TRAP_FUMAROLE =
+        {
+            HELD = "Only pain awaits those who would follow me...", -- When held in the inventory.
+            GENERIC = "There's no trace of warmth left.", -- Coldest state, the trap is ineffective.
+            WARM = "There is warmth here, but pain as well.", -- Warm, a bit red hot, it does some damage.
+            HOT = "The heat... it's unbearable...", -- Super hot, it's doing full fire damage.
+        },
+
+        HEALINGSALVE_FUMAROLE = "What point is there in trying to avoid pain? It finds me eventually.",
+
+		VAULT_PILLAR_GUARD = "It doesn't want me here... I don't blame it...",
+		VAULT_PILLAR_GUARD_CRAFTED = "It was born to keep watch. One day, it will perish at its post.",
+		VAULT_PILLAR_GUARD_DORMANT = "They seem to stand vigil over something.",
+		VAULT_PILLAR_GUARD_DORMANT_CRAFTED = "It's missing the spark of life.",
+		VAULT_PILLAR_GUARD_CONSTR = "There's no life in it yet.",
+		VAULT_PILLAR_GUARD_CONSTR_PLANS = "Much potential in a small package.",
+		VAULT_CRAWLER =
+		{
+			GENERIC = "It casts a sickly glow over everything around it.",
+			SOCKETED = "In its resting place.",
+		},
+
+        VAULT_DECON_DOOR = "If only it was that easy to shut the world out...",
+        VAULT_DECON_MISTER = "Even if you manage to chase away the darkness, it always comes back.",
+		VAULT_KEY_ACTIVATOR = "It's lost something important...",
+		VAULT_CRAWLER_LEVER = "Sigh. Something terrible will probably happen if I pull it.",
+        VAULT_KEY = "They went to such lengths to hide it... I wonder why?",
+        VAULT_KEY_PEDESTAL =
+        {
+            GENERIC = "There it is...", -- Keystone is on it, ready to take
+            PICKED = "I feel we have set off an irreversible chain of events.", -- No more keystone on it, we already took it, or someone else did.
+        },
+        VAULT_ORB_REFINED = "It won't take me to the one place I want to go.",
+        VAULT_PILLAR_GUARD_PIECE = "I'm not the only one missing pieces.",
+        VAULT_REFINER_PEDESTAL = "What can it make to help us?",
+
+        VAULT_COMPASS =
+        {
+            GENERIC = "Where do we go from here?", -- Pointing us to the teleporters leading to the key room
+            NOTVAULT = "It can't help me here.", -- We're not in the vault, so its in an ineffective state.
+            KEYROOM = "We've arrived, Abigail.", -- We're already in the key room! Compass marker is in a success state.
+        },
+
+        CEILING_ROPE = "A way out.",
+        VAULT_KEY_EXIT = "It's a leap of faith.",--There's no where to tie a rope. Exit, but no re-entry.
+
+        -- Crow Carnival 2026
+
+        CARNIVALGAME_GOLFGAME_KIT_EASY = "We all start somewhere.",
+        CARNIVALGAME_GOLFGAME_KIT_MEDIUM = "Somewhere in between... just like me.",
+        CARNIVALGAME_GOLFGAME_KIT_HARD = "Not for the faint of heart.",
+        CARNIVALGAME_GOLFGAME_KIT_DIY = "What should we do, Abigail?",
+
+        CARNIVALGAME_GOLF_TEE =
+        {
+            GENERIC = "Nothing in life is free.",  -- Ready to take a game token, reference other carnival game strings
+            PLAYING = "The price has been paid.", -- The game is active and in play
+            INACTIVE = "The course is incomplete. Like me.", -- The game token slot is covered, due to the course not being fully complete (e.g. hole marker isn't placed)
+        },
+        CARNIVALGAME_GOLF_HOLE = "Aww cute, it's like a mini abyss.",
+
+        CARNIVALGAME_GOLF_TEE_KIT = "Where should we start, Abby?",
+        CARNIVALGAME_GOLF_HOLE_KIT = "Let's put the end further away...",
+
+        CARNIVALGAME_GOLFCLUB = "This will do the job.",
+        CARNIVALGAME_GOLFBALL = "It never chooses where it goes. Few things do.",
+
+        CARNIVALGAME_GOLFPROP_FENCE = "So that the ball doesn't escape.",
+
+        CARNIVALGAME_GOLFPROP_SPINNER = "It exists to interfere.", -- All 4 spin plates(size/rotation) use the same inspect
+        CARNIVALGAME_GOLFPROP_CUTOUT = "A lifeless likeness.", -- All 10 prop wood cutouts use the same inspect
+        CARNIVALGAME_GOLFPROP_MOVINGWALL = "I've known down more than up.", -- All colored moving walls use this space inspect
+
+        CARNIVALGAME_GOLFPROP_WORMHOLE = "Will the ball end up in a better place?", -- a fake wormhole, that lets the ball travel to another random wormhole
+
+        CARNIVALGAME_GOLFPROP_SPRING = "Gravity remains inevitable.", -- spring that pops up to launch the ball
+
+        CARNIVALGAME_GOLFPROP_FAN = "I love the wind, but not while I'm putting.", -- fan that blows wind and pushes in a direction
+
     },
 
     DESCRIBE_GENERIC = "Sigh... I don't know.",
@@ -5440,4 +6297,8 @@ return{
         TALLBIRDEGG_CRACKED = "I spared it the torment of living.",
 		WINTERSFEASTFUEL = "Abigail, it's like I can taste mother's cooking...",
     },
+
+    WENDY_SKILLTREE_EASTEREGG = "Is that you, Abby?",
+
+
 }

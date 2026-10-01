@@ -9,12 +9,14 @@ local assets =
 
 local prefabs =
 {
+    "meat",
     "mooseegg",
     "moose_nesting_ground",
     "mossling",
     "goose_feather",
     "drumstick",
     "chesspiece_moosegoose_sketch",
+    "moosecorpse",
 }
 
 local brain = require("brains/moosebrain")
@@ -186,6 +188,8 @@ local function fn()
 
     --Remove these tags so that they can be added properly when replicating components below
     inst:RemoveTag("_named")
+
+	inst.override_combat_fx_height = "high"
 
     ------------------
 

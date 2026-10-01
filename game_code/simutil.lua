@@ -41,6 +41,7 @@ function FindEntity(inst, radius, fn, musttags, canttags, mustoneoftags)
     end
 end
 
+--V2C: why does this exist? TheSim:FindEntities already returns sorted by distance
 function FindClosestEntity(inst, radius, ignoreheight, musttags, canttags, mustoneoftags, fn)
     if inst ~= nil and inst:IsValid() then
         local x, y, z = inst.Transform:GetWorldPosition()
@@ -270,6 +271,14 @@ function ShakeAllCameras(mode, duration, speed, scale, source_or_pt, maxDist)
     end
 end
 
+function ShakeAllCamerasWithFilter(filterfn, mode, duration, speed, scale, source_or_pt, maxDist)
+    for i, v in ipairs(AllPlayers) do
+        if filterfn(v) then
+            v:ShakeCamera(mode, duration, speed, scale, source_or_pt, maxDist)
+        end
+    end
+end
+
 function ShakeAllCamerasOnPlatform(mode, duration, speed, scale, platform)
     local walkableplatform = platform and platform.components.walkableplatform or nil
 	if walkableplatform == nil then return end
@@ -318,13 +327,17 @@ end
 -- This function fans out a search from a starting position/direction and looks for a walkable
 -- position, and returns the valid offset, valid angle and whether the original angle was obstructed.
 -- start_angle is in radians
-function FindWalkableOffset(position, start_angle, radius, attempts, check_los, ignore_walls, customcheckfn, allow_water, allow_boats)
+function FindWalkableOffset(position, start_angle, radius, attempts, check_los, ignore_walls, customcheckfn, allow_water, allow_boats, ignore_teleportchecks)
+    if ignore_teleportchecks == nil then
+        ignore_teleportchecks = (radius == 0)
+    end
     return FindValidPositionByFan(start_angle, radius, attempts,
             function(offset)
                 local x = position.x + offset.x
                 local y = position.y + offset.y
                 local z = position.z + offset.z
                 return (TheWorld.Map:IsAboveGroundAtPoint(x, y, z, allow_water) or (allow_boats and TheWorld.Map:GetPlatformAtPoint(x,z) ~= nil))
+                    and (ignore_teleportchecks or IsTeleportingPermittedFromPointToPoint(position.x, position.y, position.z, x, y, z))
                     and (not check_los or
                         TheWorld.Pathfinder:IsClear(
                             position.x, position.y, position.z,
@@ -398,7 +411,9 @@ local PICKUP_CANT_TAGS = {
     -- Either
     "donotautopick",
 }
-local function FindPickupableItem_filter(v, ba, owner, radius, furthestfirst, positionoverride, ignorethese, onlytheseprefabs, allowpickables, ispickable, worker, extra_filter)
+local function FindPickupableItem_filter(v, ba, owner, radius, furthestfirst, positionoverride, ignorethese, onlytheseprefabs, allowpickables, ispickable, worker, extra_filter, inventoryoverride)
+    local inventory = inventoryoverride or owner.components.inventory
+
     if extra_filter ~= nil and not extra_filter(worker, v, owner) then
         return false
     end
@@ -443,7 +458,7 @@ local function FindPickupableItem_filter(v, ba, owner, radius, furthestfirst, po
     if v.components.trap ~= nil and not (v.components.trap:IsSprung() and v.components.trap:HasLoot()) then -- Only interact with traps that have something in it to take.
         return false
     end
-    if not ispickable and owner.components.inventory:CanAcceptCount(v, 1) <= 0 then -- TODO(JBK): This is not correct for traps nor pickables but they do not have real prefabs made yet to check against.
+    if not ispickable and inventory:CanAcceptCount(v, 1) <= 0 then -- TODO(JBK): This is not correct for traps nor pickables but they do not have real prefabs made yet to check against.
         return false
     end
     if ba ~= nil and ba.target == v and (ba.action == ACTIONS.PICKUP or ba.action == ACTIONS.CHECKTRAP or ba.action == ACTIONS.PICK) then
@@ -452,9 +467,9 @@ local function FindPickupableItem_filter(v, ba, owner, radius, furthestfirst, po
 
     return v, ispickable
 end
--- This function looks for an item on the ground that could be ACTIONS.PICKUP (or ACTIONS.CHECKTRAP if a trap) by the owner and subsequently put into the owner's inventory.
-function FindPickupableItem(owner, radius, furthestfirst, positionoverride, ignorethese, onlytheseprefabs, allowpickables, worker, extra_filter)
-    if owner == nil or owner.components.inventory == nil then
+-- This function looks for an item on the ground that could be ACTIONS.PICKUP (or ACTIONS.CHECKTRAP if a trap) by the owner and subsequently put into the owner's inventory or inventoryoverride, if specified.
+function FindPickupableItem(owner, radius, furthestfirst, positionoverride, ignorethese, onlytheseprefabs, allowpickables, worker, extra_filter, inventoryoverride)
+    if owner == nil or (inventoryoverride or owner.components.inventory) == nil then
         return nil
     end
     local ba = owner:GetBufferedAction()
@@ -472,7 +487,7 @@ function FindPickupableItem(owner, radius, furthestfirst, positionoverride, igno
     for i = istart, iend, idiff do
         local v = ents[i]
         local ispickable = v:HasTag("pickable")
-        if FindPickupableItem_filter(v, ba, owner, radius, furthestfirst, positionoverride, ignorethese, onlytheseprefabs, allowpickables, ispickable, worker, extra_filter) then
+        if FindPickupableItem_filter(v, ba, owner, radius, furthestfirst, positionoverride, ignorethese, onlytheseprefabs, allowpickables, ispickable, worker, extra_filter, inventoryoverride) then
             return v, ispickable
         end
     end
@@ -486,7 +501,8 @@ local function _CanEntitySeeInDark(inst)
         return inst.components.playervision:HasNightVision()
     end
     local inventory = inst.replica.inventory
-    return inventory ~= nil and inventory:EquipHasTag("nightvision")
+    return inst:HasTag("canseeindark")
+        or (inventory ~= nil and inventory:EquipHasTag("nightvision"))
 end
 
 function CanEntitySeeInDark(inst)
@@ -545,11 +561,9 @@ end
 
 function TemporarilyRemovePhysics(obj, time)
     local origmask = obj.Physics:GetCollisionMask()
-    obj.Physics:ClearCollisionMask()
-    obj.Physics:CollidesWith(COLLISION.WORLD)
+    RemovePhysicsColliders(obj)
     obj:DoTaskInTime(time, function(obj)
-        obj.Physics:ClearCollisionMask()
-        obj.Physics:SetCollisionMask(origmask)
+		obj.Physics:SetCollisionMask(origmask)
     end)
 end
 
@@ -563,6 +577,7 @@ function ErodeAway(inst, erode_time)
     if inst.components.floater ~= nil then
         inst.components.floater:Erode(time_to_erode)
     end
+    inst._eroding_away = true
 
     inst:StartThread(function()
         local ticks = 0
@@ -656,9 +671,11 @@ function GetInventoryItemAtlas_Internal(imagename, no_fallback)
     local images1 = "images/inventoryimages1.xml"
     local images2 = "images/inventoryimages2.xml"
     local images3 = "images/inventoryimages3.xml"
+    local images4 = "images/inventoryimages4.xml"
     return TheSim:AtlasContains(images1, imagename) and images1
             or TheSim:AtlasContains(images2, imagename) and images2
-            or (not no_fallback or TheSim:AtlasContains(images3, imagename)) and images3
+            or TheSim:AtlasContains(images3, imagename) and images3
+            or (not no_fallback or TheSim:AtlasContains(images4, imagename)) and images4
             or nil
 end
 
@@ -768,10 +785,12 @@ function GetSkilltreeBG_Internal(imagename)
     local images2 = "images/skilltree3.xml"
     local images3 = "images/skilltree4.xml"
     local images4 = "images/skilltree5.xml"
+    local images5 = "images/skilltree6.xml"
     return TheSim:AtlasContains(images1, imagename) and images1
             or TheSim:AtlasContains(images2, imagename) and images2
             or TheSim:AtlasContains(images3, imagename) and images3
             or TheSim:AtlasContains(images4, imagename) and images4
+            or TheSim:AtlasContains(images5, imagename) and images5
             or nil
 end
 
@@ -829,6 +848,90 @@ function GetSkilltreeIconAtlas(imagename)
 	end
 
 	return atlas
+end
+
+----------------------------------------------------------------------------------------------
+-- NOTES(JBK): These are used to pool together the global map icons for use in interactions with them as a fast access lookup to iterate over.
+GlobalMapIconsDB = {
+    insts = {},
+    prefabs = {},
+}
+function UnregisterGlobalMapIcon(inst)
+    if GlobalMapIconsDB.insts[inst] == nil then
+        print("UnregisterGlobalMapIcon called for a missing inst", inst)
+        print(_TRACEBACK())
+        return
+    end
+    GlobalMapIconsDB.insts[inst] = nil
+	local name = inst._GlobalMapIconsDB_Name or inst.prefab
+	if GlobalMapIconsDB.prefabs[name] then
+		GlobalMapIconsDB.prefabs[name][inst] = nil
+		if next(GlobalMapIconsDB.prefabs[name]) == nil then
+			GlobalMapIconsDB.prefabs[name] = nil
+        end
+    end
+    inst:RemoveEventCallback("onremove", UnregisterGlobalMapIcon)
+end
+function RegisterGlobalMapIcon(inst, name)
+    if GlobalMapIconsDB.insts[inst] ~= nil then
+        print("RegisterGlobalMapIcon called for a second time for inst", inst)
+        print(_TRACEBACK())
+        return
+    end
+	name = name or inst.prefab
+	inst._GlobalMapIconsDB_Name = name ~= inst.prefab and name or nil
+    GlobalMapIconsDB.insts[inst] = true
+	GlobalMapIconsDB.prefabs[name] = GlobalMapIconsDB.prefabs[name] or {}
+	GlobalMapIconsDB.prefabs[name][inst] = true
+    inst:ListenForEvent("onremove", UnregisterGlobalMapIcon)
+end
+
+function FindClosestMapIconInRangeSq(name, x, y, z, rangesq, restricted_doer)
+	local mapent
+	local ents_bin = GlobalMapIconsDB.prefabs[name]
+	if ents_bin then
+		local ismastersim = TheWorld.ismastersim
+		for ent in pairs(ents_bin) do
+			local isrestricted
+			if restricted_doer then
+				if ent.MiniMapEntity then
+					--old style global icons use MiniMapEntity:SetRestriction(...)
+					if not ent.MiniMapEntity:EntityHasRestriction(restricted_doer.GUID) then
+						isrestricted = true
+					end
+				elseif ismastersim and ent.owner ~= restricted_doer then
+					--see global tracking icons (host needs to validate this way, clients don't because the icon should be classified.)
+					isrestricted = true
+				end
+			end
+			if not isrestricted then
+				local x1, _, z1 = ent.Transform:GetWorldPosition()
+				local dsq = math2d.DistSq(x, z, x1, z1)
+				if dsq < rangesq then
+					rangesq = dsq
+					mapent = ent
+				end
+			end
+		end
+	end
+	return mapent
+end
+
+function FindClosestMapIconInRange(name, x, y, z, range, restricted_doer)
+	return FindClosestMapIconInRangeSq(name, x, y, z, range * range, restricted_doer)
+end
+
+function FindClosestMapIcon(name, x, y, z, restricted_doer)
+	return FindClosestMapIconInRangeSq(name, x, y, z, math.huge, restricted_doer)
+end
+
+----------------------------------------------------------------------------------------------
+
+function DeclareLimitedCraftingRecipe(recipename)
+    assert(CRAFTINGSTATION_LIMITED_RECIPES_LOOKUPS[recipename] == nil, "Already declared limited crafting recipe: " .. recipename)
+    CRAFTINGSTATION_LIMITED_RECIPES_COUNT = CRAFTINGSTATION_LIMITED_RECIPES_COUNT + 1
+    CRAFTINGSTATION_LIMITED_RECIPES[CRAFTINGSTATION_LIMITED_RECIPES_COUNT] = recipename -- Used for network serialization order as an enum value [1, CRAFTINGSTATION_LIMITED_RECIPES_COUNT].
+    CRAFTINGSTATION_LIMITED_RECIPES_LOOKUPS[recipename] = CRAFTINGSTATION_LIMITED_RECIPES_COUNT
 end
 
 ----------------------------------------------------------------------------------------------

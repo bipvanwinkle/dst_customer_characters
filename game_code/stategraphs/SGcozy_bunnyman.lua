@@ -301,16 +301,18 @@ local states =
         onenter = function(inst)
             inst.Physics:Stop()
 
+            local leader = inst.components.follower:GetLeader()
+            local is_roll_called = leader ~= nil and leader.components.leader ~= nil and leader.components.leader:IsRollCalling() or nil
             if inst.components.health:GetPercent() < TUNING.BUNNYMAN_PANIC_THRESH then
                 inst.AnimState:PlayAnimation("idle_angry")
                 inst.SoundEmitter:PlaySound("dontstarve/creatures/bunnyman/angry_idle")
-            elseif inst.components.follower:GetLeader() ~= nil and inst.components.follower:GetLoyaltyPercent() < .05 then
+            elseif leader ~= nil and inst.components.follower:GetLoyaltyPercent() < .05 and not is_roll_called then
                 inst.AnimState:PlayAnimation("hungry")
                 inst.SoundEmitter:PlaySound("dontstarve/wilson/hungry")
             elseif inst.components.combat:HasTarget() then
                 inst.AnimState:PlayAnimation("idle_angry")
                 inst.SoundEmitter:PlaySound("dontstarve/creatures/bunnyman/angry_idle")
-            elseif inst.components.follower:GetLeader() ~= nil and inst.components.follower:GetLoyaltyPercent() > .3 then
+            elseif leader ~= nil and (inst.components.follower:GetLoyaltyPercent() > .3 or is_roll_called) then
                 inst.AnimState:PlayAnimation("idle_happy")
                 inst.SoundEmitter:PlaySound("dontstarve/creatures/bunnyman/happy")
             else
@@ -337,6 +339,11 @@ local states =
             inst.causeofdeath = data ~= nil and data.afflicter or nil
             inst.components.lootdropper:DropLoot(inst:GetPosition())
         end,
+
+        events =
+        {
+            CommonHandlers.OnCorpseDeathAnimOver(),
+        },
     },
 
     State{
@@ -994,4 +1001,6 @@ CommonStates.AddSimpleState(states, "attack_object_pre", "atk_object_pre", { "bu
     end,
 })
 
-return StateGraph("cozy_bunnyman", states, events, "idle", actionhandlers)
+CommonStates.AddInitState(states, "idle")
+
+return StateGraph("cozy_bunnyman", states, events, "init", actionhandlers)

@@ -24,6 +24,7 @@ SKIN_RARITY_COLORS.Complimentary = SKIN_RARITY_COLORS.Common
 SKIN_RARITY_COLORS.HeirloomClassy = SKIN_RARITY_COLORS.HeirloomElegant
 SKIN_RARITY_COLORS.HeirloomSpiffy = SKIN_RARITY_COLORS.HeirloomElegant
 SKIN_RARITY_COLORS.HeirloomDistinguished = SKIN_RARITY_COLORS.HeirloomElegant
+SKIN_RARITY_COLORS.Resurrected = SKIN_RARITY_COLORS.ProofOfPurchase
 
 DEFAULT_SKIN_COLOR = SKIN_RARITY_COLORS["Common"]
 
@@ -49,6 +50,7 @@ local function GetSpecialItemCategories()
 		MISC_ITEMS,
 		CLOTHING,
 		EMOTE_ITEMS,
+        IDLEANIMATIONS_ITEMS,
 		EMOJI_ITEMS,
 		BEEFALO_CLOTHING,
 	}
@@ -62,6 +64,7 @@ end
 RARITY_ORDER =
 {
 	ProofOfPurchase = 1,
+    Resurrected = 1.5,
 	Timeless = 2,
 	Loyal = 3,
 	Reward = 4,
@@ -118,6 +121,9 @@ function GetFrameSymbolForRarity( rarity )
 	if rarity == "Complimentary" then
 		return "common"
 	end
+    if rarity == "Resurrected" then
+        return "proofofpurchase"
+    end
 	return string.lower( rarity )
 end
 
@@ -643,6 +649,12 @@ function GetEventIconForItem(item)
 	return nil
 end
 
+local SKIN_NAME_REDIRECTS = {
+    -- NOTES(JBK): This is a hack for a discrepency between itemdefs and what the game has for the prefab naming.
+    -- Instead of adjusting the game the itemdef should be changed but it is too late for that now.
+    wx78_drone_delivery_small = "wx78_drone_delivery",
+}
+
 function GetSkinUsableOnString(item_type, popup_txt)
 	local skin_data = GetSkinData(item_type)
 
@@ -650,8 +662,29 @@ function GetSkinUsableOnString(item_type, popup_txt)
 
 	local usable_on_str
 	if skin_data ~= nil and skin_data.base_prefab ~= nil then
+        local skin_only_item = CRAFTING_RECIPE_UNLOCKED_SKIN[item_type]
+        if not skin_only_item then
+            local recipe = AllRecipes[skin_data.base_prefab]
+            if not recipe then
+                if skin_data.granted_items then
+                    local granted_skin_data = GetSkinData(skin_data.granted_items[1])
+                    if granted_skin_data then
+                        recipe = AllRecipes[granted_skin_data.base_prefab]
+                    end
+                end
+            end
+            if recipe and recipe.unlocks_from_skin then
+                skin_only_item = true
+            end
+        end
         local item1_str, item2_str, item3_str
         item1_str = STRINGS.NAMES[string.upper(skin_data.base_prefab)]
+        if not item1_str then
+            local redirect = SKIN_NAME_REDIRECTS[skin_data.base_prefab]
+            if redirect then
+                item1_str = STRINGS.NAMES[string.upper(redirect)]
+            end
+        end
         if skin_data.granted_items ~= nil then
             local granted_skin_data = GetSkinData(skin_data.granted_items[1])
             if granted_skin_data ~= nil and granted_skin_data.base_prefab ~= nil then
@@ -672,7 +705,11 @@ function GetSkinUsableOnString(item_type, popup_txt)
             end
         end
         if item2_str == nil then
-            usable_on_str = subfmt(popup_txt and STRINGS.UI.SKINSSCREEN.USABLE_ON_POPUP or STRINGS.UI.SKINSSCREEN.USABLE_ON, { skin = skin_str, item = item1_str })
+            if skin_only_item then
+                usable_on_str = subfmt(popup_txt and STRINGS.UI.SKINSSCREEN.ALLOWS_CRAFTING_POPUP or STRINGS.UI.SKINSSCREEN.ALLOWS_CRAFTING, { skin = skin_str, item = item1_str })
+            else
+                usable_on_str = subfmt(popup_txt and STRINGS.UI.SKINSSCREEN.USABLE_ON_POPUP or STRINGS.UI.SKINSSCREEN.USABLE_ON, { skin = skin_str, item = item1_str })
+            end
         elseif item3_str == nil then
             usable_on_str = subfmt(popup_txt and STRINGS.UI.SKINSSCREEN.USABLE_ON_MULTIPLE_POPUP or STRINGS.UI.SKINSSCREEN.USABLE_ON_MULTIPLE, { skin = skin_str, item1 = item1_str, item2 = item2_str })
         else
@@ -787,6 +824,8 @@ function DoesItemHaveTag(item, tag)
 		tags = MISC_ITEMS[item].skin_tags
 	elseif EMOTE_ITEMS[item] then
 		tags = EMOTE_ITEMS[item].skin_tags
+    elseif IDLEANIMATIONS_ITEMS[item] then
+        tags = IDLEANIMATIONS_ITEMS[item].skin_tags
 	else
 		if Prefabs[item] ~= nil then
 			tags = Prefabs[item].skin_tags
@@ -1341,8 +1380,13 @@ function ShouldDisplayItemInCollection(item_type)
 	if ITEM_DISPLAY_BLACKLIST[item_type] then
         return false
     end
+    if SKINOVERRIDES[item_type] then
+        if not TheInventory:CheckOwnership(item_type) then
+            return false
+        end
+    end
 	local rarity = GetRarityForItem(item_type)
-	if rarity == "Event" or rarity == "ProofOfPurchase" or rarity == "Loyal" or rarity == "Timeless" then
+	if rarity == "Event" or rarity == "ProofOfPurchase" or rarity == "Resurrected" or rarity == "Loyal" or rarity == "Timeless" then
 		return TheInventory:CheckOwnership(item_type)
 	end
     return true
@@ -1369,7 +1413,7 @@ function IsDefaultSkinOwned( item_key )
 end
 
 function IsDefaultSkin( item_key )
-    return IsDefaultClothing( item_key ) or IsDefaultBeefClothing( item_key ) or IsDefaultCharacterSkin( item_key )
+    return IsDefaultClothing( item_key ) or IsDefaultBeefClothing( item_key ) or IsDefaultMisc( item_key ) or IsDefaultCharacterSkin( item_key )
 end
 
 function IsPrefabSkinned( prefab )
@@ -1530,12 +1574,15 @@ function GetNextOwnedSkin(prefab, cur_skin)
 			end
 		end
 		for i = found + 1, #skin_list do
-			if not PREFAB_SKINS_SHOULD_NOT_SELECT[skin_list[i]] and TheInventory:CheckOwnership(skin_list[i]) then
+			if not PREFAB_SKINS_SHOULD_NOT_SELECT[skin_list[i]] and (SKINS_EVENTLOCK[skin_list[i]] == nil or IsSpecialEventActive(SKINS_EVENTLOCK[skin_list[i]])) and TheInventory:CheckOwnership(skin_list[i]) then
 				new_skin = skin_list[i]
 				break
 			end
 		end
 	end
+    if not new_skin and PREFAB_SKINS_SHOULD_NOT_SELECT[prefab] then
+        new_skin = cur_skin
+    end
 	return new_skin
 end
 
@@ -1553,12 +1600,15 @@ function GetPrevOwnedSkin(prefab, cur_skin)
 			end
 		end
 		for i = found - 1, 1, -1 do
-			if not PREFAB_SKINS_SHOULD_NOT_SELECT[skin_list[i]] and TheInventory:CheckOwnership(skin_list[i]) then
+			if not PREFAB_SKINS_SHOULD_NOT_SELECT[skin_list[i]] and (SKINS_EVENTLOCK[skin_list[i]] == nil or IsSpecialEventActive(SKINS_EVENTLOCK[skin_list[i]])) and TheInventory:CheckOwnership(skin_list[i]) then
 				new_skin = skin_list[i]
 				break
 			end
 		end
 	end
+    if not new_skin and PREFAB_SKINS_SHOULD_NOT_SELECT[prefab] then
+        new_skin = cur_skin
+    end
 	return new_skin
 end
 
@@ -1947,19 +1997,19 @@ function GetBoxPopupLayoutDetails( num_item_types )
 	elseif num_item_types == 19 or num_item_types == 14 then
 		columns = 7
 		resize_root = true
-	elseif num_item_types == 22 or num_item_types == 23 or num_item_types == 24 then
+	elseif num_item_types == 21 or num_item_types == 22 or num_item_types == 23 or num_item_types == 24 or num_item_types == 26 or num_item_types == 27 then
 		columns = 8
 		resize_root_small = true
 	elseif num_item_types == 31 or num_item_types == 35 then
 		columns = 9
 		resize_root_small = true
-	elseif num_item_types == 38 then
+	elseif num_item_types == 38 or num_item_types == 30 then
 		columns = 10
 		resize_root_small = true
-	elseif num_item_types == 41 then
+	elseif num_item_types == 41 or num_item_types == 42 or num_item_types == 47 then
 		columns = 10
 		resize_root_small_higher = true
-    elseif num_item_types == 64 then
+    elseif num_item_types == 64 or num_item_types == 50 then
 		columns = 11
 		resize_root_thisisreallybig = true
 	else
@@ -1968,6 +2018,16 @@ function GetBoxPopupLayoutDetails( num_item_types )
 		print("Warning: Found an unexpected number of items in a box.", num_item_types)
 	end
 	return columns, resize_root, resize_root_small, resize_root_small_higher, resize_root_thisisreallybig
+end
+
+function GetPurchasePackFromEntitlement(entitlement_id)
+	local pack_type = nil
+	--if IsPSN() then
+	if true then
+		pack_type = ENTITLEMENTLOOKUPS.PSN[entitlement_id]
+	end
+
+	return pack_type
 end
 
 -- Testing and viewing skins on a more close level.

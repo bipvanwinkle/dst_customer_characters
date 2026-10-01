@@ -174,7 +174,9 @@ function ValidateRecipeSkinRequest(user_id, prefab_name, skin)
     local validated_skin = nil
     if skin ~= nil and skin ~= "" and TheInventory:CheckClientOwnership(user_id, skin) then
         if table.contains( PREFAB_SKINS[prefab_name], skin ) then
-            validated_skin = skin
+            if SKINS_EVENTLOCK[skin] == nil or IsSpecialEventActive(SKINS_EVENTLOCK[skin]) then
+                validated_skin = skin
+            end
         end
     end
     return validated_skin
@@ -244,7 +246,7 @@ function ValidateSpawnPrefabRequest(user_id, prefab_name, skin_base, clothing_bo
 end
 
 -- NOTES(JBK): [Searchable "SN_SKILLSELECTION"] skillselection 
-function SpawnNewPlayerOnServerFromSim(player_guid, skin_base, clothing_body, clothing_hand, clothing_legs, clothing_feet, starting_item_skins, skillselection)
+function SpawnNewPlayerOnServerFromSim(player_guid, skin_base, clothing_body, clothing_hand, clothing_legs, clothing_feet, starting_item_skins, skillselection, skinoverrides)
     local player = Ents[player_guid]
     if player ~= nil then
         local skinner = player.components.skinner
@@ -254,6 +256,7 @@ function SpawnNewPlayerOnServerFromSim(player_guid, skin_base, clothing_body, cl
         skinner:SetClothing(clothing_feet)
         skinner:SetSkinName(skin_base)
         skinner:SetSkinMode("normal_skin")
+        skinner:SetSkinOverrides(skinoverrides)
 
         if player.OnNewSpawn ~= nil then
             player:OnNewSpawn(starting_item_skins)

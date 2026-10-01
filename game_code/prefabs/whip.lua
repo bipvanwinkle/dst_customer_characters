@@ -29,7 +29,7 @@ end
 
 
 local CRACK_MUST_TAGS = { "_combat" }
-local CRACK_CANT_TAGS = { "player", "epic", "shadow", "shadowminion", "shadowchesspiece", "INLIMBO", "whip_crack_imune" }
+local CRACK_CANT_TAGS = { "player", "epic", "shadow", "shadowminion", "shadowchesspiece", "INLIMBO", "whip_crack_imune", "possessedbody" }
 local function supercrack(inst)
     local owner = inst.components.inventoryitem and inst.components.inventoryitem:GetGrandOwner() or nil
     local x,y,z = inst.Transform:GetWorldPosition()
@@ -55,6 +55,10 @@ local function supercrack(inst)
     end
 end
 
+local function whipsupersnapchanceadditive(inst, chance, luck)
+    return luck > 0 and chance + (luck * .5)
+end
+
 local function onattack(inst, attacker, target)
     if target ~= nil and target:IsValid() then
         local chance =
@@ -73,7 +77,7 @@ local function onattack(inst, attacker, target)
         --impact sounds normally play through comabt component on the target
         --whip has additional impact sounds logic, which we'll just add here
 
-        if math.random() < chance then
+        if TryLuckRoll(attacker, chance, whipsupersnapchanceadditive) then
             snap.Transform:SetScale(3, 3, 3)
             if target.SoundEmitter ~= nil then
                 target.SoundEmitter:PlaySound(inst.skin_sound_large or "dontstarve/common/whip_large")

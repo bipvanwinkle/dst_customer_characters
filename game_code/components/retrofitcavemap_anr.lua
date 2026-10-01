@@ -472,7 +472,6 @@ local function HeartOfTheRuinsRuinsRetrofitting_StatueChessRespawners(inst)
 end
 
 local function ArchiveDispencerFixup()
-
 	local a = {}
 	local b = {}
 	local c = {}
@@ -534,38 +533,28 @@ local function ArchiveDispencerFixup()
 		end
 	end
 	if #a == 0 and #dispencers > 0 then
-		local rand = math.random(1,#dispencers)
-		local ent = dispencers[rand]
-		ent.product_orchestrina = "turfcraftingstation"
-		ent.updateart(ent)
-		table.remove(dispencers,rand)
+		local ent = table.remove(dispencers, math.random(#dispencers))
+		ent:SetProductOrchestrina("turfcraftingstation")
 		print("Retrofitting for Return of Them: Forgotten Knowledge - Making dispencer type A.")
 	end
 	if #b == 0 and #dispencers > 0 then
-		local rand = math.random(1,#dispencers)
-		local ent = dispencers[rand]
-		ent.product_orchestrina = "archive_resonator_item"
-		ent.updateart(ent)
-		table.remove(dispencers,rand)
+		local ent = table.remove(dispencers, math.random(#dispencers))
+		ent:SetProductOrchestrina("archive_resonator_item")
 		print("Retrofitting for Return of Them: Forgotten Knowledge - Making dispencer type B.")
 	end
 	if #c == 0 and #dispencers > 0 then
-		local rand = math.random(1,#dispencers)
-		local ent = dispencers[rand]
-		ent.product_orchestrina = "refined_dust"
-		ent.updateart(ent)
-		table.remove(dispencers,rand)
+		local ent = table.remove(dispencers, math.random(#dispencers))
+		ent:SetProductOrchestrina("refined_dust")
 		print("Retrofitting for Return of Them: Forgotten Knowledge - Making dispencer type C.")
 	end
 
 	if #dispencers > 0 then
 		local total  = 0
+		local list = { "turfcraftingstation", "archive_resonator_item", "refined_dust" }
 		for i, ent in ipairs(dispencers) do
 			if ent.product_orchestrina == nil or ent.product_orchestrina == "" then
 				total = total +1
-				local list = {"turfcraftingstation","archive_resonator_item","refined_dust"}
-				ent.product_orchestrina = list[math.random(1,#list)]
-				ent.updateart(ent)
+				ent:SetProductOrchestrina(list[math.random(#list)])
 			end
 		end
 		if total > 0 then
@@ -575,10 +564,10 @@ local function ArchiveDispencerFixup()
 
 	if #lockboxes > 0 then
 		local total  = 0
+		local list = { "turfcraftingstation", "archive_resonator_item", "refined_dust" }
 		for i, ent in ipairs(lockboxes) do
 			if ent.product_orchestrina == nil or ent.product_orchestrina == "" then
 				total = total +1
-				local list = {"turfcraftingstation","archive_resonator_item","refined_dust"}
 				ent.product_orchestrina = list[math.random(1,#list)]
 			end
 		end
@@ -586,7 +575,6 @@ local function ArchiveDispencerFixup()
 			print("Retrofitting for Return of Them: Forgotten Knowledge - "..total.." Distilled Knowledge fixed.")
 		end
 	end
-
 end
 
 --------------------------------------------------------------------------
@@ -917,7 +905,160 @@ function self:OnPostInit()
         end
     end
 
+    ---------------------------------------------------------------------------
+    
+    if self.retrofit_rifts6_add_fumarole then
+        local success = false
+        for _, v in pairs(Ents) do
+            if v.prefab == "retrofit_fumaroleteleporter" then
+                print("Retrofitting for From Beyond - Ancient Echoes - Found retrofit_fumaroleteleporter.")
+                success = v:DoRetrofitting()
+                break
+            end
+        end
+
+        if success then
+            print("Retrofitting for From Beyond - Ancient Echoes - Add a wormhole linking the  to the retrofitted land.")
+        else
+            print("Retrofitting for From Beyond - Ancient Echoes - Failed to add a wormhole linking the  to the retrofitted land!")
+            print('Retrofitting for From Beyond - Ancient Echoes - An admin can force the wormhole link by running the command: c_findnext("retrofit_fumaroleteleporter"):DoRetrofitting(ThePlayer:GetPosition())')
+            print("Retrofitting for From Beyond - Ancient Echoes - This will create a wormhole where the admin is currenlty standing, so make sure you are standing where you want it to be!")
+        end
+    end
+
 	---------------------------------------------------------------------------
+
+	if self.floating_heavyobstaclephysics_fix then
+		self.floating_heavyobstaclephysics_fix = nil
+
+		for _, v in pairs(Ents) do
+			if v.components.heavyobstaclephysics then
+				v.components.heavyobstaclephysics.deprecated_floating_exploit = true
+			end
+		end
+	end
+
+	---------------------------------------------------------------------------
+
+	if self.retrofit_missing_retrofits_generated_densities then
+		self.retrofit_missing_retrofits_generated_densities = nil
+
+		local prefab_densities = TheWorld.generated.densities
+
+		-- Fix up density populations on lunar island retrofit and pearl island retrofit
+		local obj_layout = require("map/object_layout")
+
+		local retrofit_densities = {
+			["AncientArchivesRetrofit:2:MoonMush"] = "retrofit_moonmush",
+			["FumaroleRetrofit:0:Chasm"] = "retrofit_fumarole",
+		}
+
+		for topology_id, static_layout in pairs(retrofit_densities) do
+			local topology_id_index
+			for i, v in pairs(TheWorld.topology.ids) do
+				if topology_id == v then
+					topology_id_index = i
+					break
+				end
+			end
+
+			if topology_id_index and TheWorld.topology.ids[topology_id_index] then
+				local layout = obj_layout.LayoutForDefinition(static_layout)
+				local prefabs = obj_layout.ConvertLayoutToEntitylist(layout)
+
+				local prefab_list = {} --[prefab] = num
+
+				for i, prefab_data in ipairs(prefabs) do
+					if not prefab_list[prefab_data.prefab] then
+						prefab_list[prefab_data.prefab] = 0
+					end
+					prefab_list[prefab_data.prefab] = prefab_list[prefab_data.prefab] + 1
+				end
+
+				prefab_densities[topology_id] = {}
+
+				local num_ground = obj_layout.GetLayoutLandCount(layout)
+				--prefab_list[prefab] = prefab_list[prefab] + 1
+				for prefab, v in pairs(prefab_list) do
+					-- convererts from actual numbers to a percentage of the distribute percent
+					prefab_densities[topology_id][prefab] = v / num_ground
+				end
+			end
+		end
+	end
+
+	---------------------------------------------------------------------------
+
+	if self.retrofit_cave_mite_spawners then
+		self.retrofit_cave_mite_spawners = nil
+
+		print("Retrofitting for Cave Vent Mite spawners.")
+		local topology = TheWorld.topology
+		for k = 1, #topology.nodes do
+			local idname = topology.ids[k]
+			if idname:find("BGVentsRoom") or idname:find("VentsRoom") or idname:find("VentsRoom_exit") then
+				RetrofitNewCaveContentPrefab(inst, "cave_vent_mite_spawner", 1, 2, nil, { k })
+			elseif idname:find("FumaroleRetrofit") then
+				for _ = 1, 3 do
+					RetrofitNewCaveContentPrefab(inst, "cave_vent_mite_spawner", 1, 2, nil, { k })
+				end
+			end
+		end
+	end
+
+    ---------------------------------------------------------------------------
+
+    if self.retrofit_add_one_vault_orb then
+        local vaultmarker_lobby_center
+        for _, v in pairs(Ents) do
+            if v.prefab == "vaultmarker_lobby_center" then
+                vaultmarker_lobby_center = v
+                break
+            end
+        end
+        -- NOTES(JBK): The check for vault_orb if iterating Ents would skip all of the unloaded vault rooms with it is not designed to iterate.
+        -- This would be the start to finding if orbs exist and then it needs to look at vault_teleporter and its state.
+        -- Finally for all rooms that have no save data the current vault def would need to be looked over to count how many orbs would be in the map.
+        -- This is a lot of checks for something that can be given free here without issue so we will do that.
+        -- Maybe in the future vaultroommanager can have its own record keeping for what is inside of it or for it to self calculate it.
+        --for k,v in pairs(TheWorld.components.vaultroommanager.rooms) do
+        --if type(k) == "string" then
+        --    if v.vaultroomdata and v.vaultroomdata.ents then
+        --        if v.vaultroomdata.ents["vault_orb"] then
+        --        end
+        --    end
+        --end
+
+        local vault_orb
+        if not vaultmarker_lobby_center then
+            print("Cannot add one vault_orb because the map is missing vaultmarker_lobby_center somehow.")
+            return
+        end
+        print("Adding one vault_orb to vaultmarker_lobby_center.")
+        local x, y, z = vaultmarker_lobby_center.Transform:GetWorldPosition()
+        local function TryToFindClearSpot()
+            for radius = 1, 8 do
+                for theta = 0, 360 do
+                    local x1, z1 = math.cos(theta * DEGREES) * radius, math.sin(theta * DEGREES) * radius
+                    if TheSim:CountEntities(x1, 0, z1, 2) == 0 then
+                        vault_orb = SpawnPrefab("vault_orb")
+                        vault_orb.Transform:SetPosition(x1, 0, z1)
+                        return
+                    end
+                end
+            end
+        end
+        if not vault_orb then
+            -- Spawn it right next to the middle where a statue is.
+            vault_orb = SpawnPrefab("vault_orb")
+            vault_orb.Transform:SetPosition(x + 2, 0, z)
+        end
+
+        self.retrofit_add_one_vault_orb = nil
+    end
+
+	---------------------------------------------------------------------------
+
 	if self.requiresreset then
 		print ("Retrofitting: Worldgen retrofitting requires the server to save and restart to fully take effect.")
 		print ("Restarting server in 45 seconds...")
@@ -961,6 +1102,11 @@ function self:OnLoad(data)
 		self.retrofit_nodeidtilemap_atriummaze = data.retrofit_nodeidtilemap_atriummaze
         self.retrofit_daywalker_content = data.retrofit_daywalker_content or false
         self.console_beard_turf_fix = data.console_beard_turf_fix or false
+        self.retrofit_rifts6_add_fumarole = data.retrofit_rifts6_add_fumarole or false
+		self.floating_heavyobstaclephysics_fix = data.floating_heavyobstaclephysics_fix or false
+		self.retrofit_missing_retrofits_generated_densities = data.retrofit_missing_retrofits_generated_densities or false
+		self.retrofit_cave_mite_spawners = data.retrofit_cave_mite_spawners or false
+        self.retrofit_add_one_vault_orb = data.retrofit_add_one_vault_orb or false
     end
 end
 

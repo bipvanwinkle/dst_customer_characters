@@ -14,6 +14,7 @@ local events=
 {
     CommonHandlers.OnSleep(),
     CommonHandlers.OnFreeze(),
+	CommonHandlers.OnElectrocute(),
     CommonHandlers.OnAttacked(),
     CommonHandlers.OnDeath(),
     CommonHandlers.OnLocomote(false,true),
@@ -21,7 +22,7 @@ local events=
 	CommonHandlers.OnSink(),
     CommonHandlers.OnFallInVoid(),
     EventHandler("doattack", function(inst, data)
-        if not inst.components.health:IsDead() and not inst.sg:HasStateTag("busy") then
+        if inst.components.health and not inst.components.health:IsDead() and not inst.sg:HasStateTag("busy") then
             if data.target:HasTag("cattoyairborne") then
                 if data.target.sg and (data.target.sg:HasStateTag("landing") or data.target.sg:HasStateTag("landed")) then
                     inst.components.combat:SetTarget(nil)
@@ -35,6 +36,9 @@ local events=
             end
         end
     end),
+
+	-- Corpse handlers
+	CommonHandlers.OnCorpseChomped(),
 }
 
 local states=
@@ -213,7 +217,7 @@ local states=
             EventHandler("animover", function(inst)
                 local neutralmax = inst.neutralGiftPrefabs and #inst.neutralGiftPrefabs or 7
                 local friendmax = inst.friendGiftPrefabs and #inst.friendGiftPrefabs or 7
-                local MAX_RETCHES = (inst.components.follower and inst.components.follower.leader) and friendmax or neutralmax
+                local MAX_RETCHES = (inst.components.follower and inst.components.follower:GetLeader()) and friendmax or neutralmax
                 local rand = math.random()
                 --print("Retching:", inst.numretches, .8/inst.numretches, rand)
                 if inst.numretches >= MAX_RETCHES or rand < (.8/inst.numretches) then
@@ -446,9 +450,10 @@ local states=
             TimeEvent(6*FRAMES, function(inst)
                 inst.Physics:SetMotorVelOverride(12,0,0)
                 -- When the catcoon jumps, check if the target is a bird. If so, roll a chance for the bird to fly away
-                local isbird = inst.components.combat and inst.components.combat.target and inst.components.combat.target:HasTag("bird")
+                local target = inst.components.combat and inst.components.combat.target
+                local isbird = target and target:HasTag("bird")
                 if isbird and math.random() > TUNING.CATCOON_ATTACK_CONNECT_CHANCE then
-                    inst.components.combat.target:PushEvent("threatnear")
+                    target:PushEvent("threatnear", { threat = inst })
                 end
             end),
             TimeEvent(14*FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC001/creatures/catcoon/jump") end),
@@ -541,6 +546,11 @@ CommonStates.AddCombatStates(states,
 	{
         TimeEvent(1*FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC001/creatures/catcoon/death") end),
 	},
+},
+nil,
+nil,
+{
+    has_corpse_handler = true
 })
 
 CommonStates.AddSleepStates(states,
@@ -561,8 +571,12 @@ CommonStates.AddSleepStates(states,
     },
 })
 CommonStates.AddFrozenStates(states)
+CommonStates.AddElectrocuteStates(states)
 CommonStates.AddHopStates(states, true, {pre = "walK_pre", loop = "jump_atk", pst = "walk_pst"})
 CommonStates.AddSinkAndWashAshoreStates(states)
 CommonStates.AddVoidFallStates(states)
 
-return StateGraph("catcoon", states, events, "idle", actionhandlers)
+CommonStates.AddInitState(states, "idle")
+CommonStates.AddCorpseStates(states)
+
+return StateGraph("catcoon", states, events, "init", actionhandlers)

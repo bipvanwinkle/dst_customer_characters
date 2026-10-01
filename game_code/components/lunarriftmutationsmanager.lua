@@ -1,3 +1,6 @@
+-- Note for this component (Omar):
+-- This doesn't actually manage all lunar rift mutations, just the quest line logic for Wagstaff's appearances and such, and the defeated boss mutations
+
 -- DO NOT change their order.
 local MUTATIONS_NAMES =
 {
@@ -44,13 +47,10 @@ function LunarRiftMutationsManager:HasDefeatedAllMutations()
 end
 
 function LunarRiftMutationsManager:_CanCorpseMutate(ent)
-    return
-        TheWorld.components.riftspawner ~= nil and
-        TheWorld.components.riftspawner:IsLunarPortalActive() and
-        not ent:IsOnOcean() and
-        (ent.components.burnable == nil or not ent.components.burnable:IsBurning())
+    return CanLunarRiftMutateFromCorpse(ent)
 end
 
+-- NOTE (Omar): Not used anymore.
 function LunarRiftMutationsManager:TryMutate(ent, corpseprefab)
     if self:_CanCorpseMutate(ent) then
         local rot = ent:GetRotation()
@@ -78,11 +78,15 @@ function LunarRiftMutationsManager:SetMutationDefeated(ent)
     if MUTATIONS[prefab] ~= nil and not table.contains(self.defeated_mutations, MUTATIONS[prefab]) then
         table.insert(self.defeated_mutations, MUTATIONS[prefab])
 
-        if self:IsWagstaffSpawned() then
-            self.wagstaff:TalkAboutMutatedCreature(true)
+        if TheWorld.components.wagboss_tracker and TheWorld.components.wagboss_tracker:IsWagbossDefeated() then
+            self:OnRewardGiven()
         else
-            ent.components.health.destroytime = MUTATIONS_EXTENDED_DESTROYTIME
-            self:TriggerWagstaffAppearance(ent)
+            if self:IsWagstaffSpawned() then
+                self.wagstaff:TalkAboutMutatedCreature(true)
+            else
+                ent.components.health.destroytime = MUTATIONS_EXTENDED_DESTROYTIME
+                self:TriggerWagstaffAppearance(ent)
+            end
         end
     end
 end
@@ -90,7 +94,7 @@ end
 function LunarRiftMutationsManager:TriggerWagstaffAppearance(ent)
     local entpos = ent:GetPosition()
     local pos = entpos
- 
+
     local offset = FindWalkableOffset(pos, math.random()*TWOPI, 8, 12, false, false, nil, false, true)
 
     if offset ~= nil then
@@ -116,6 +120,7 @@ end
 
 function LunarRiftMutationsManager:OnRewardGiven()
     self.task_completed = true
+    TheWorld:PushEvent("ms_lunarriftmutationsmanager_taskcompleted")
 
     if self:HasDefeatedAllMutations() then
         self:RefreshDefeatedMutationsTable()
@@ -142,6 +147,7 @@ function LunarRiftMutationsManager:OnLoad(data)
 
     if data.task_completed then
         self.task_completed = true
+        TheWorld:PushEvent("ms_lunarriftmutationsmanager_taskcompleted")
     end
 end
 

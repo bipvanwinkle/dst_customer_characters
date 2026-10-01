@@ -20,6 +20,7 @@ local events =
     CommonHandlers.OnLocomote(true, true),
     CommonHandlers.OnSleep(),
     CommonHandlers.OnFreeze(),
+	CommonHandlers.OnElectrocute(),
     CommonHandlers.OnAttack(),
     CommonHandlers.OnAttacked(nil, TUNING.PIG_MAX_STUN_LOCKS),
     CommonHandlers.OnDeath(),
@@ -47,6 +48,9 @@ local events =
             inst.sg:GoToState("win_yotb")
         end
     end),
+
+	-- Corpse handlers
+	CommonHandlers.OnCorpseChomped(),
 }
 
 local function go_to_idle(inst)
@@ -63,7 +67,9 @@ local states =
             inst.Physics:Stop()
             inst.SoundEmitter:PlaySound("dontstarve/pig/oink")
 
-            if inst.components.follower:GetLeader() ~= nil and inst.components.follower:GetLoyaltyPercent() < 0.05 then
+            local leader = inst.components.follower:GetLeader()
+            local is_roll_called = leader ~= nil and leader.components.leader ~= nil and leader.components.leader:IsRollCalling() or nil
+            if leader ~= nil and inst.components.follower:GetLoyaltyPercent() < 0.05 and not is_roll_called then
                 inst.AnimState:PlayAnimation("hungry")
                 inst.SoundEmitter:PlaySound("dontstarve/wilson/hungry")
             elseif inst:HasTag("guard") then
@@ -72,7 +78,7 @@ local states =
                 inst.AnimState:PlayAnimation("idle_scared")
             elseif inst.components.combat:HasTarget() then
                 inst.AnimState:PlayAnimation("idle_angry")
-            elseif inst.components.follower:GetLeader() ~= nil and inst.components.follower:GetLoyaltyPercent() > 0.3 then
+            elseif leader ~= nil and (inst.components.follower:GetLoyaltyPercent() > 0.3 or is_roll_called) then
                 inst.AnimState:PlayAnimation("idle_happy")
             else
                 inst.AnimState:PlayAnimation("idle_creepy")
@@ -93,18 +99,20 @@ local states =
             inst.SoundEmitter:PlaySound("dontstarve/pig/grunt")
             inst.AnimState:PlayAnimation("death")
             inst.Physics:Stop()
-            
+
             if not inst.shadowthrall_parasite_hosted_death or not TheWorld.components.shadowparasitemanager then
                 RemovePhysicsColliders(inst)
-                inst.components.lootdropper:DropLoot(inst:GetPosition())
+                inst:DropDeathLoot()
             end
         end,
-        
+
         events =
         {
             EventHandler("animover", function(inst)
                 if inst.shadowthrall_parasite_hosted_death and TheWorld.components.shadowparasitemanager then
                     TheWorld.components.shadowparasitemanager:ReviveHosted(inst)
+                elseif inst.AnimState:AnimDone() then
+                    inst.sg:GoToState("corpse")
                 end
             end),
         },
@@ -130,7 +138,7 @@ local states =
 
     State{
         name = "transformNormal",
-        tags = { "transform", "busy", "sleeping" },
+		tags = { "transform", "busy", "sleeping", "noelectrocute" },
 
         onenter = function(inst)
             inst.Physics:Stop()
@@ -305,21 +313,6 @@ local states =
             EventHandler("animover", go_to_idle),
         },
     },
-
-    State{
-        name = "parasite_revive",
-        tags = {"busy"},
-
-        onenter = function(inst)
-            inst.AnimState:PlayAnimation("parasite_death_pst")
-            inst.Physics:Stop()
-        end,
-
-        events=
-        {
-            EventHandler("animover", function(inst) inst.sg:GoToState("idle") end ),
-        },
-    },
 }
 
 CommonStates.AddWalkStates(states,
@@ -351,11 +344,17 @@ CommonStates.AddSleepStates(states,
 CommonStates.AddIdle(states,"funnyidle")
 CommonStates.AddSimpleState(states, "refuse", "pig_reject", { "busy" })
 CommonStates.AddFrozenStates(states)
+CommonStates.AddElectrocuteStates(states)
 CommonStates.AddSimpleActionState(states, "pickup", "pig_pickup", 10 * FRAMES, { "busy" })
 CommonStates.AddSimpleActionState(states, "gohome", "pig_pickup", 4 * FRAMES, { "busy" })
 CommonStates.AddHopStates(states, true, { pre = "boat_jump_pre", loop = "boat_jump_loop", pst = "boat_jump_pst"})
 CommonStates.AddSinkAndWashAshoreStates(states)
 CommonStates.AddVoidFallStates(states)
 CommonStates.AddIpecacPoopState(states)
+CommonStates.AddParasiteReviveState(states)
 
-return StateGraph("pig", states, events, "idle", actionhandlers)
+-- werepig uses a different stategraph
+CommonStates.AddInitState(states, "idle")
+CommonStates.AddCorpseStates(states)
+
+return StateGraph("pig", states, events, "init", actionhandlers)

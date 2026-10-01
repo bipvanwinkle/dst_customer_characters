@@ -5,7 +5,6 @@ local WateryProtection = Class(function(self, inst)
     self.temperaturereduction = 0
     self.addcoldness = 0
     self.addwetness = 0
-    self.applywetnesstoitems = false
     self.extinguish = true
     self.extinguishheatpercent = 0
 	--self.protection_dist = nil
@@ -19,33 +18,32 @@ function WateryProtection:AddIgnoreTag(tag)
     end
 end
 
+function WateryProtection:ApplyProtectionToEntity(ent, noextinguish)
+    if ent.components.burnable ~= nil then
+        if self.witherprotectiontime > 0 and ent.components.witherable ~= nil then
+            ent.components.witherable:Protect(self.witherprotectiontime)
+        end
+        if not noextinguish and self.extinguish then
+            if ent.components.burnable:IsBurning() or ent.components.burnable:IsSmoldering() then
+                ent.components.burnable:Extinguish(true, self.extinguishheatpercent)
+            end
+        end
+    end
+    if self.addcoldness > 0 and ent.components.freezable ~= nil then
+        ent.components.freezable:AddColdness(self.addcoldness)
+    end
+    if self.temperaturereduction > 0 then
+        DoDeltaTemperatureToEntity(ent, -self.temperaturereduction)
+    end
+    if self.addwetness > 0 then
+        DoDeltaMoistureToEntity(ent, self.addwetness)
+    end
+end
+
 function WateryProtection:SpreadProtectionAtPoint(x, y, z, dist, noextinguish)
     local ents = TheSim:FindEntities(x, y, z, dist or self.protection_dist or 4, nil, self.ignoretags)
-    for i, v in ipairs(ents) do
-        if v.components.burnable ~= nil then
-            if self.witherprotectiontime > 0 and v.components.witherable ~= nil then
-                v.components.witherable:Protect(self.witherprotectiontime)
-            end
-            if not noextinguish and self.extinguish then
-                if v.components.burnable:IsBurning() or v.components.burnable:IsSmoldering() then
-                    v.components.burnable:Extinguish(true, self.extinguishheatpercent)
-                end
-            end
-        end
-        if self.addcoldness > 0 and v.components.freezable ~= nil then
-            v.components.freezable:AddColdness(self.addcoldness)
-        end
-        if self.temperaturereduction > 0 and v.components.temperature ~= nil then
-            v.components.temperature:SetTemperature(v.components.temperature:GetCurrent() - self.temperaturereduction)
-        end
-        if self.addwetness > 0 then
-            if v.components.moisture ~= nil then
-                local waterproofness = v.components.moisture:GetWaterproofness()
-                v.components.moisture:DoDelta(self.addwetness * (1 - waterproofness))
-            elseif self.applywetnesstoitems and v.components.inventoryitem ~= nil then
-                v.components.inventoryitem:AddMoisture(self.addwetness)
-            end
-        end
+    for _, ent in ipairs(ents) do
+        self:ApplyProtectionToEntity(ent, noextinguish)
     end
 
 	if self.addwetness and TheWorld.components.farming_manager ~= nil then

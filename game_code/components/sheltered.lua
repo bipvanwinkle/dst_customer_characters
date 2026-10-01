@@ -52,7 +52,8 @@ function Sheltered:SetSheltered(issheltered, level)
     elseif not self.sheltered and self.inst.replica.sheltered:IsSheltered() then
         self.sheltered = true
         self.inst:PushEvent("sheltered", { sheltered=true, level=self.sheltered_level })
-		if self.announcecooldown <= 0 and (TheWorld.state.israining and self.inst.components.rainimmunity == nil or GetLocalTemperature(self.inst) >= TUNING.OVERHEAT_TEMP - 5) then
+		if self.inst.components.talker ~= nil
+            and self.announcecooldown <= 0 and (TheWorld.state.israining and self.inst.components.rainimmunity == nil or GetLocalTemperature(self.inst) >= TUNING.OVERHEAT_TEMP - 5) then
             self.inst.components.talker:Say(GetString(self.inst, "ANNOUNCE_SHELTER"))
             self.announcecooldown = TUNING.TOTAL_DAY_TIME
         end
@@ -61,23 +62,20 @@ end
 
 local SHELTERED_MUST_TAGS = { "shelter" }
 local SHELTERED_CANT_TAGS = { "FX", "NOCLICK", "DECOR", "INLIMBO", "stump", "burnt" }
-local SHADECANOPY_MUST_TAGS = {"shadecanopy"}
-local SHADECANOPY_SMALL_MUST_TAGS = {"shadecanopysmall"}
 function Sheltered:OnUpdate(dt)
-    local sheltered = false
-    local level = 1    
     self.announcecooldown = math.max(0, self.announcecooldown - dt)
-    local x, y, z = self.inst.Transform:GetWorldPosition()
-    local ents = TheSim:FindEntities(x, y, z, 2, SHELTERED_MUST_TAGS, SHELTERED_CANT_TAGS)
-    if #ents > 0 then        
-        sheltered = true
-    end
 
-    local canopy = TheSim:FindEntities(x,y,z, TUNING.SHADE_CANOPY_RANGE, SHADECANOPY_MUST_TAGS)
-    local canopy_small = TheSim:FindEntities(x,y,z, TUNING.SHADE_CANOPY_RANGE_SMALL, SHADECANOPY_SMALL_MUST_TAGS)
-    if #canopy > 0 or #canopy_small > 0 then
+    local sheltered = false
+    local level = 1
+
+    --NOTE: canopytrees is player specific, which is ok for now because sheltered is a player specific component too
+    if self.inst.canopytrees and self.inst.canopytrees > 0 then
         sheltered = true
         level = 2
+    else
+        local x, y, z = self.inst.Transform:GetWorldPosition()
+        local num_sheltered = TheSim:CountEntities(x, y, z, 2, SHELTERED_MUST_TAGS, SHELTERED_CANT_TAGS)
+        sheltered = num_sheltered > 0
     end
 
     self:SetSheltered(sheltered, level)

@@ -20,11 +20,7 @@ local function onperish(inst)
     local owner = inst.components.inventoryitem.owner
     if owner ~= nil then
         local stacksize = inst.components.stackable:StackSize()
-        if owner.components.moisture ~= nil then
-            owner.components.moisture:DoDelta(2 * stacksize)
-        elseif owner.components.inventoryitem ~= nil then
-            owner.components.inventoryitem:AddMoisture(4 * stacksize)
-        end
+        DoDeltaMoistureToEntity(owner, 2 * stacksize, 2, true)
         inst:Remove()
     else
         local stacksize = inst.components.stackable:StackSize()
@@ -68,6 +64,7 @@ local function fn()
     inst.AnimState:SetBuild("ice")
 
     inst:AddTag("frozen")
+    inst:AddTag("molebait")
     -- From watersource component
     inst:AddTag("watersource")
 
@@ -83,7 +80,7 @@ local function fn()
     inst.AnimState:PlayAnimation(inst.animname)
 
     inst:AddComponent("edible")
-    inst.components.edible.foodtype = "GENERIC"
+    inst.components.edible.foodtype = FOODTYPE.GENERIC
     inst.components.edible.healthvalue = TUNING.HEALING_TINY/2
     inst.components.edible.hungervalue = TUNING.CALORIES_TINY/4
     inst.components.edible.degrades_with_spoilage = false
@@ -109,18 +106,19 @@ local function fn()
 
     inst:AddComponent("inventoryitem")
     inst.components.inventoryitem.imagename = "ice"
-    inst.components.inventoryitem:SetOnPickupFn(onstopfiremelt)
+    inst.components.inventoryitem:SetOnPutInInventoryFn(onstopfiremelt)
 
     inst:AddComponent("repairer")
     inst.components.repairer.repairmaterial = MATERIALS.ICE
-    inst.components.repairer.perishrepairpercent = .05
+    inst.components.repairer.perishrepairpercent = .25
 
     inst:AddComponent("watersource")
     inst.components.watersource.onusefn = onuseaswatersource
     inst.components.watersource.override_fill_uses = 1
 
+	inst:AddComponent("snowmandecor")
+
     inst:AddComponent("bait")
-    inst:AddTag("molebait")
 
     inst.OnSave = onsave
     inst.OnLoad = onload

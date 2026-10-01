@@ -24,6 +24,16 @@ local function PushPausePredictionFrames(inst, frames)
     SetDirty(inst.pausepredictionframes, frames)
 end
 
+local function OnForceHealthPulse(parent, data)
+    if data.up then
+        --Force dirty, we just want to trigger an event on the client
+        SetDirty(parent.player_classified.ishealthpulseup, true)
+    elseif data.down then
+        --Force dirty, we just want to trigger an event on the client
+        SetDirty(parent.player_classified.ishealthpulsedown, true)
+    end
+end
+
 local function OnHealthDelta(parent, data)
     if data.overtime then
         --V2C: Don't clear: it's redundant as player_classified shouldn't
@@ -98,16 +108,14 @@ local function OnWerenessDelta(parent, data)
     end
 end
 
+-- Keep NON_DANGER_TAGS in sync with dynamicmusic NON_DANGER_TAGS
+local NON_DANGER_TAGS = {"noepicmusic", "shadow", "shadowchesspiece", "smolder", "thorny", "nodangermusic"}
 local function OnAttacked(parent, data)
     parent.player_classified.attackedpulseevent:push()
     parent.player_classified.isattackedbydanger:set(
         data ~= nil and
         data.attacker ~= nil and
-        not (data.attacker:HasTag("shadow") or
-            data.attacker:HasTag("shadowchesspiece") or
-            data.attacker:HasTag("noepicmusic") or
-            data.attacker:HasTag("thorny") or
-            data.attacker:HasTag("smolder"))
+        not data.attacker:HasAnyTag(NON_DANGER_TAGS)
     )
     parent.player_classified.isattackredirected:set(data ~= nil and data.redirected ~= nil)
 end
@@ -152,6 +160,11 @@ end
 local function OnHoundWarning(parent, houndwarningtype)
     SetDirty(parent.player_classified.houndwarningevent, houndwarningtype)
 end
+
+local function OnCraftedExtraElixir(parent, items)
+    SetDirty(parent.player_classified.craftedextraelixirevent, items)
+end
+
 
 fns.OnPlayThemeMusic = function(parent, data)
     if data ~= nil then
@@ -212,6 +225,11 @@ local function SetUsedTouchStones(inst, used)
     inst.touchstonetrackerused:set(used)
 end
 
+fns.SetBathingPoolCamera = function(inst, target)
+	inst.bathingpool:set(target)
+	fns.OnBathingPoolDirty(inst)
+end
+
 --------------------------------------------------------------------------
 --Client interface
 --------------------------------------------------------------------------
@@ -235,7 +253,7 @@ local function OnEntityReplicated(inst)
         for i, v in ipairs({ "builder", "combat", "health", "hunger", "rider", "sanity" }) do
 			inst._parent:TryAttachClassifiedToReplicaComponent(inst, v)
         end
-        for i, v in ipairs({ "playercontroller", "playervoter", "boatcannonuser" }) do
+		for i, v in ipairs({ "playercontroller", "playervoter", "boatcannonuser", "playerspeedmult" }) do
             if inst._parent.components[v] ~= nil then
                 inst._parent.components[v]:AttachClassified(inst)
             end
@@ -247,18 +265,30 @@ local function OnHealthDirty(inst)
     if inst._parent ~= nil then
         local oldpercent = inst._oldhealthpercent
         local percent = inst.currenthealth:value() / inst.maxhealth:value()
-        local data =
-        {
-            oldpercent = oldpercent,
-            newpercent = percent,
-            overtime =
-                not (inst.ishealthpulseup:value() and percent > oldpercent) and
-                not (inst.ishealthpulsedown:value() and percent < oldpercent),
-        }
-        inst._oldhealthpercent = percent
-        inst.ishealthpulseup:set_local(false)
-        inst.ishealthpulsedown:set_local(false)
-        inst._parent:PushEvent("healthdelta", data)
+        if oldpercent == percent then
+            local data =
+            {
+                oldpercent = oldpercent,
+                newpercent = percent,
+            }
+            inst._parent:PushEvent("healthdelta", data) -- still must pass healthdelta to update max value in case they changed
+            inst._parent:PushEvent("forcehealthpulse", { up = inst.ishealthpulseup:value(), down = inst.ishealthpulsedown:value() })
+            inst.ishealthpulseup:set_local(false)
+            inst.ishealthpulsedown:set_local(false)
+        else
+            local data =
+            {
+                oldpercent = oldpercent,
+                newpercent = percent,
+                overtime =
+                    not (inst.ishealthpulseup:value() and percent > oldpercent) and
+                    not (inst.ishealthpulsedown:value() and percent < oldpercent),
+            }
+            inst._oldhealthpercent = percent
+            inst.ishealthpulseup:set_local(false)
+            inst.ishealthpulsedown:set_local(false)
+            inst._parent:PushEvent("healthdelta", data)
+        end
     else
         inst._oldhealthpercent = 1
         inst.ishealthpulseup:set_local(false)
@@ -280,6 +310,17 @@ local function OnIsTakingFireDamageLowDirty(inst)
     if inst._parent ~= nil then
         inst._parent:PushEvent("changefiredamage", { low = inst.istakingfiredamagelow:value() })
     end
+end
+
+local function OnLunarBurnFlagsDirty(inst)
+	if inst._parent then
+		local flags = inst.lunarburnflags:value()
+		if flags ~= 0 then
+			inst._parent:PushEvent("startlunarburn", flags)
+		else
+			inst._parent:PushEvent("stoplunarburn")
+		end
+	end
 end
 
 local function OnAttackedPulseEvent(inst)
@@ -431,51 +472,18 @@ local function OnMightinessDirty(inst)
     end
 end
 
--- WX78 Upgrade Module UI functions ------------------------------------------
-
-fns.OnEnergyLevelDirty = function(inst)
-    if inst._parent ~= nil then
-        local energylevel = inst.currentenergylevel:value()
-        local data =
-        {
-            old_level = inst._oldcurrentenergylevel,
-            new_level = energylevel,
-        }
-
-        inst._oldcurrentenergylevel = energylevel
-
-        inst._parent:PushEvent("energylevelupdate", data)
-    end
-end
-
-fns.OnUIRobotSparks = function(inst)
-    if inst._parent ~= nil then
-        inst._parent:PushEvent("do_robot_spark")
-    end
-end
-
-fns.OnUpgradeModulesListDirty = function(inst)
-    if inst._parent ~= nil then
-        local module1 = inst.upgrademodules[1]:value()
-        local module2 = inst.upgrademodules[2]:value()
-        local module3 = inst.upgrademodules[3]:value()
-        local module4 = inst.upgrademodules[4]:value()
-        local module5 = inst.upgrademodules[5]:value()
-        local module6 = inst.upgrademodules[6]:value()
-
-        if module1 == 0 and module2 == 0 and module3 == 0 and module4 == 0 and module5 == 0 and module6 == 0 then
-            inst._parent:PushEvent("upgrademoduleowner_popallmodules")
-        else
-            inst._parent:PushEvent("upgrademodulesdirty", {module1, module2, module3, module4, module5, module6})
-        end
-    end
-end
-
 -- Wortox free soulhops ------------------------------------------------------
 
 fns.OnFreeSoulhopsDirty = function(inst)
     if inst._parent ~= nil then
         inst._parent:PushEvent("freesoulhopschanged", {current = inst.freesoulhops:value()})
+    end
+end
+
+-- wortox_panflute_buff ------------------------------------------------------
+fns.OnWortoxPanfluteBuffDirty = function(inst)
+    if inst._parent ~= nil then
+        inst._parent:PushEvent("item_buff_changed")
     end
 end
 
@@ -656,6 +664,18 @@ local function OnIsCarefulWalkingDirty(inst)
     end
 end
 
+local function OnExternalVelocityVectorDirty(inst)
+    if inst._parent then
+        inst._parent.Physics:SetMotorVelExternal(inst.externalvelocityvectorx:value(), 0, inst.externalvelocityvectorz:value())
+    end
+end
+
+fns.OnPlayerSpeedMultDirty = function(inst)
+	if inst._parent and inst._parent.components.playerspeedmult then
+		inst._parent.components.playerspeedmult:ApplyRunSpeed_Internal()
+	end
+end
+
 local function OnPlayerCameraShake(inst)
     if inst._parent ~= nil and inst._parent.HUD ~= nil then
         TheCamera:Shake(
@@ -683,6 +703,18 @@ fns.OnCannonDirty = function(inst)
     if inst._parent ~= nil then
         inst._parent:PushEvent("aimingcannonchanged", inst.cannon:value())
     end
+end
+
+fns.OnBathingPoolDirty = function(inst)
+	if inst._parent and inst._parent.HUD and inst._oldbathingpool ~= inst.bathingpool:value() then
+		if inst._oldbathingpool then
+			TheFocalPoint.components.focalpoint:StopFocusSource(inst._oldbathingpool)
+		end
+		inst._oldbathingpool = inst.bathingpool:value()
+		if inst._oldbathingpool then
+			TheFocalPoint.components.focalpoint:StartFocusSource(inst._oldbathingpool, nil, nil, math.huge, math.huge, 1)
+		end
+	end
 end
 
 --------------------------------------------------------------------------
@@ -727,6 +759,19 @@ local function OnOpenCraftingMenuEvent(inst)
             player.HUD:OpenCrafting()
         end
     end
+end
+
+local function OnIsCraftingEnabledDirty(inst)
+	if inst._parent and inst._parent.HUD then
+		if inst.iscraftingenabled:value() then
+			inst._parent.HUD.controls:ShowCrafting()
+		else
+			inst._parent.HUD.controls:HideCrafting()
+			if inst._parent.components.playercontroller then
+				inst._parent.components.playercontroller:CancelPlacement()
+			end
+		end
+	end
 end
 
 local function OnInkedEvent(inst)
@@ -805,21 +850,33 @@ local function OnPlayerHUDDirty(inst)
     end
 end
 
+local CAMERA_ZOOM_DIST = 18
+local CAMERA_ZOOM_DISTANCE_GAIN = 3
+local CAMERA_AERIAL_ZOOM_DIST = 0
+
 local function OnPlayerCameraDirty(inst)
     if inst._parent ~= nil and inst._parent.HUD ~= nil then
         if inst.iscamerazoomed:value() then
             if inst._prevcameradistance == nil then
                 inst._prevcameradistance = TheCamera.distance
-                inst._prevcameradistancegain = TheCamera.distancegain
-                if inst._prevcameradistance > 18 then
-                    TheCamera:SetDistance(18)
-                    TheCamera.distancegain = 3
+				local pan_gain, heading_gain, distance_gain = TheCamera:GetGains()
+				inst._prevcameradistancegain = distance_gain
+				if inst._prevcamerafov then
+					--aerial
+					TheCamera:SetDistance(CAMERA_AERIAL_ZOOM_DIST)
+					TheCamera:Snap()
+					TheCamera:SetGains(pan_gain, heading_gain, CAMERA_ZOOM_DISTANCE_GAIN)
+					TheCamera:SetControllable(false)
+				elseif inst._prevcameradistance > CAMERA_ZOOM_DIST then
+					TheCamera:SetDistance(CAMERA_ZOOM_DIST)
+					TheCamera:SetGains(pan_gain, heading_gain, CAMERA_ZOOM_DISTANCE_GAIN)
                     TheCamera:SetControllable(false)
                 end
             end
         elseif inst._prevcameradistance ~= nil then
             TheCamera:SetDistance(inst.cameradistance:value() > 0 and inst.cameradistance:value() or inst._prevcameradistance)
-            TheCamera.distancegain = inst._prevcameradistancegain
+			local pan_gain, heading_gain, distance_gain = TheCamera:GetGains()
+			TheCamera:SetGains(pan_gain, heading_gain, inst._prevcameradistancegain)
             inst._prevcameradistance = nil
             inst._prevcameradistancegain = nil
             TheCamera:SetControllable(true)
@@ -829,6 +886,37 @@ local function OnPlayerCameraDirty(inst)
             TheCamera:SetDefault()
         end
     end
+end
+
+local function OnPlayerAerialCameraDirty(inst)
+	if inst._parent and inst._parent.HUD then
+		if inst.isaerialcamera:value() then
+			if inst._prevcamerafov == nil then
+				inst._prevcamerafov = TheCamera:GetFOV()
+				inst._prevcameramindistpitch, inst._prevcameramaxdistpitch = TheCamera:GetPitchRange()
+				TheCamera:SetFOV(130)
+				TheCamera:SetPitchRange(80, 80)
+				if inst._prevcameradistance then
+					--zoomed
+					TheCamera:SetDistance(CAMERA_AERIAL_ZOOM_DIST)
+					TheCamera:Snap()
+					local pan_gain, heading_gain, distance_gain = TheCamera:GetGains()
+					TheCamera:SetGains(pan_gain, heading_gain, CAMERA_ZOOM_DISTANCE_GAIN)
+					TheCamera:SetControllable(false)
+				end
+			end
+		elseif inst._prevcamerafov then
+			TheCamera:SetFOV(inst._prevcamerafov)
+			TheCamera:SetPitchRange(inst._prevcameramindistpitch, inst._prevcameramaxdistpitch)
+			inst._prevcamerafov = nil
+			inst._prevcameramindistpitch = nil
+			inst._prevcameramaxdistpitch = nil
+			if inst._prevcameradistance then
+				--zoomed
+				TheCamera:SetDistance(CAMERA_ZOOM_DIST)
+			end
+		end
+	end
 end
 
 local function DoMaximizeCameraDistance(inst)
@@ -843,7 +931,8 @@ function fns.OnPlayerCameraExtraDistDirty(inst, init)
     local cameraextramaxdist = inst.cameraextramaxdist:value()
 
     if cameraextramaxdist then
-        TheCamera:SetExtraMaxDistance(cameraextramaxdist)
+        local capped_extra_distance = PLAYER_CAMERA_MAX_DIST - TheCamera:GetRawMaxDistance()
+        TheCamera:SetExtraMaxDistance(math.min(capped_extra_distance, cameraextramaxdist))
 
         if init and cameraextramaxdist > 0 then
             inst:DoTaskInTime(0, DoMaximizeCameraDistance)
@@ -950,6 +1039,8 @@ local function OnWormholeTravelDirty(inst)
             TheFocalPoint.SoundEmitter:PlaySound("dontstarve/cave/tentapiller_hole_travel")
         elseif inst._parent.player_classified.wormholetravelevent:value() == WORMHOLETYPE.OCEANWHIRLPORTAL then
             TheFocalPoint.SoundEmitter:PlaySound("meta3/whirlpool/whirlpool_travel")
+        elseif inst._parent.player_classified.wormholetravelevent:value() == WORMHOLETYPE.VAULTLOBBYEXIT then
+            TheFocalPoint.SoundEmitter:PlaySound("dontstarve/cave/tentapiller_hole_travel") -- FIXME(JBK): rifts6 sounds -- FIXME(JBK): rifts7 sounds
         end
     end
 end
@@ -978,6 +1069,18 @@ local function OnHoundWarningDirty(inst)
         end
         if soundprefab then
             local sound = SpawnPrefab(soundprefab)
+        end
+    end
+end
+
+fns.OnCraftedExtraElixirDirty = function(inst)
+
+    if inst._parent ~= nil and inst._parent.HUD ~= nil then
+        local items = inst._parent.player_classified.craftedextraelixirevent:value()
+        if items > 2 then
+            TheFocalPoint.SoundEmitter:PlaySound("meta5/wendy/elixir_bonus_2")
+        elseif items > 1 then
+            TheFocalPoint.SoundEmitter:PlaySound("meta5/wendy/elixir_bonus_1")
         end
     end
 end
@@ -1033,6 +1136,11 @@ fns.ShowActions = function(inst, show)
     inst.isactionsvisible:set(show)
 end
 
+fns.ShowCrafting = function(inst, show)
+	inst.iscraftingenabled:set(show)
+	OnIsCraftingEnabledDirty(inst)
+end
+
 fns.ShowHUD = function(inst, show)
     inst.ishudvisible:set(show)
     OnPlayerHUDDirty(inst)
@@ -1046,6 +1154,7 @@ end
 --------------------------------------------------------------------------
 
 local function RegisterNetListeners_mastersim(inst)
+    inst:ListenForEvent("forcehealthpulse", OnForceHealthPulse, inst._parent)
     inst:ListenForEvent("healthdelta", OnHealthDelta, inst._parent)
     inst:ListenForEvent("hungerdelta", OnHungerDelta, inst._parent)
     inst:ListenForEvent("sanitydelta", OnSanityDelta, inst._parent)
@@ -1066,12 +1175,14 @@ local function RegisterNetListeners_mastersim(inst)
     inst:ListenForEvent("houndwarning", OnHoundWarning, inst._parent)
     inst:ListenForEvent("idplantseed", OnIdPlantSeed, inst._parent)
     inst:ListenForEvent("play_theme_music", fns.OnPlayThemeMusic, inst._parent)
+    inst:ListenForEvent("craftedextraelixir", OnCraftedExtraElixir, inst._parent)
 end
 
 local function RegisterNetListeners_local(inst)
     inst:ListenForEvent("healthdirty", OnHealthDirty)
     inst:ListenForEvent("istakingfiredamagedirty", OnIsTakingFireDamageDirty)
     inst:ListenForEvent("istakingfiredamagelowdirty", OnIsTakingFireDamageLowDirty)
+	inst:ListenForEvent("lunarburnflagsdirty", OnLunarBurnFlagsDirty)
     inst:ListenForEvent("combat.attackedpulse", OnAttackedPulseEvent)
     inst:ListenForEvent("hungerdirty", OnHungerDirty)
     inst:ListenForEvent("sanitydirty", OnSanityDirty)
@@ -1081,19 +1192,19 @@ local function RegisterNetListeners_local(inst)
     inst:ListenForEvent("inspirationsong2dirty", function(_inst) fns.OnInspirationSongsDirty(_inst, 2) end)
     inst:ListenForEvent("inspirationsong3dirty", function(_inst) fns.OnInspirationSongsDirty(_inst, 3) end)
     inst:ListenForEvent("mightinessdirty", OnMightinessDirty)
-    inst:ListenForEvent("upgrademoduleenergyupdate", fns.OnEnergyLevelDirty)
-    inst:ListenForEvent("upgrademoduleslistdirty", fns.OnUpgradeModulesListDirty)
-    inst:ListenForEvent("uirobotsparksevent", fns.OnUIRobotSparks)
     inst:ListenForEvent("freesoulhopsdirty", fns.OnFreeSoulhopsDirty)
     inst:ListenForEvent("temperaturedirty", OnTemperatureDirty)
     inst:ListenForEvent("moisturedirty", OnMoistureDirty)
     inst:ListenForEvent("techtreesdirty", OnTechTreesDirty)
     inst:ListenForEvent("recipesdirty", OnRecipesDirty)
+	inst:ListenForEvent("iscraftingenableddirty", OnIsCraftingEnabledDirty)
     inst:ListenForEvent("bufferedbuildsdirty", OnBufferedBuildsDirty)
     inst:ListenForEvent("isperformactionsuccessdirty", OnIsPerformActionSuccessDirty)
     inst:ListenForEvent("pausepredictionframesdirty", OnPausePredictionFramesDirty)
 	inst:ListenForEvent("isstrafingdirty", fns.OnIsStrafingDirty)
     inst:ListenForEvent("iscarefulwalkingdirty", OnIsCarefulWalkingDirty)
+    inst:ListenForEvent("externalvelocityvectordirty", OnExternalVelocityVectorDirty)
+	inst:ListenForEvent("playerspeedmultdirty", fns.OnPlayerSpeedMultDirty)
     inst:ListenForEvent("isghostmodedirty", OnGhostModeDirty)
     inst:ListenForEvent("actionmeterdirty", OnActionMeterDirty)
     inst:ListenForEvent("playerhuddirty", OnPlayerHUDDirty)
@@ -1101,6 +1212,7 @@ local function RegisterNetListeners_local(inst)
     inst:ListenForEvent("playerscreenflashdirty", OnPlayerScreenFlashDirty)
     inst:ListenForEvent("attunedresurrectordirty", OnAttunedResurrectorDirty)
     inst:ListenForEvent("cannondirty", fns.OnCannonDirty)
+	inst:ListenForEvent("bathingpooldirty", fns.OnBathingPoolDirty)
 end
 
 local function RegisterNetListeners_common(inst)
@@ -1123,6 +1235,7 @@ local function RegisterNetListeners_common(inst)
     inst:ListenForEvent("yotbskindirty", fns.OnYotbSkinDirty)
     inst:ListenForEvent("ismounthurtdirty", OnMountHurtDirty)
     inst:ListenForEvent("playercameradirty", OnPlayerCameraDirty)
+	inst:ListenForEvent("playeraerialcameradirty", OnPlayerAerialCameraDirty)
     inst:ListenForEvent("playercameraextradistdirty", fns.OnPlayerCameraExtraDistDirty)
     inst:ListenForEvent("playercamerasnap", OnPlayerCameraSnap)
     inst:ListenForEvent("playerminimapcenter", OnPlayerMinimapCenter)
@@ -1138,6 +1251,8 @@ local function RegisterNetListeners_common(inst)
     inst:ListenForEvent("ingredientmoddirty", fns.RefreshCrafting)
     inst:ListenForEvent("inspectacles_gamedirty", fns.OnInspectaclesGameDirty)
     inst:ListenForEvent("roseglasses_cooldowndirty", fns.OnRoseGlassesCooldownDirty)
+    inst:ListenForEvent("wortoxpanflutebuffdirty", fns.OnWortoxPanfluteBuffDirty)
+    inst:ListenForEvent("craftedextraelixirdirty",fns.OnCraftedExtraElixirDirty)
 end
 
 local function RegisterNetListeners(inst)
@@ -1171,6 +1286,7 @@ end
 function fns.OnInitialDirtyStates(inst)
     if not TheWorld.ismastersim then
         OnIsTakingFireDamageDirty(inst)
+		OnLunarBurnFlagsDirty(inst)
         OnTemperatureDirty(inst)
         OnTechTreesDirty(inst)
         if inst._parent ~= nil then
@@ -1191,12 +1307,15 @@ function fns.OnInitialDirtyStates(inst)
     fns.OnIsAcidSizzlingDirty(inst)
     fns.OnInspectaclesGameDirty(inst)
     fns.OnRoseGlassesCooldownDirty(inst)
+    fns.OnWortoxPanfluteBuffDirty(inst)
     OnGiftsDirty(inst)
     fns.OnYotbSkinDirty(inst)
     OnMountHurtDirty(inst)
     OnGhostModeDirty(inst)
+	OnIsCraftingEnabledDirty(inst)
     OnPlayerHUDDirty(inst)
     OnPlayerCameraDirty(inst)
+	OnPlayerAerialCameraDirty(inst)
     fns.OnPlayerCameraExtraDistDirty(inst, true)
 end
 
@@ -1227,6 +1346,7 @@ local function fn()
     inst.issleephealing = net_bool(inst.GUID, "health.healthsleep")
     inst.ishealthpulseup = net_bool(inst.GUID, "health.dodeltaovertime(up)", "healthdirty")
     inst.ishealthpulsedown = net_bool(inst.GUID, "health.dodeltaovertime(down)", "healthdirty")
+	inst.lunarburnflags = net_tinybyte(inst.GUID, "health.lunarburnflags", "lunarburnflagsdirty")
     inst.currenthealth:set(100)
     inst.maxhealth:set(100)
 
@@ -1284,25 +1404,12 @@ local function fn()
     inst.currentmightiness = net_byte(inst.GUID, "mightiness.current", "mightinessdirty")
     inst.mightinessratescale = net_tinybyte(inst.GUID, "mightiness.ratescale")
 
-    -- Upgrade Module Owner
-    inst.uirobotsparksevent = net_event(inst.GUID, "uirobotsparksevent")
-
-    inst._oldcurrentenergylevel = 0
-    inst.currentenergylevel = net_smallbyte(inst.GUID, "upgrademodules.currentenergylevel", "upgrademoduleenergyupdate")
-
-    inst.upgrademodules =
-    {
-        net_smallbyte(inst.GUID, "upgrademodules.mods1", "upgrademoduleslistdirty"),
-        net_smallbyte(inst.GUID, "upgrademodules.mods2", "upgrademoduleslistdirty"),
-        net_smallbyte(inst.GUID, "upgrademodules.mods3", "upgrademoduleslistdirty"),
-        net_smallbyte(inst.GUID, "upgrademodules.mods4", "upgrademoduleslistdirty"),
-        net_smallbyte(inst.GUID, "upgrademodules.mods5", "upgrademoduleslistdirty"),
-        net_smallbyte(inst.GUID, "upgrademodules.mods6", "upgrademoduleslistdirty"),
-    }
-
     -- Wortox Soulhop free counter
     inst.freesoulhops = net_tinybyte(inst.GUID, "freesoulhops", "freesoulhopsdirty")
     inst.freesoulhops:set(0)
+    -- Wortox buff
+    inst.wortox_panflute_buff = net_bool(inst.GUID, "wortox_panflute_buff", "wortoxpanflutebuffdirty")
+    inst.wortox_panflute_buff:set(false)
 
     -- Winona inspectacles
     inst.inspectacles_game = net_tinybyte(inst.GUID, "inspectacles_game", "inspectacles_gamedirty")
@@ -1372,6 +1479,7 @@ local function fn()
     inst.camerashaketime = net_byte(inst.GUID, "playercamera.shaketime")
     inst.camerashakespeed = net_byte(inst.GUID, "playercamera.shakespeed")
     inst.camerashakescale = net_byte(inst.GUID, "playercamera.shakescale")
+	inst.isaerialcamera = net_bool(inst.GUID, "playercamera.isaerialcamera", "playeraerialcameradirty")
 
     --Player minimap variables
     inst.minimapcenter = net_bool(inst.GUID, "playerminimap.center", "playerminimapcenter")
@@ -1384,6 +1492,7 @@ local function fn()
     inst.wormholetravelevent = net_tinybyte(inst.GUID, "frontend.wormholetravel", "wormholetraveldirty")
     inst.houndwarningevent = net_smallbyte(inst.GUID, "frontend.houndwarning", "houndwarningdirty")
     inst.idplantseedevent = net_event(inst.GUID, "idplantseedevent")
+    inst.craftedextraelixirevent = net_smallbyte(inst.GUID, "frontend.craftedextraelixir", "craftedextraelixirdirty")
 
     -- busy theme music
     inst.start_farming_music = net_event(inst.GUID, "startfarmingmusicevent")
@@ -1411,6 +1520,8 @@ local function fn()
     inst.isfreebuildmode = net_bool(inst.GUID, "builder.freebuildmode", "recipesdirty")
     inst.current_prototyper = net_entity(inst.GUID, "builder.current_prototyper", "current_prototyper_dirty")
     inst.opencraftingmenuevent = net_event(inst.GUID, "builder.opencraftingmenu")
+	inst.iscraftingenabled = net_bool(inst.GUID, "builder.iscraftingenabled", "iscraftingenableddirty")
+	inst.iscraftingenabled:set(true)
     inst.recipes = {}
     inst.bufferedbuilds = {}
     for k, v in pairs(AllRecipes) do
@@ -1418,6 +1529,13 @@ local function fn()
             inst.recipes[k] = net_bool(inst.GUID, "builder.recipes["..k.."]", "recipesdirty")
             inst.bufferedbuilds[k] = net_bool(inst.GUID, "builder.buffered_builds["..k.."]", "bufferedbuildsdirty")
         end
+    end
+    inst.craftinglimit_recipe = {}
+    inst.craftinglimit_amount = {}
+    local craftinglimit_net_enum = GetIdealUnsignedNetVarForCount(CRAFTINGSTATION_LIMITED_RECIPES_COUNT)
+    for i = 1, CRAFTINGSTATION_LIMITED_RECIPES_COUNT do
+        inst.craftinglimit_recipe[i] = craftinglimit_net_enum(inst.GUID, "builder.craftinglimit_recipe[" .. i .. "]", "recipesdirty")
+        inst.craftinglimit_amount[i] = net_byte(inst.GUID, "builder.craftinglimit_amount[" .. i .. "]", "recipesdirty") -- 255 max.
     end
     inst.ingredientmod:set(INGREDIENT_MOD[1])
 
@@ -1472,14 +1590,26 @@ local function fn()
     inst.actionmeter = net_byte(inst.GUID, "sg.actionmeter", "actionmeterdirty")
     inst.actionmetertime = net_byte(inst.GUID, "sg.actionmetertime", "actionmeterdirty")
     inst.currentstate = net_hash(inst.GUID, "sg.currentstate")
+	inst.isoverrideattack = net_bool(inst.GUID, "sg.isoverrideattack")
 
     --Locomotor variables
     inst.runspeed = net_float(inst.GUID, "locomotor.runspeed")
     inst.externalspeedmultiplier = net_float(inst.GUID, "locomotor.externalspeedmultiplier")
     inst.runspeed:set(TUNING.WILSON_RUN_SPEED)
     inst.externalspeedmultiplier:set(1)
-	inst.busyremoteoverridelocomote = net_bool(inst.GUID, "locomotor.busyremoteoverridelocomote")
+    inst.externalvelocityvectorx = net_float(inst.GUID, "locomotor.externalvelocityvectorx", "externalvelocityvectordirty")
+    inst.externalvelocityvectorz = net_float(inst.GUID, "locomotor.externalvelocityvectorz", "externalvelocityvectordirty")
+	inst.busyremoteoverridelocomote = net_bool(inst.GUID, "locomotor.busyremoteoverridelocomote") --WASD
+	inst.busyremoteoverridelocomoteclick = net_bool(inst.GUID, "locomotor.busyremoteoverridelocomoteclick") --L.click
 	inst.isstrafing = net_bool(inst.GUID, "locomotor.isstrafing", "isstrafingdirty")
+
+	--PlayerSpeedMult variables
+	inst.psm_basespeed = net_float(inst.GUID, "playerspeedmult.psm_basespeed", "playerspeedmultdirty")
+	inst.psm_basespeed:set(inst.runspeed:value())
+	inst.psm_servermult = net_float(inst.GUID, "playerspeedmult.psm_servermult", "playerspeedmultdirty")
+	inst.psm_servermult:set(1)
+	inst.psm_cappedservermult = net_float(inst.GUID, "playerspeedmult.psm_cappedservermult", "playerspeedmultdirty")
+	inst.psm_cappedservermult:set(1)
 
     --CarefulWalking variables
     inst.iscarefulwalking = net_bool(inst.GUID, "carefulwalking.careful", "iscarefulwalkingdirty")
@@ -1490,6 +1620,12 @@ local function fn()
 	--ChannelCaster variables
 	inst.ischannelcasting = net_bool(inst.GUID, "channelcaster.ishcannelcasting")
 	inst.ischannelcastingitem = net_bool(inst.GUID, "channelcaster.ischannelcastingitem")
+
+	--soakin state (bathingpool) variables
+	inst.bathingpool = net_entity(inst.GUID, "soakin.occupying_bathingpool", "bathingpooldirty")
+
+	--foley sound overrides
+	inst.playinghorseshoesounds = net_bool(inst.GUID, "foley.playinghorseshoesounds")
 
     --Morgue variables
     inst.isdeathbypk = net_bool(inst.GUID, "morgue.isdeathbypk", "morguedirty")
@@ -1519,9 +1655,11 @@ local function fn()
     inst.SetUsedTouchStones = SetUsedTouchStones
     inst.SetGhostMode = fns.SetGhostMode
     inst.ShowActions = fns.ShowActions
+	inst.ShowCrafting = fns.ShowCrafting
     inst.ShowHUD = fns.ShowHUD
     inst.EnableMapControls = fns.EnableMapControls
     inst.SetOldagerRate = fns.SetOldagerRate
+	inst.SetBathingPoolCamera = fns.SetBathingPoolCamera
 
     inst.persists = false
 

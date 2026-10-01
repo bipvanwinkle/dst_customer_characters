@@ -40,10 +40,12 @@ local function IsHomeless(inst)
 	return inst.ShouldFlyAway
 end
 
+-- Keep consistent with carnival_plaza.lua check
 local SHOULDFLYAWAY_CANT_TAGS = { "notarget", "INLIMBO" }
 local SHOULDFLYAWAY_ONEOF_TAGS = { "hostile" }
 local function ShouldFlyAway(inst)
     inst.ShouldFlyAway = inst.ShouldFlyAway
+						or TheWorld.state.islunarhailing
 						or (not (inst.sg:HasStateTag("sleeping") or inst.sg:HasStateTag("busy") or inst.sg:HasStateTag("flight"))
 							and (FindEntity(inst, 8, nil, nil, SHOULDFLYAWAY_CANT_TAGS, SHOULDFLYAWAY_ONEOF_TAGS) ~= nil
 								))
@@ -184,6 +186,20 @@ local function DoTossReward(inst)
 	end
 end
 
+local function LowScoreRewardChanceMult(players, chance, luck)
+	return luck > 0 and chance + (luck * .25)
+end
+local function GetMinigameParticipantsLuckChance(inst)
+	local minigame = inst.components.minigame_spectator:GetMinigame()
+	if minigame then
+		local x, y, z = minigame.Transform:GetWorldPosition()
+		local players = FindPlayersInRange(x, y, z, minigame.components.minigame.participator_dist, true)
+		return GetEntitiesLuckChance(players, TUNING.CARNIVAL_CROWKID_TOSS_REWARD_CHANCE, LowScoreRewardChanceMult)
+	end
+
+	return 0
+end
+
 local function OnEndOfGame(inst)
 	local minigame = inst.components.minigame_spectator ~= nil and inst.components.minigame_spectator:GetMinigame() or nil
 
@@ -191,7 +207,7 @@ local function OnEndOfGame(inst)
 	inst.components.minigame_spectator._good_ending = score >= (minigame._good_score_value or 6)
 	inst:PushEvent("minigame_spectator_start_outro")
 
-	if score >= (minigame._spectator_rewards_score or 16) or (score > 5 and math.random() < 0.25) then 
+	if score >= (minigame._spectator_rewards_score or 16) or (score > 5 and math.random() <= GetMinigameParticipantsLuckChance(inst)) then 
 		inst:DoTaskInTime(0.5 + math.random() * 0.5, DoTossReward)
 	end
 end

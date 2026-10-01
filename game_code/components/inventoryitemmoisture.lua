@@ -47,7 +47,8 @@ local function DoUpdate(inst)
 	local self = inst.components.inventoryitemmoisture
 	local dt = self.moistureupdatetask.period
 	local nextdt = self:UpdateMoisture(dt) and UPDATE_TIME or SLOW_UPDATE_TIME
-	if dt ~= nextdt then
+	-- The entity could become invalid from UpdateMoisture, if something external deleted it from the onmoisturedeltacallback callback.
+	if dt ~= nextdt and inst:IsValid() then
 		self.moistureupdatetask:Cancel()
 		self.moistureupdatetask = inst:DoPeriodicTask(nextdt, DoUpdate)
 	end
@@ -59,8 +60,6 @@ end
 
 local InventoryItemMoisture = Class(function(self, inst)
     self.inst = inst
-
-    self.lastUpdate = GetTime()
 
     self._replica = nil
     --Don't initialize .moisture and .iswet until we have a link to inventoryitem replica
@@ -112,8 +111,16 @@ function InventoryItemMoisture:OnEntityWake()
 end
 
 function InventoryItemMoisture:InheritMoisture(moisture, iswet)
+    local oldmoisture = self.moisture
 	self.moisture = math.clamp(moisture, 0, TUNING.MAX_WETNESS)
-    self.iswet = (iswet and moisture > TUNING.MOISTURE_DRY_THRESHOLD) or moisture >= TUNING.MOISTURE_WET_THRESHOLD
+    if self.onlywetwhensaturated then
+        self.iswet = self.moisture == TUNING.MAX_WETNESS
+    else
+        self.iswet = (iswet and moisture > TUNING.MOISTURE_DRY_THRESHOLD) or moisture >= TUNING.MOISTURE_WET_THRESHOLD
+    end
+    if self.onmoisturedeltacallback then
+        self.onmoisturedeltacallback(self.inst, oldmoisture, self.moisture)
+    end
 end
 
 function InventoryItemMoisture:DiluteMoisture(item, count)
@@ -124,8 +131,16 @@ function InventoryItemMoisture:DiluteMoisture(item, count)
 end
 
 function InventoryItemMoisture:MakeMoistureAtLeast(min)
+    local oldmoisture = self.moisture
 	self.moisture = math.max(self.moisture, min)
-	self.iswet = self.iswet or min > TUNING.MOISTURE_DRY_THRESHOLD
+    if self.onlywetwhensaturated then
+        self.iswet = self.moisture == TUNING.MAX_WETNESS
+    else
+	    self.iswet = self.iswet or min > TUNING.MOISTURE_DRY_THRESHOLD
+    end
+    if self.onmoisturedeltacallback then
+        self.onmoisturedeltacallback(self.inst, oldmoisture, self.moisture)
+    end
 end
 
 function InventoryItemMoisture:DoDelta(delta)
@@ -133,25 +148,82 @@ function InventoryItemMoisture:DoDelta(delta)
 end
 
 function InventoryItemMoisture:SetMoisture(moisture)
+    local oldmoisture = self.moisture
 	self.moisture = math.clamp(moisture, 0, TUNING.MAX_WETNESS)
-    if moisture >= TUNING.MOISTURE_WET_THRESHOLD then
+    if self.onlywetwhensaturated then
+        self.iswet = self.moisture == TUNING.MAX_WETNESS
+    elseif moisture >= TUNING.MOISTURE_WET_THRESHOLD then
         self.iswet = true
     elseif moisture <= TUNING.MOISTURE_DRY_THRESHOLD then
         self.iswet = false
     end
     --.iswet does not change if we're in betwen both thresholds
+    if self.onmoisturedeltacallback then
+        self.onmoisturedeltacallback(self.inst, oldmoisture, self.moisture)
+    end
+end
+
+function InventoryItemMoisture:SetExternallyControlled(externallycontrolled)
+    self.externallycontrolled = externallycontrolled
+end
+
+function InventoryItemMoisture:SetOnlyWetWhenSaturated(onlywetwhensaturated)
+    self.onlywetwhensaturated = onlywetwhensaturated
+end
+
+function InventoryItemMoisture:SetOnMoistureDeltaCallback(fn)
+    -- NOTES(JBK): Not firing an event because there are multiple thousands of these updating the memory spike is not worth it for the little amount of entities that need this information.
+    self.onmoisturedeltacallback = fn
 end
 
 function InventoryItemMoisture:GetTargetMoisture()
+    if self.externallycontrolled then
+        return self.moisture
+    end
 	--If floating in the ocean, use MAX_WETNESS (not OCEAN_WETNESS, that is initial wetness when entering ocean)
 	--If there is no owner, use world moisture (account for "rainimmunity")
     --If owner is player, use player moisture
     --Otherwise (most likely a container), keep items dry
     local owner = self.inst.components.inventoryitem.owner
-	return (self.inst.components.floater ~= nil and self.inst.components.floater.showing_effect and TUNING.MAX_WETNESS)
-		or (owner == nil and (TheWorld.state.israining and self.inst.components.rainimmunity == nil and TheWorld.state.wetness or 0))
+	local exposedroot = nil
+	if owner == nil then
+		exposedroot = self.inst
+	elseif owner.components.container and owner.components.container.isexposed then
+		exposedroot = owner
+		while true do
+			if exposedroot.components.rideable then
+				local rider = exposedroot.components.rideable:GetRider()
+				if rider then
+					exposedroot = rider
+					break
+				end
+			end
+			local parent = exposedroot.components.inventoryitem and exposedroot.components.inventoryitem.owner or nil
+			if parent == nil then
+				--no more parent, so use our current exposedroot
+				break
+			elseif parent.components.container then
+				if parent.components.container.isexposed then
+					exposedroot = parent
+				else
+					--our parent is an unexposed container
+					exposedroot = nil
+					break
+				end
+			else--if parent.components.inventory then
+				--our parent is inventory, treat as our direct owner, wetness depends on moisture component if available
+				owner = parent
+				exposedroot = nil
+				break
+			end
+		end
+	end
+	local value = (self.inst.components.floater ~= nil and self.inst.components.floater:IsFloating() and TUNING.MAX_WETNESS)
+		or (exposedroot and (TheWorld.state.israining and exposedroot.components.rainimmunity == nil and TheWorld.state.wetness or 0))
         or (owner.components.moisture ~= nil and owner.components.moisture:GetMoisture())
         or 0
+
+    return value
 end
 
 function InventoryItemMoisture:UpdateMoisture(dt)
@@ -180,6 +252,9 @@ function InventoryItemMoisture:OnLoad(data)
     if data ~= nil then
 		self.moisture = math.clamp(data.moisture or 0, 0, TUNING.MAX_WETNESS)
         self.iswet = (data.wet == true)
+        if self.onmoisturedeltacallback then
+            self.onmoisturedeltacallback(self.inst, 0, self.moisture)
+        end
     end
 end
 

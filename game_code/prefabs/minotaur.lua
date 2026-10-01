@@ -35,6 +35,7 @@ local prefabs =
     "minotaur_blood_big",
     "support_pillar_scaffold_blueprint",
     "minotaurchest",
+    "minotaurcorpse",
 }
 
 local prefabs_chest =
@@ -140,7 +141,7 @@ local function Retarget(inst)
             inst,
             TUNING.MINOTAUR_TARGET_DIST,
             function(guy)
-                return not (inst.components.follower ~= nil and inst.components.follower.leader == guy)
+                return not (inst.components.follower ~= nil and inst.components.follower:GetLeader() == guy)
                        and inst.components.combat:CanTarget(guy)
             end,
             RETARGET_MUST_TAGS,
@@ -429,14 +430,14 @@ local function OnUpdateObstacleSize(inst)
 end
 
 local function OnChangeToObstacle(inst)
-
     inst.Physics:SetMass(100)
     inst.Physics:SetCollisionGroup(COLLISION.GIANTS)
-    inst.Physics:ClearCollisionMask()
-    inst.Physics:CollidesWith(COLLISION.WORLD)
-    inst.Physics:CollidesWith(COLLISION.OBSTACLES)
-    inst.Physics:CollidesWith(COLLISION.SMALLOBSTACLES)
-    inst.Physics:CollidesWith(COLLISION.GIANTS)
+	inst.Physics:SetCollisionMask(
+		COLLISION.WORLD,
+		COLLISION.OBSTACLES,
+		COLLISION.SMALLOBSTACLES,
+		COLLISION.GIANTS
+	)
     
     inst.ischaracterpassthrough = true
     inst.task = inst:DoPeriodicTask(.5, OnUpdateObstacleSize)
@@ -452,6 +453,13 @@ end
 local function OnLoad(inst, data)
     if data then
         inst.spawnlocation = data.spawnlocation or nil
+    end
+end
+
+local function UpdateMiniMapRevealable(inst)
+    if WORLDSTATETAGS.GetTagEnabled("ATRIUM_KEY_FOUND") then
+        inst.MiniMapEntity:SetEnabled(false)
+        inst:RemoveComponent("maprevealable")
     end
 end
 
@@ -471,13 +479,8 @@ end
 local function checkstunend(inst, data)
     if data ~= nil then
         if data.name == "endstun" then
-            inst:RestartBrain()
-            if inst.AnimState:IsCurrentAnimation("stun_jump_pre") or
-                inst.AnimState:IsCurrentAnimation("stun_pre") or
-                inst.AnimState:IsCurrentAnimation("stun_loop") or
-                inst.AnimState:IsCurrentAnimation("stun_hit") then
-                inst.sg:GoToState("stun_pst")
-            end
+			inst:RestartBrain("SGminotaur_stun")
+			inst:PushEventImmediate("endstun")
         end
     end
 end
@@ -521,6 +524,8 @@ local function fn()
     if not TheWorld.ismastersim then
         return inst
     end
+
+	inst.override_combat_fx_height = "low"
 
     inst.recentlycharged = {}
     inst.Physics:SetCollisionCallback(oncollide)
@@ -575,8 +580,8 @@ local function fn()
     inst.components.maprevealable:SetIconPriority(15)
 
     inst:DoTaskInTime(0, rememberhome)
-
     inst:DoTaskInTime(0, function() OnAttacked(inst) end)
+    inst:DoTaskInTime(0, UpdateMiniMapRevealable)
 
     MakeLargeBurnableCharacter(inst, "swap_fire", nil, 1.4)
     MakeMediumFreezableCharacter(inst, "innerds")
@@ -611,7 +616,9 @@ local function dospawnchest(inst, loading)
     chest.Transform:SetPosition(x, 0, z)
 
     --Set up chest loot
-    chest.components.container:GiveItem(SpawnPrefab("atrium_key"))
+    if not WORLDSTATETAGS.GetTagEnabled("ATRIUM_KEY_FOUND") then
+        chest.components.container:GiveItem(SpawnPrefab("atrium_key"))
+    end
 
     local loot_keys = {}
     for i, _ in ipairs(chest_loot) do

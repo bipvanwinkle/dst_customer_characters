@@ -11,6 +11,7 @@ local prefabs =
     "cutgrass",
     "plantmeat",
     "grassgekkoherd",
+    "grassgekkocorpse",
 }
 
 SetSharedLootTable('grassgekko',
@@ -49,7 +50,7 @@ local function ontimerdone(inst, data)
 end
 
 local function SleepTest(inst)
-    if ( inst.components.follower and inst.components.follower.leader )
+    if ( inst.components.follower and inst.components.follower:GetLeader() )
         or ( inst.components.combat and inst.components.combat.target )
         or inst.components.playerprox:IsPlayerClose()
         or TheWorld.state.israining and inst.components.rainimmunity == nil then
@@ -79,6 +80,7 @@ local function OnLoad(inst, data)
     end
 end
 
+local FX_OFFSET = Vector3(1, 0, 1)
 local function fn()
     local inst = CreateEntity()
 
@@ -154,11 +156,14 @@ local function fn()
 
     inst:AddComponent("drownable")
 
-    MakeSmallBurnableCharacter(inst, "grassgecko_body", Vector3(1,0,1))
+    MakeSmallBurnableCharacter(inst, "grassgecko_body", FX_OFFSET)
     MakeSmallFreezableCharacter(inst)
+    inst.components.burnable:SetBurnTime(6 * TUNING.PLANTMOB_BURNTIME_MULT)
+    inst.components.health.fire_damage_scale = TUNING.PLANTMOB_FIRE_DAMAGE_SCALE
 
     inst:SetBrain(brain)
     inst:SetStateGraph("SGgrassgekko")
+	inst.sg.mem.burn_on_electrocute = true
 
     MakeHauntablePanicAndIgnite(inst)
 

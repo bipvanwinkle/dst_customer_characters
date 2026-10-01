@@ -78,7 +78,9 @@ local prefabs =
     "spider_mutate_fx",
     "spider_heal_fx",
     "spider_heal_target_fx",
-    "spider_heal_ground_fx"
+    "spider_heal_ground_fx",
+
+    "spidercorpse",
 }
 
 local brain = require "brains/spiderbrain"
@@ -98,7 +100,7 @@ local function ShouldAcceptItem(inst, item, giver)
 end
 
 local SPIDER_TAGS = { "spider" }
-local SPIDER_IGNORE_TAGS = { "FX", "NOCLICK", "DECOR", "INLIMBO" }
+local SPIDER_IGNORE_TAGS = { "FX", "NOCLICK", "DECOR", "INLIMBO", "creaturecorpse" }
 local function GetOtherSpiders(inst, radius, tags)
     tags = tags or SPIDER_TAGS
     local x, y, z = inst.Transform:GetWorldPosition()
@@ -155,7 +157,7 @@ local function OnGetItemFromPlayer(inst, giver, item)
                         v.components.combat:SetTarget(nil)
                     elseif giver.components.leader ~= nil and
                         v.components.follower ~= nil and
-                        v.components.follower.leader == nil then
+                        v.components.follower:GetLeader() == nil then
                         if not playedfriendsfx then
                             giver:PushEvent("makefriend")
                             playedfriendsfx = true
@@ -193,38 +195,15 @@ local function OnRefuseItem(inst, item)
     end
 end
 
-local function HasFriendlyLeader(inst, target)
-    local leader = inst.components.follower.leader
-    local target_leader = (target.components.follower ~= nil) and target.components.follower.leader or nil
-
-    if leader ~= nil and target_leader ~= nil then
-
-        if target_leader.components.inventoryitem then
-            target_leader = target_leader.components.inventoryitem:GetGrandOwner()
-            -- Don't attack followers if their follow object has no owner
-            if target_leader == nil then
-                return true
-            end
-        end
-
-        local PVP_enabled = TheNet:GetPVPEnabled()
-        return leader == target or (target_leader ~= nil
-                and (target_leader == leader or (target_leader:HasTag("player")
-                and not PVP_enabled))) or
-                (target.components.domesticatable and target.components.domesticatable:IsDomesticated()
-                and not PVP_enabled) or
-                (target.components.saltlicker and target.components.saltlicker.salted
-                and not PVP_enabled)
-
-    elseif target_leader ~= nil and target_leader.components.inventoryitem then
-        -- Don't attack webber's chester
-        target_leader = target_leader.components.inventoryitem:GetGrandOwner()
-        return target_leader ~= nil and target_leader:HasTag("spiderwhisperer")
-    end
-
-    return false
+local function IsSpiderAlly(inst, target)
+	if inst.components.combat:IsAlly(target) then
+		return true
+	elseif target:HasTag("companion") then
+		local target_leader = target.components.follower and target.components.follower:GetLeader()
+		return target_leader ~= nil and target_leader:HasTag("spiderwhisperer")
+	end
+	return false
 end
-
 
 local TARGET_MUST_TAGS = { "_combat", "character" }
 local TARGET_CANT_TAGS = { "spiderwhisperer", "spiderdisguise", "INLIMBO" }
@@ -234,12 +213,9 @@ local function FindTarget(inst, radius)
             inst,
             SpringCombatMod(radius),
             function(guy)
-                return (not inst.bedazzled and (not guy:HasTag("monster") or guy:HasTag("player")))
+				return (not inst.bedazzled and (guy.isplayer or not guy:HasTag("monster")))
                     and inst.components.combat:CanTarget(guy)
-                    and not (inst.components.follower ~= nil and inst.components.follower.leader == guy)
-                    and not HasFriendlyLeader(inst, guy)
-                    and not (inst.components.follower.leader ~= nil and inst.components.follower.leader:HasTag("player")
-                        and guy:HasTag("player") and not TheNet:GetPVPEnabled())
+					and not IsSpiderAlly(inst, guy)
             end,
             TARGET_MUST_TAGS,
             TARGET_CANT_TAGS
@@ -261,7 +237,7 @@ local function keeptargetfn(inst, target)
         and target.components.health ~= nil
         and not target.components.health:IsDead()
         and not (inst.components.follower ~= nil and
-                (inst.components.follower.leader == target or inst.components.follower:IsLeaderSame(target)))
+                (inst.components.follower:GetLeader() == target or inst.components.follower:IsLeaderSame(target)))
 end
 
 local function BasicWakeCheck(inst)
@@ -290,7 +266,7 @@ local function DoReturn(inst)
     if home ~= nil and
         home.components.childspawner ~= nil and
         not (inst.components.follower ~= nil and
-            inst.components.follower.leader ~= nil) then
+            inst.components.follower:GetLeader() ~= nil) then
         home.components.childspawner:GoHome(inst)
     end
 end
@@ -342,7 +318,7 @@ local function OnAttacked(inst, data)
                 local should_share = dude:HasTag("spider")
                     and not dude.components.health:IsDead()
                     and dude.components.follower ~= nil
-                    and dude.components.follower.leader == inst.components.follower.leader
+                    and dude.components.follower:GetLeader() == inst.components.follower:GetLeader()
 
                 if should_share and dude.defensive and not dude.no_targeting then
                     dude.defensive = false
@@ -366,7 +342,7 @@ local function OnStartLeashing(inst, data)
     inst.components.inventoryitem.canbepickedup = true
 
     if inst.recipe then
-        local leader = inst.components.follower.leader
+        local leader = inst.components.follower and inst.components.follower:GetLeader()
         if leader.components.builder and not leader.components.builder:KnowsRecipe(inst.recipe) and leader.components.builder:CanLearn(inst.recipe) then
             leader.components.builder:UnlockRecipe(inst.recipe)
         end
@@ -406,14 +382,14 @@ local function OnGoToSleep(inst)
 end
 
 local function OnWakeUp(inst)
-    if inst.components.follower.leader == nil then
+    if inst.components.follower:GetLeader() == nil then
         inst.components.inventoryitem.canbepickedup = false
     end
 end
 
 local function CalcSanityAura(inst, observer)
     if observer:HasTag("spiderwhisperer") or inst.bedazzled or
-    (inst.components.follower.leader ~= nil and inst.components.follower.leader:HasTag("spiderwhisperer")) then
+    (inst.components.follower:GetLeader() ~= nil and inst.components.follower:GetLeader():HasTag("spiderwhisperer")) then
         return 0
     end
 
@@ -501,11 +477,12 @@ end
 
 local function DoHeal(inst)
     local scale = 1.35
+    inst.SoundEmitter:PlaySound(inst:SoundPath("heal_fartcloud"))
     SpawnHealFx(inst, "spider_heal_ground_fx", scale)
     SpawnHealFx(inst, "spider_heal_fx", scale)
 
     local other_spiders = GetOtherSpiders(inst, TUNING.SPIDER_HEALING_RADIUS, {"spider", "spiderwhisperer", "spiderqueen"})
-    local leader = inst.components.follower.leader
+    local leader = inst.components.follower and inst.components.follower:GetLeader()
 
     for i, spider in ipairs(other_spiders) do
         local target = inst.components.combat.target
@@ -570,6 +547,26 @@ local function SoundPath(inst, event)
     return "dontstarve/creatures/" .. creature .. "/" .. event
 end
 
+local function OnChangedLeader(inst, new_leader, prev_leader)
+    inst._last_leader = prev_leader -- We lose leader on death, so save it here.
+end
+
+local function SaveCorpseData(inst, corpse)
+    local leader = inst._last_leader
+    if leader ~= nil and leader:IsValid() then
+        corpse.components.entitytracker:TrackEntity("remember_leader", leader)
+    end
+
+    local home = inst.components.homeseeker and inst.components.homeseeker:GetHome()
+    if home ~= nil then
+        corpse.components.entitytracker:TrackEntity("spider_home", home)
+
+        if home.components.childspawner and home.components.childspawner.emergencychildrenoutside[inst] then
+            return { isemergencychild = true }
+        end
+    end
+end
+
 local DIET = { FOODTYPE.MEAT }
 local BASE_PATHCAPS = { ignorecreep = true }
 local function create_common(bank, build, tag, common_init, extra_data)
@@ -595,6 +592,11 @@ local function create_common(bank, build, tag, common_init, extra_data)
     inst:AddTag("spider")
     inst:AddTag("drop_inventory_onpickup")
     inst:AddTag("drop_inventory_onmurder")
+
+    --eatsrawmeat (from eater:SetCanEatRawMeat component) added to pristine state for optimization
+    inst:AddTag("eatsrawmeat")
+    --strongstomach (from eater:SetStrongStomach component) added to pristine state for optimization
+    inst:AddTag("strongstomach")
 
     inst.scrapbook_deps = {"silk","spidergland","monstermeat"}
 
@@ -659,6 +661,7 @@ local function create_common(bank, build, tag, common_init, extra_data)
     inst.components.combat:SetOnHit(SummonFriends)
 
     inst:AddComponent("follower")
+    inst.components.follower.OnChangedLeader = OnChangedLeader
     --inst.components.follower.maxfollowtime = TUNING.TOTAL_DAY_TIME
 
     ------------------
@@ -739,8 +742,10 @@ local function create_common(bank, build, tag, common_init, extra_data)
     OnIsCaveDay(inst, TheWorld.state.iscaveday)
 
     inst.SoundPath = SoundPath
+    inst.SaveCorpseData = SaveCorpseData
 
     inst.incineratesound = SoundPath(inst, "die")
+    inst.spawn_lunar_mutated_tuning = "MOONSPIDERDEN_ENABLED"
 
     inst.build = build
     inst.SetHappyFace = (extra_data and extra_data.SetHappyFaceFn) or SetHappyFace
@@ -754,6 +759,8 @@ local function create_spider()
     if not TheWorld.ismastersim then
         return inst
     end
+
+    inst.lunar_mutation_chance = TUNING.SPIDER_PRERIFT_MUTATION_SPAWN_CHANCE
 
     inst.components.health:SetMaxHealth(TUNING.SPIDER_HEALTH)
 
@@ -779,6 +786,8 @@ local function create_warrior()
     if not TheWorld.ismastersim then
         return inst
     end
+
+    inst.lunar_mutation_chance = TUNING.SPIDER_WARRIOR_PRERIFT_MUTATION_SPAWN_CHANCE
 
     inst.components.health:SetMaxHealth(TUNING.SPIDER_WARRIOR_HEALTH)
 
@@ -808,6 +817,8 @@ local function create_hider()
         return inst
     end
 
+    inst.lunar_mutation_chance = TUNING.SPIDER_WARRIOR_PRERIFT_MUTATION_SPAWN_CHANCE
+
     inst.components.health:SetMaxHealth(TUNING.SPIDER_HIDER_HEALTH)
 
     inst.components.combat:SetDefaultDamage(TUNING.SPIDER_HIDER_DAMAGE)
@@ -836,6 +847,8 @@ local function create_spitter()
     if not TheWorld.ismastersim then
         return inst
     end
+
+    inst.lunar_mutation_chance = TUNING.SPIDER_WARRIOR_PRERIFT_MUTATION_SPAWN_CHANCE
 
     inst.components.acidinfusible:SetOnInfuseFn(Spitter_OnAcidInfuse)
     inst.components.acidinfusible:SetOnUninfuseFn(Spitter_OnAcidUninfuse)
@@ -869,6 +882,8 @@ local function create_dropper()
         return inst
     end
 
+    inst.lunar_mutation_chance = TUNING.SPIDER_WARRIOR_PRERIFT_MUTATION_SPAWN_CHANCE
+
     inst.components.health:SetMaxHealth(TUNING.SPIDER_WARRIOR_HEALTH)
 
     inst.components.combat:SetDefaultDamage(TUNING.SPIDER_WARRIOR_DAMAGE)
@@ -891,8 +906,30 @@ local function create_dropper()
 end
 
 local function spider_moon_common_init(inst)
+    inst.AnimState:OverrideSymbol("web", "spider_white", "web")
     inst.Transform:SetScale(1.25, 1.25, 1.25)
     inst:AddTag("lunar_aligned")
+    inst:AddTag("soulless") -- no wortox souls
+end
+
+local function LoadCorpseData(inst, corpse)
+    local data = corpse.corpsedata
+
+    local leader = corpse.components.entitytracker:GetEntity("remember_leader")
+	if leader ~= nil and leader.components.leader then
+        leader.components.leader:AddFollower(inst)
+	    corpse.components.entitytracker:ForgetEntity("remember_leader")
+	end
+
+    local home = corpse.components.entitytracker:GetEntity("spider_home")
+    if home ~= nil and not home:HasTag("spidercocoon") then
+        if data and data.isemergencychild then
+            home.components.childspawner:TakeEmergencyOwnership(inst)
+        else
+            home.components.childspawner:TakeOwnership(inst)
+        end
+		corpse.components.entitytracker:ForgetEntity("spider_home")
+    end
 end
 
 local function create_moon()
@@ -903,6 +940,7 @@ local function create_moon()
     end
 
     inst.DoSpikeAttack = DoSpikeAttack
+    inst.LoadCorpseData = LoadCorpseData
 
     inst.components.health:SetMaxHealth(TUNING.SPIDER_MOON_HEALTH)
 
@@ -918,6 +956,10 @@ local function create_moon()
 
     inst.recipe = "mutator_moon"
 
+    inst.sg.mem.nocorpse = true
+    inst.sg.mem.nolunarmutate = true
+    inst.save_in_foreign_childspawner = true -- To keep ourselves saved in regular spider dens when they don't usually spit out mutated spiders.
+
     return inst
 end
 
@@ -927,6 +969,8 @@ local function create_healer()
     if not TheWorld.ismastersim then
         return inst
     end
+
+    inst.lunar_mutation_chance = TUNING.SPIDER_WARRIOR_PRERIFT_MUTATION_SPAWN_CHANCE
 
     inst.components.health:SetMaxHealth(TUNING.SPIDER_HEALER_HEALTH)
 
@@ -1000,6 +1044,8 @@ local function create_water()
     if not TheWorld.ismastersim then
         return inst
     end
+
+    inst.lunar_mutation_chance = TUNING.SPIDER_WARRIOR_PRERIFT_MUTATION_SPAWN_CHANCE
 
     inst:AddComponent("amphibiouscreature")
     inst.components.amphibiouscreature:SetBanks("spider_water", "spider_water_water")

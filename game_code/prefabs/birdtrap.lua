@@ -24,6 +24,7 @@ local prefabs =
     "canary",
     "bird_mutant",
     "bird_mutant_spitter",
+    "mutatedbird",
 }
 
 --this should be redone as a periodic test, probably, so that we can control the expected return explicitly
@@ -66,6 +67,7 @@ local sounds =
 }
 
 local function OnHarvested(inst)
+    inst.trappedbuild = nil
     if inst.components.finiteuses then
         inst.components.finiteuses:Use(1)
     end

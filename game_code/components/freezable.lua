@@ -199,7 +199,7 @@ function Freezable:UpdateTint()
             elseif self.coldness <= 0 then
                 PopColour(self.inst)
             else
-                local percent = self.coldness / resistance
+                local percent = self:GetFreezePercent()
                 PushColour(self.inst, FREEZE_COLOUR[1] * percent, FREEZE_COLOUR[2] * percent, FREEZE_COLOUR[3] * percent, FREEZE_COLOUR[4] * percent)
             end
         end
@@ -240,6 +240,10 @@ function Freezable:ResolveWearOffTime(t)
         or t
 end
 
+function Freezable:GetFreezePercent()
+    return self.coldness / self:ResolveResistance()
+end
+
 --V2C: Calling this direclty isn't great; :AddColdness instead!
 function Freezable:Freeze(freezetime)
     if self.inst.entity:IsVisible() and not (self.inst.components.health ~= nil and self.inst.components.health:IsDead()) then
@@ -258,9 +262,7 @@ function Freezable:Freeze(freezetime)
         self:StartWearingOff(freezetime)
         self:UpdateTint()
 
-        if self.inst.brain ~= nil then
-            self.inst.brain:Stop()
-        end
+		self.inst:StopBrain("frozen")
 
         if self.inst.components.combat ~= nil then
             self.inst.components.combat:SetTarget(nil)
@@ -289,10 +291,7 @@ function Freezable:Unfreeze()
         self:UpdateTint()
 
         if not (self.inst.components.health ~= nil and self.inst.components.health:IsDead()) then
-            if self.inst.brain ~= nil then
-                self.inst.brain:Start()
-            end
-
+			self.inst:RestartBrain("frozen")
             self.inst:PushEvent("unfreeze")
 
             -- prevent going from unfreeze immediately into an attack, it looks weird

@@ -6,10 +6,29 @@ local events=
     CommonHandlers.OnLocomote(true,true),
     CommonHandlers.OnSleep(),
     CommonHandlers.OnFreeze(),
+	CommonHandlers.OnElectrocute(),
 
-    EventHandler("doattack", function(inst) if not inst.components.health:IsDead() then inst.sg:GoToState("attack") end end),
-    EventHandler("death", function(inst) inst.sg:GoToState("death") end),
-    EventHandler("attacked", function(inst) if not inst.components.health:IsDead() and not inst.sg:HasStateTag("attack") then inst.sg:GoToState("hit") end end),
+	EventHandler("doattack", function(inst)
+		if not (inst.components.health:IsDead() or inst.sg:HasStateTag("electrocute")) then
+			inst.sg:GoToState("attack")
+		end
+	end),
+    CommonHandlers.OnDeath(),
+	EventHandler("attacked", function(inst, data)
+		if inst.components.health and not inst.components.health:IsDead() then
+			if CommonHandlers.TryElectrocuteOnAttacked(inst, data) then
+				return
+			elseif not (	inst.sg:HasAnyStateTag("attack", "electrocute") or
+							CommonHandlers.HitRecoveryDelay(inst, nil, math.huge) --hit delay only for projectiles
+						)
+			then
+				inst.sg:GoToState("hit")
+			end
+		end
+	end),
+
+	-- Corpse handlers
+	CommonHandlers.OnCorpseChomped(),
 }
 
 local states=
@@ -129,11 +148,15 @@ local states=
             inst.SoundEmitter:PlaySound("dontstarve/creatures/koalefant/yell")
             inst.AnimState:PlayAnimation("death")
             inst.components.locomotor:StopMoving()
-            inst.components.lootdropper:DropLoot(Vector3(inst.Transform:GetWorldPosition()))
+            inst:DropDeathLoot()
 
             RemovePhysicsColliders(inst)
         end,
 
+        events =
+        {
+            CommonHandlers.OnCorpseDeathAnimOver(),
+        },
     },
  }
 
@@ -161,7 +184,7 @@ CommonStates.AddRunStates(
         }
     })
 
-CommonStates.AddSimpleState(states,"hit", "hit", {"hit", "busy"})
+CommonStates.AddHitState(states)
 
 CommonStates.AddSleepStates(states,
 {
@@ -171,6 +194,23 @@ CommonStates.AddSleepStates(states,
     },
 })
 CommonStates.AddFrozenStates(states)
+CommonStates.AddElectrocuteStates(states)
 
-return StateGraph("koalefant", states, events, "idle")
+CommonStates.AddInitState(states, "idle")
+CommonStates.AddCorpseStates(states,
+{
+    corpse = function(inst)
+        if inst.meat_level ~= nil then -- This is the actual corpse entity
+            return "carcass"..tostring(inst.meat_level)
+        end
+
+        return "carcass1" -- This is the creature itself.
+    end,
+
+    corpse_hit = function(inst)
+        return "carcass"..tostring(inst.meat_level).."_shake"
+    end,
+})
+
+return StateGraph("koalefant", states, events, "init")
 

@@ -83,6 +83,11 @@ end
 
 local BRIGHTMARE_TAGS = {"brightmare"}
 local function UpdatePopulation()
+    local shard_wagbossinfo = TheWorld.shard and TheWorld.shard.components.shard_wagbossinfo or nil
+    local increased_spawn_factor = (shard_wagbossinfo
+        and shard_wagbossinfo:IsWagbossDefeated()
+        and TUNING.WAGBOSS_DEFEATED_GESTALT_SPAWN_FACTOR)
+        or 1
 	local total_levels = 0
 	for player, _ in pairs(_players) do
 		if IsValidTrackingTarget(player) then
@@ -93,22 +98,14 @@ local function UpdatePopulation()
 				local x, y, z = player.Transform:GetWorldPosition()
 				local gestalts = TheSim:FindEntities(x, y, z, TUNING.GESTALT_POPULATION_DIST, BRIGHTMARE_TAGS)
 				local maxpop = data.MAX_SPAWNS
-				local inc_chance = 0
-				if level == 1 then
-					if #gestalts < maxpop then
-						inc_chance = .2
-					end
-				elseif level == 2 then
-					if #gestalts < maxpop then
-						inc_chance = .3
-					end
-				else -- level == 3
-					if #gestalts < maxpop then
-						inc_chance = .4
-					end
-				end
+				local inc_chance = (#gestalts >= maxpop and 0)
+								or (level == 1 and TUNING.BRIGHTMARE_SPAWN_INC_CHANCES.LOW)
+								or (level == 2 and TUNING.BRIGHTMARE_SPAWN_INC_CHANCES.MED)
+								or TUNING.BRIGHTMARE_SPAWN_INC_CHANCES.HIGH
 
-				if math.random() < inc_chance then
+				inc_chance = inc_chance * increased_spawn_factor
+
+				if TryLuckRoll(player, inc_chance, LuckFormulas.BrightmareSpawn) then
 					TrySpawnGestaltForPlayer(player, level, data)
 				end
 			end
@@ -116,7 +113,11 @@ local function UpdatePopulation()
 		end
 	end
 
-    _poptask = inst:DoTaskInTime(TUNING.GESTALT_POP_CHANGE_INTERVAL - math.min(total_levels, TUNING.GESTALT_POP_CHANGE_INTERVAL / 2) + TUNING.GESTALT_POP_CHANGE_VARIANCE * math.random(), UpdatePopulation)
+	local min_change = math.min(total_levels, TUNING.GESTALT_POP_CHANGE_INTERVAL / 2)
+	local random_change = TUNING.GESTALT_POP_CHANGE_VARIANCE * math.random()
+
+	local next_task_time = TUNING.GESTALT_POP_CHANGE_INTERVAL - min_change + random_change
+    _poptask = inst:DoTaskInTime(next_task_time, UpdatePopulation)
 end
 
 local function Start()

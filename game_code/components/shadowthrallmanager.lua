@@ -361,9 +361,13 @@ function self:StartEventListeners()
 end
 
 function self:KillThrall(thrall)
+    thrall.persists = false -- We're killing it with no loot, so it shouldn't persist anyways.
+
     if thrall.components.lootdropper then
         thrall.components.lootdropper:SetLoot({})
         thrall.components.lootdropper:SetChanceLootTable(nil)
+        thrall.components.lootdropper:SetLootSetupFn(nil)
+        thrall.components.lootdropper:ClearRandomLoot()
     end
 
     if thrall.components.health then

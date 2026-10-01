@@ -27,8 +27,6 @@ local assets =
 
     Asset("ANIM", "anim/merm_guard_transformation.zip"),
 
-    Asset("ANIM", "anim/merm_actions_skills.zip"),
-
     Asset("ANIM", "anim/ds_pig_parasite_death.zip"),    
 
     Asset("SOUND", "sound/merm.fsb"),
@@ -52,6 +50,8 @@ local prefabs =
     "shadow_merm_spawn_poof_fx",
     "shadow_merm_smacked_poof_fx",
     "merm_soil_marker",
+
+    "mermcorpse",
 }
 
 local merm_loot =
@@ -105,9 +105,9 @@ local function FindInvaderFn(guy, inst)
         return nil
     end
 
-    local leader = inst.components.follower and inst.components.follower.leader
+    local leader = inst.components.follower and inst.components.follower:GetLeader()
 
-    local leader_guy = guy.components.follower and guy.components.follower.leader
+    local leader_guy = guy.components.follower and guy.components.follower:GetLeader()
     if leader_guy and leader_guy.components.inventoryitem then
         leader_guy = leader_guy.components.inventoryitem:GetGrandOwner()
     end
@@ -139,7 +139,7 @@ local function KeepTargetFn(inst, target)
     local defend_dist = (inst:HasTag("mermguard") and TUNING.MERM_GUARD_DEFEND_DIST) or TUNING.MERM_DEFEND_DIST
     defend_dist = (defend_dist * defend_dist)
     local home = inst.components.homeseeker and inst.components.homeseeker.home
-    local follower = inst.components.follower and inst.components.follower.leader
+    local follower = inst.components.follower and inst.components.follower:GetLeader()
 
     if home and not follower then
         return home:GetDistanceSqToInst(target) < defend_dist
@@ -239,16 +239,23 @@ end
 local function GetOtherMerms(inst, radius, maxcount, giver)
     local x, y, z = inst.Transform:GetWorldPosition()
 
-    local merms = TheSim:FindEntities(x, y, z, radius, MERM_TAGS, giver and giver:HasTag("playermerm") and MERM_IGNORE_TAGS or MERM_IGNORE_TAGS_NOGUARDS)
+    local NO_TAGS = (giver and giver:HasTag("playermerm") and MERM_IGNORE_TAGS) or MERM_IGNORE_TAGS_NOGUARDS
+    local merms = TheSim:FindEntities(x, y, z, radius, MERM_TAGS, NO_TAGS)
     local merms_highpriority = {}
     local merms_lowpriority = {}
 
+    local skilltreeupdater = giver.components.skilltreeupdater
+
+    -- Shadow Merms are already excluded from aoe hire.
+    --local is_giver_shadow_aligned = skilltreeupdater and skilltreeupdater:IsActivated("wurt_shadow_allegiance_1")
+    local is_giver_lunar_aligned = skilltreeupdater and skilltreeupdater:IsActivated("wurt_lunar_allegiance_1")
     for _, merm in ipairs(merms) do
-        if merm ~= inst and not merm.components.health:IsDead() then
+        if merm ~= inst and not merm.components.health:IsDead()
+            and (not merm:HasTag("lunarminion") or is_giver_lunar_aligned) then
             local follower = merm.components.follower
             if follower then
                 -- No leader or about to lose loyalty is high priority.
-                if follower.leader == nil or follower:GetLoyaltyPercent() < TUNING.MERM_LOW_LOYALTY_WARNING_PERCENT then
+                if follower:GetLeader() == nil or follower:GetLoyaltyPercent() < TUNING.MERM_LOW_LOYALTY_WARNING_PERCENT then
                     table.insert(merms_highpriority, merm)
                 else
                     table.insert(merms_lowpriority, merm)
@@ -375,9 +382,17 @@ local function ShouldAcceptItem(inst, item, giver)
         inst.components.sleeper:WakeUp()
     end
 
+    local skilltreeupdater = giver.components.skilltreeupdater
+
+    -- Can't interact with Lunar merms/shadow mermsif we are not the respective alignment.
+    if inst:HasTag("lunarminion") and (skilltreeupdater and not skilltreeupdater:IsActivated("wurt_lunar_allegiance_1")) then
+        return false
+    elseif inst:HasTag("shadowminion") and (skilltreeupdater and not skilltreeupdater:IsActivated("wurt_shadow_allegiance_1")) then
+        return false
+    end
+
     -- Giving merm Moon Glass.
-    if giver.components.skilltreeupdater ~= nil and
-        giver.components.skilltreeupdater:IsActivated("wurt_lunar_allegiance_1") and
+    if skilltreeupdater ~= nil and skilltreeupdater:IsActivated("wurt_lunar_allegiance_1") and
         inst.components.follower ~= nil and inst.components.follower:GetLeader() == giver and
         item:HasTag("moonglass_piece") and not inst:HasTag("lunarminion") and not inst:HasTag("shadowminion")
     then
@@ -462,20 +477,23 @@ local function UpdateDamageAndHealth(inst)
 
     inst.components.combat:SetDefaultDamage(damage)
 
-    local health
+    -- This could pull the merm out of death while death events were firing, which lead to very ugly bugs.
+    if not inst.components.health:IsDead() then
+        local health
 
-    if isguard then
-        health = (hasking and TUNING.MERM_GUARD_HEALTH)     or TUNING.PUNY_MERM_HEALTH
+        if isguard then
+            health = (hasking and TUNING.MERM_GUARD_HEALTH)     or TUNING.PUNY_MERM_HEALTH
 
-    else
-        health = (hasking and TUNING.MERM_HEALTH_KINGBONUS) or TUNING.MERM_HEALTH
+        else
+            health = (hasking and TUNING.MERM_HEALTH_KINGBONUS) or TUNING.MERM_HEALTH
+        end
+
+        if inst:HasTag("lunarminion") then
+            health = health + (isguard and TUNING.MERM_LUNAR_GUARD_EXTRA_HEALTH or TUNING.MERM_LUNAR_EXTRA_HEALTH)
+        end
+
+        inst.components.health:SetMaxHealth(health)
     end
-
-    if inst:HasTag("lunarminion") then
-        health = health + (isguard and TUNING.MERM_LUNAR_GUARD_EXTRA_HEALTH or TUNING.MERM_LUNAR_EXTRA_HEALTH)
-    end
-
-    inst.components.health:SetMaxHealth(health)
 end
 
 local function UpdateRoyalStatus(inst, scale)
@@ -560,7 +578,7 @@ end
 
 local function ShouldSleep(inst)
     return NocturnalSleepTest(inst)
-        and ((inst.components.follower == nil or inst.components.follower.leader) == nil and
+        and ((inst.components.follower == nil or not inst.components.follower:GetLeader()) and
         not TheWorld.components.mermkingmanager and TheWorld.components.mermkingmanager:IsCandidate(inst))
 end
 
@@ -611,7 +629,7 @@ local function OnEntitySleepMerm(inst)
         return -- It did not want to teleport anyway, bail.
     end
 
-    if inst.components.follower and inst.components.follower.leader then
+    if inst.components.follower and inst.components.follower:GetLeader() then
         return -- Leader component takes care of this case by teleporting the entity to the leader.
     end
 
@@ -660,6 +678,8 @@ local function spawn_shadow_merm(inst)
     then
         inst.old_leader.components.leader:AddFollower(shadowmerm)
     end
+
+    inst.sg.mem.nolunarmutate = true -- No lunar mutation !
 
     local home = inst.components.homeseeker ~= nil and inst.components.homeseeker:GetHome() or nil
 
@@ -912,6 +932,74 @@ local function updateeyebuild(inst)
     end
 end
 
+local function CanBeRollCalledFn(inst, leader)
+    local skilltreeupdater = leader.components.skilltreeupdater
+
+    if inst:HasTag("lunarminion") then
+        return skilltreeupdater and skilltreeupdater:IsActivated("wurt_lunar_allegiance_1")
+    elseif inst:HasTag("shadowminion") then
+        return skilltreeupdater and skilltreeupdater:IsActivated("wurt_shadow_allegiance_1")
+    end
+
+    if inst:HasTag("mermguard") then
+        -- Merm Guards require Wurt
+        return leader:HasTag("merm") and not leader:HasTag("mermdisguise")
+    else
+        -- Merms require player to wear disguise, or have a merm king already existing
+        return leader:HasTag("merm") or (TheWorld.components.mermkingmanager and TheWorld.components.mermkingmanager:HasKingAnywhere())
+    end
+end
+
+local function OnChangedLeader(inst, new_leader, prev_leader)
+    inst._last_leader = prev_leader -- We lose leader on death, so save it here.
+end
+
+local function SaveCorpseData(inst, corpse)
+    local data = { name = inst.components.named.name }
+    local leader = inst._last_leader
+    if leader ~= nil and leader:IsValid() then
+        corpse.components.entitytracker:TrackEntity("remember_leader", leader)
+    end
+
+    local home = inst.components.homeseeker ~= nil and inst.components.homeseeker:GetHome() or nil
+    if home ~= nil and home.components.childspawner ~= nil then
+        corpse.components.entitytracker:TrackEntity("remember_home", home)
+
+        if home.components.childspawner.emergencychildrenoutside[inst] then
+            data.isemergencychild = true
+        end
+    end
+
+    return data
+end
+
+local function LoadCorpseData(inst, corpse)
+    local data = corpse.corpsedata
+    if data and data.name then
+        inst.components.named:SetName(data.name)
+    end
+
+    local leader = corpse.components.entitytracker:GetEntity("remember_leader")
+	if leader ~= nil and leader.components.leader then
+        local skilltreeupdater = leader.components.skilltreeupdater
+        if inst:HasTag("lunarminion") and skilltreeupdater and skilltreeupdater:IsActivated("wurt_lunar_allegiance_1") then
+            -- NOTE(Omar): We don't need to set loyalty time or max follow time because lunar merms never expire anyways.
+            leader.components.leader:AddFollower(inst)
+		    corpse.components.entitytracker:ForgetEntity("remember_leader")
+        end
+	end
+
+    local home = corpse.components.entitytracker:GetEntity("remember_home")
+	if home ~= nil and home.components.childspawner then
+        if data and data.isemergencychild then
+            home.components.childspawner:TakeEmergencyOwnership(inst)
+        else
+            home.components.childspawner:TakeOwnership(inst)
+        end
+        corpse.components.entitytracker:ForgetEntity("remember_home")
+    end
+end
+
 local SCRAPBOOK_HIDE_SYMBOLS = { "hat", "ARM_carry", "ARM_carry_up" }
 
 local function MakeMerm(name, assets, prefabs, common_postinit, master_postinit,data)
@@ -1002,7 +1090,11 @@ local function MakeMerm(name, assets, prefabs, common_postinit, master_postinit,
         inst:AddComponent("inventory")
         inst:AddComponent("inspectable")
         inst:AddComponent("knownlocations")
+
         inst:AddComponent("follower")
+        inst.components.follower:SetCanBeRollCalledFn(CanBeRollCalledFn)
+        inst.components.follower.OnChangedLeader = OnChangedLeader
+
         inst:AddComponent("mermcandidate")
 
         inst:AddComponent("timer")
@@ -1031,13 +1123,15 @@ local function MakeMerm(name, assets, prefabs, common_postinit, master_postinit,
         inst:ListenForEvent("unequip", onunequip)
         inst:ListenForEvent("equip", equip)
 
-
         inst.TestForLunarMutation = TestForLunarMutation
         inst.DoLunarMutation = DoLunarMutation
         inst.UpdateDamageAndHealth = UpdateDamageAndHealth
         inst.TestForShadowDeath = TestForShadowDeath
         inst.DoThorns = DoThorns
         inst.dohiremerms = dohiremerms
+
+        inst.SaveCorpseData = SaveCorpseData
+        inst.LoadCorpseData = LoadCorpseData
 
         if not data or not data.unliving then
             living_merm_common_master(inst)
@@ -1046,6 +1140,13 @@ local function MakeMerm(name, assets, prefabs, common_postinit, master_postinit,
         if master_postinit ~= nil then
             master_postinit(inst)
         end
+
+        if data and data.unliving then
+            inst.sg.mem.nocorpse = true
+            inst.sg.mem.nolunarmutate = true
+        end
+
+        inst.spawn_lunar_mutated_tuning = "SPAWN_MUTATED_MERMS"
 
         if inst.sg and inst.physicsradiusoverride then
             inst.sg.mem.radius = inst.physicsradiusoverride
@@ -1067,35 +1168,6 @@ end
 
 local function no_holes(pt)
     return not TheWorld.Map:IsPointNearHole(pt)
-end
-
-local function OnAttackOther(inst, data)
-    local victim = data.target
-    if not victim then return end
-
-    local leader = (inst.components.follower and inst.components.follower.leader) or nil
-    if not leader then return end
-
-    local leader_has_shadow_terrain_skill = (leader.components.skilltreeupdater
-        and leader.components.skilltreeupdater:IsActivated("wurt_shadow_allegiance_2")
-    ) or false
-    if leader_has_shadow_terrain_skill and math.random() > TUNING.WURT_TERRAFORMING_SHADOW_PROCCHANCE then
-        local tile_type = inst:GetCurrentTileType()
-        if tile_type == WORLD_TILES.SHADOW_MARSH then
-            local pt = victim:GetPosition()
-            local offset = FindWalkableOffset(pt, math.random() * TWOPI, 2, 3, false, true, no_holes, false, true)
-            if offset ~= nil then
-                inst.SoundEmitter:PlaySound("dontstarve/common/shadowTentacleAttack_1")
-                inst.SoundEmitter:PlaySound("dontstarve/common/shadowTentacleAttack_2")
-                local tentacle = SpawnPrefab("shadowtentacle")
-                if tentacle ~= nil then
-                    tentacle.owner = inst
-                    tentacle.Transform:SetPosition(pt.x + offset.x, 0, pt.z + offset.z)
-                    tentacle.components.combat:SetTarget(victim)
-                end
-            end
-        end
-    end
 end
 
 -- Guard
@@ -1125,6 +1197,11 @@ local function guard_on_mermking_destroyed_anywhere(inst)
 end
 
 local function on_guard_initialize(inst)
+    if inst.initialize_task ~= nil then
+        inst.initialize_task:Cancel()
+        inst.initialize_task = nil
+    end
+
     if not (TheWorld.components.mermkingmanager and TheWorld.components.mermkingmanager:HasKingAnywhere()) then
         RoyalGuardDowngrade(inst)
     end
@@ -1144,22 +1221,23 @@ local function Guard_ShouldWaitForHelp(inst)
 end
 
 local function Guard_CanTripleAttack(inst)
+    local leader = inst.components.follower:GetLeader()
     return inst.components.debuffable ~= nil
         and inst.components.debuffable:HasDebuff("mermkingtridentbuff")
-        and math.random() < TUNING.MERMKING_TRIDENTBUFF_TRIPLEHIT_CHANCE
+        and TryLuckRoll(leader, TUNING.MERMKING_TRIDENTBUFF_TRIPLEHIT_CHANCE, LuckFormulas.MermTripleAttack)
 end
 
 local function OnAttackOther(inst, data)
     local victim = data.target
     if not victim then return end
 
-    local leader = (inst.components.follower and inst.components.follower.leader) or nil
+    local leader = inst.components.follower and inst.components.follower:GetLeader()
     if not leader then return end
 
     local leader_has_shadow_terrain_skill = (leader.components.skilltreeupdater
         and leader.components.skilltreeupdater:IsActivated("wurt_shadow_allegiance_2")
     ) or false
-    if leader_has_shadow_terrain_skill and math.random() > TUNING.WURT_TERRAFORMING_SHADOW_PROCCHANCE then
+    if leader_has_shadow_terrain_skill and TryLuckRoll(leader, TUNING.WURT_TERRAFORMING_SHADOW_PROCCHANCE, LuckFormulas.ShadowTentacleSpawn) then
         local tile_type = inst:GetCurrentTileType()
         if tile_type == WORLD_TILES.SHADOW_MARSH then
             local pt = victim:GetPosition()
@@ -1214,7 +1292,10 @@ local function guard_master(inst)
     inst:ListenForEvent("onmermkingdestroyed_anywhere", function() guard_on_mermking_destroyed_anywhere(inst) end, TheWorld)
     inst:ListenForEvent("onattackother", OnAttackOther)
 
-    inst:DoTaskInTime(0, on_guard_initialize)
+    -- NOTE(Omar): This probably shouldn't a be a task in time anyways, but at risk of breaking things, here's a init function to instantly set and alter scale for
+    -- cases like lunar mutating
+    inst.OnGuardInitialize = on_guard_initialize
+    inst.initialize_task = inst:DoTaskInTime(0, inst.OnGuardInitialize)
 end
 
 -- Common
@@ -1339,6 +1420,7 @@ end
 local function shadow_merm_common(inst)
     common_common(inst)
     inst.AnimState:SetBuild("merm_shadow_build")
+    inst.AnimState:AddOverrideBuild("merm_actions_skills") -- For disappear and appear shadow effects to show.
     inst:SetPhysicsRadiusOverride(0.5)
 
     inst.DynamicShadow:Enable(false)
@@ -1364,7 +1446,8 @@ local function shadow_merm_common(inst)
     end
 end
 
-local function OnChangedLeaderShadow(inst, new_leader)
+local function OnChangedLeaderShadow(inst, new_leader, prev_leader)
+    OnChangedLeader(inst, new_leader, prev_leader)
     if new_leader == nil and not inst.components.health:IsDead() then
         inst.sg:GoToState("hit_shadow")
     end
@@ -1374,6 +1457,7 @@ local function shadow_merm_master(inst)
     common_master(inst)
 
     inst.scrapbook_multcolour = { 0, 0, 0 }
+    inst.sg.mem.noelectrocute = true --sg is shared by other merms that support electrocute
 
     inst:RemoveComponent("sleeper")
 
@@ -1439,6 +1523,7 @@ local function shadow_mermguard_master(inst)
     guard_master(inst)
 
     inst.scrapbook_multcolour = { 0, 0, 0 }
+	inst.sg.mem.noelectrocute = true --sg is shared by other merms that support electrocute
 
     inst.components.locomotor:SetTriggersCreep(false)
     inst.components.locomotor.pathcaps = { ignorecreep = true }
@@ -1466,7 +1551,8 @@ end
 -------------------------------------------------------------------------------
 -- LUNAR MERM DEFS
 
-local function OnChangedLeaderLunar(inst, new_leader)
+local function OnChangedLeaderLunar(inst, new_leader, prev_leader)
+    OnChangedLeader(inst, new_leader, prev_leader)
     if inst:IsValid() and new_leader == nil and not inst.components.health:IsDead() then
         DoLunarRevert(inst)
     end
@@ -1509,6 +1595,10 @@ local function lunar_merm_master(inst)
 
     inst.components.follower.neverexpire = true
     inst.components.follower.OnChangedLeader = OnChangedLeaderLunar
+
+    inst.sg.mem.nocorpse = true
+    inst.sg.mem.nolunarmutate = true
+    inst.save_in_foreign_childspawner = true
 end
 
 local function lunar_mermguard_common(inst)
@@ -1548,6 +1638,10 @@ local function lunar_mermguard_master(inst)
 
     inst.components.follower.neverexpire = true
     inst.components.follower.OnChangedLeader = OnChangedLeaderLunar
+
+    inst.sg.mem.nocorpse = true
+    inst.sg.mem.nolunarmutate = true
+    inst.save_in_foreign_childspawner = true
 end
 
 return MakeMerm("merm", assets, prefabs, common_common, common_master),

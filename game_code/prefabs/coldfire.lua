@@ -95,17 +95,19 @@ local function OnHaunt(inst)
     return false
 end
 
+local function OnInit(inst)
+    if inst.components.burnable ~= nil then
+        inst.components.burnable:FixFX()
+    end
+end
+
 local function fn()
     local inst = CreateEntity()
 
     inst.entity:AddTransform()
     inst.entity:AddAnimState()
     inst.entity:AddSoundEmitter()
-    inst.entity:AddMiniMapEntity()
     inst.entity:AddNetwork()
-
-    inst.MiniMapEntity:SetIcon("coldfire.png")
-    inst.MiniMapEntity:SetPriority(1)
 
     inst.AnimState:SetBank("coldfire")
     inst.AnimState:SetBuild("coldfire")
@@ -130,7 +132,7 @@ local function fn()
     -----------------------
     inst:AddComponent("burnable")
     --inst.components.burnable:SetFXLevel(2)
-    inst.components.burnable:AddBurnFX("coldfirefire", Vector3(0, 0, 0))
+    inst.components.burnable:AddBurnFX("coldfirefire", Vector3(0, 0, 0), "firefx", true, nil, true)
     inst:ListenForEvent("onextinguish", onextinguish)
 
     -------------------------
@@ -164,6 +166,8 @@ local function fn()
     inst.components.hauntable:SetOnHauntFn(OnHaunt)
 
     inst:ListenForEvent("onbuilt", onbuilt)
+
+    inst:DoTaskInTime(0, OnInit)
 
     return inst
 end

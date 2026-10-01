@@ -12,16 +12,6 @@ local actionhandlers =
 
 local SHAKE_DIST = 40
 
-local function swoopcollision(inst)
-    inst.Physics:ClearCollisionMask()
-end
-
-local function resetcollision(inst)
-    inst.Physics:CollidesWith((TheWorld:CanFlyingCrossBarriers() and COLLISION.GROUND) or COLLISION.WORLD)
-    inst.Physics:CollidesWith(COLLISION.FLYERS)
-end
-
-
 local function spawnripple(inst)
     if not TheWorld.Map:IsVisualGroundAtPoint(inst.Transform:GetWorldPosition()) then
         inst.SoundEmitter:PlaySound("saltydog/creatures/boss/malbatross/ripple")
@@ -85,22 +75,27 @@ local function SpawnMalbatrossAttackWaves(inst)
     end
 end
 
+local function ShouldUseLandState(inst)
+    return TheWorld.Map:IsVisualGroundAtPoint(inst.Transform:GetWorldPosition()) or inst:GetCurrentPlatform() or not inst:IsOnOcean()
+end
+
 local events =
 {
     CommonHandlers.OnLocomote(false, true),
     CommonHandlers.OnSleepEx(),
     CommonHandlers.OnWakeEx(),
     CommonHandlers.OnFreeze(),
+	CommonHandlers.OnElectrocute(),
     CommonHandlers.OnAttacked(),
 
     EventHandler("depart", function(inst, data)
-        if not inst.components.health:IsDead() and (not inst.sg:HasStateTag("busy") or inst.sg:HasStateTag("hit")) then
+		if not inst.components.health:IsDead() and (not inst.sg:HasStateTag("busy") or (inst.sg:HasStateTag("hit") and not inst.sg:HasStateTag("electrocute"))) then
             inst.sg:GoToState("depart")
         end
     end),
 
     EventHandler("dosplash", function(inst, data)
-        if not inst.components.health:IsDead() and not inst.components.freezable:IsFrozen() and not inst.components.sleeper:IsAsleep() then
+		if not (inst.components.health:IsDead() or inst.components.freezable:IsFrozen() or inst.components.sleeper:IsAsleep() or inst.sg:HasStateTag("electrocute")) then
             if not TheWorld.Map:IsVisualGroundAtPoint(inst.Transform:GetWorldPosition()) and not inst:GetCurrentPlatform() and inst:IsOnOcean() then
                 inst.readytodive = nil
                 inst.sg:GoToState("combatdive")
@@ -108,25 +103,30 @@ local events =
         end
     end),
     EventHandler("doswoop", function(inst, data)
-        if not inst.components.health:IsDead() and not inst.components.freezable:IsFrozen() and not inst.components.sleeper:IsAsleep() then
+		if not (inst.components.health:IsDead() or inst.components.freezable:IsFrozen() or inst.components.sleeper:IsAsleep() or inst.sg:HasStateTag("electrocute")) then
             inst:DoTaskInTime((math.random()*6) + 10, function(inst) inst.readytoswoop = true end)
             inst.sg:GoToState("swoop_pre", data.target or inst.components.combat.target)
         end
     end),
     EventHandler("death", function(inst, data)
-        if TheWorld.Map:IsVisualGroundAtPoint(inst.Transform:GetWorldPosition()) or inst:GetCurrentPlatform() or not inst:IsOnOcean() then
-            inst.sg:GoToState("death", data)
+        local use_corpse_state = CommonHandlers.ShouldUseCorpseStateOnLoad(inst, data.cause)
+        if use_corpse_state then
+            inst.sg:GoToState("corpse", true)
         else
-            inst.sg:GoToState("death_ocean", data)
+            inst.sg:GoToState(ShouldUseLandState(inst) and "death" or "death_ocean", data)
         end
     end),
 
     EventHandler("doattack", function(inst, data)
         if inst.components.health ~= nil and not inst.components.health:IsDead()
-            and (not inst.sg:HasStateTag("busy") or inst.sg:HasStateTag("hit")) then
+			and (not inst.sg:HasStateTag("busy") or (inst.sg:HasStateTag("hit") and not inst.sg:HasStateTag("electrocute")))
+		then
             inst.sg:GoToState("attack")
         end
     end),
+
+	-- Corpse handlers
+	CommonHandlers.OnCorpseChomped(),
 }
 
 local function go_to_idle(inst)
@@ -184,7 +184,7 @@ local states =
 
     State{
         name = "arrive",
-        tags = {"busy", "noattack", "nosleep", "swoop", "flight"},
+		tags = { "busy", "noattack", "nosleep", "swoop", "flight", "noelectrocute" },
 
         onenter = function(inst)
             inst.components.locomotor:Stop()
@@ -197,6 +197,7 @@ local states =
             TimeEvent(14 * FRAMES, function(inst)
                 inst.sg:RemoveStateTag("noattack")
                 inst.sg:RemoveStateTag("nosleep")
+				inst.sg:RemoveStateTag("noelectrocute")
             end),
             TimeEvent(17*FRAMES, function(inst) inst.SoundEmitter:PlaySound("saltydog/creatures/boss/malbatross/flap") end),
             TimeEvent(27*FRAMES, function(inst) inst.SoundEmitter:PlaySound("saltydog/creatures/boss/malbatross/flap") end),
@@ -210,7 +211,7 @@ local states =
 
     State{
         name = "depart",
-        tags = {"busy", "nosleep", "swoop", "flight"},
+		tags = { "busy", "nosleep", "swoop", "flight", "noelectrocute" },
 
         onenter = function(inst)
             inst.components.locomotor:Stop()
@@ -262,6 +263,7 @@ local states =
                 spawnwave(inst, 1)
                 inst.DynamicShadow:Enable(false)
                 inst.sg:AddStateTag("noattack")
+				inst.sg:AddStateTag("noelectrocute")
             end),
         },
 
@@ -314,7 +316,7 @@ local states =
 
     State{
         name = "nofish",
-        tags = { "busy", "nosleep", "noattack" },
+		tags = { "busy", "nosleep", "noattack", "noelectrocute" },
 
         onenter = function(inst)
             inst.AnimState:PlayAnimation("nofish")
@@ -339,7 +341,10 @@ local states =
                 inst.DynamicShadow:Enable(true)
             end),
             TimeEvent(2*FRAMES, function(inst) inst.SoundEmitter:PlaySound("saltydog/creatures/boss/malbatross/whoosh") end),
-            TimeEvent(4*FRAMES, function(inst) inst.sg:RemoveStateTag("noattack") end),
+			TimeEvent(4*FRAMES, function(inst)
+				inst.sg:RemoveStateTag("noattack")
+				inst.sg:RemoveStateTag("noelectrocute")
+			end),
         },
 
         events =
@@ -350,7 +355,7 @@ local states =
 
     State{
         name = "eatfish",
-        tags = { "busy", "nosleep", "noattack" },
+		tags = { "busy", "nosleep", "noattack", "noelectrocute" },
 
         onenter = function(inst, fish_to_eat)
             -- NOTE: we assume we were given a valid fish to eat; validity should be tested before entering this state.
@@ -390,7 +395,10 @@ local states =
                 inst.DynamicShadow:Enable(true)
             end),
             TimeEvent(2*FRAMES, function(inst) inst.SoundEmitter:PlaySound("saltydog/creatures/boss/malbatross/whoosh") end),
-            TimeEvent(4*FRAMES, function(inst) inst.sg:RemoveStateTag("noattack") end),
+			TimeEvent(4*FRAMES, function(inst)
+				inst.sg:RemoveStateTag("noattack")
+				inst.sg:RemoveStateTag("noelectrocute")
+			end),
             TimeEvent(20*FRAMES, function(inst) inst.SoundEmitter:PlaySound("saltydog/creatures/boss/malbatross/eat") end),
             TimeEvent(40*FRAMES, function(inst) inst.SoundEmitter:PlaySound("saltydog/creatures/boss/malbatross/beak") end),
         },
@@ -462,6 +470,11 @@ local states =
             RemovePhysicsColliders(inst)
         end,
 
+        events =
+        {
+            CommonHandlers.OnCorpseDeathAnimOver(),
+        },
+
         timeline =
         {
 
@@ -489,7 +502,7 @@ local states =
             TimeEvent(42 * FRAMES, function(inst)
                 spawnsplash(inst)
                 spawnwave(inst)
-                inst.components.lootdropper:DropLoot(inst:GetPosition())
+                inst:DropDeathLoot()
                 inst.SoundEmitter:PlaySound("turnoftides/common/together/water/splash/boss")
             end),
 
@@ -661,6 +674,7 @@ local states =
                 spawnwave(inst, 1)
                 inst.DynamicShadow:Enable(false)
                 inst.sg:AddStateTag("noattack")
+				inst.sg:AddStateTag("noelectrocute")
             end),
         },
 
@@ -678,7 +692,7 @@ local states =
 
     State{
         name = "combatdive_pst",
-        tags = { "busy", "nosleep", "noattack" },
+		tags = { "busy", "nosleep", "noattack", "noelectrocute" },
 
         onenter = function(inst)
             if inst.components.combat and inst.components.combat.target then
@@ -707,8 +721,10 @@ local states =
                 spawnwave(inst, 1)
                 inst.DynamicShadow:Enable(true)
             end),
-
-            TimeEvent(4*FRAMES, function(inst) inst.sg:RemoveStateTag("noattack") end),
+			TimeEvent(4*FRAMES, function(inst)
+				inst.sg:RemoveStateTag("noattack")
+				inst.sg:RemoveStateTag("electrocute")
+			end),
         },
 
         events =
@@ -818,21 +834,30 @@ CommonStates.AddCombatStates(states,
         TimeEvent(44 * FRAMES, function(inst) ShakeAllCameras(CAMERASHAKE.FULL, .7, .02, 2, inst, SHAKE_DIST) end),
 		TimeEvent(44 * FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC001/creatures/bearger/groundpound") end),
     },
+},
+nil,
+nil,
+{
+    has_corpse_handler = true,
 })
 
 local function land_without_floater(creature)
     creature:RemoveTag("flying")
     if creature.Physics ~= nil then
-        creature.Physics:CollidesWith(COLLISION.LIMITS)
-        creature.Physics:ClearCollidesWith(COLLISION.FLYERS)
+		CollisionMaskBatcher(creature)
+			:CollidesWith(COLLISION.LIMITS)
+			:ClearCollidesWith(COLLISION.FLYERS)
+			:CommitTo(creature)
     end
 end
 
 local function raise_without_floater(creature)
     creature:AddTag("flying")
     if creature.Physics ~= nil then
-        creature.Physics:ClearCollidesWith(COLLISION.LIMITS)
-        creature.Physics:CollidesWith(COLLISION.FLYERS)
+		CollisionMaskBatcher(creature)
+			:ClearCollidesWith(COLLISION.LIMITS)
+			:CollidesWith(COLLISION.FLYERS)
+			:CommitTo(creature)
     end
 end
 
@@ -873,6 +898,21 @@ CommonStates.AddSleepExStates(states,
 })
 
 CommonStates.AddFrozenStates(states, LandFlyingCreature, RaiseFlyingCreature)
+CommonStates.AddElectrocuteStates(states)
 
-return StateGraph("malbatross", states, events, "idle", actionhandlers)
+CommonStates.AddInitState(states, "idle")
+CommonStates.AddCorpseStates(states,
+{ -- anims
+    corpse = function(inst)
+        if not ShouldUseLandState(inst) then
+            return "death_ocean_idle", true
+        end
+    end,
+},
+{
+    corpseoncreate = function(inst, corpse)
+        corpse.sg:GoToState("corpse_idle") -- HACK, replay state after setting position for proper idle
+    end,
+})
 
+return StateGraph("malbatross", states, events, "init", actionhandlers)

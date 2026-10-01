@@ -194,7 +194,6 @@ function ShadowParasiteManager:SpawnParasiteWaveForPlayer(player, joining)
                 local np = pt + offset
 
                 host.Transform:SetPosition(np:Get())
-                host.SoundEmitter:PlaySound("hallowednights2024/thrall_parasite/appear_taunt_offscreen")
 
                 if joining then
                     host:DoTaskInTime(JOIN_TARGET_DELAY, SuggestTarget, player)
@@ -324,7 +323,7 @@ function ShadowParasiteManager:BeginParasiteWave()
     self.num_waves = self.num_waves - 1
 
     if IsAnyPlayerInRange(x, 0, z, PLAYER_REVEAL_RADIUS) then
-        local total = 6 + math.random(6)
+        local total = TUNING.SHADOWTHRALL_PARASITE_WAVE_MIN + math.random(TUNING.SHADOWTHRALL_PARASITE_WAVE_VAR)
 
         for i=1, total do
             self.inst:DoTaskInTime(math.random()*5, SpawnFloater, pos)
@@ -345,7 +344,7 @@ function ShadowParasiteManager:OverrideBlobSpawn(player)
         return false -- All creatures are disabled in world settings...
     end
 
-    if self.num_waves > 0 and math.random() <= TUNING.SHADOWTHRALL_PARASITE_BLOBOVERRIDE then
+    if self.num_waves > 0 and TryLuckRoll(player, TUNING.SHADOWTHRALL_PARASITE_BLOBOVERRIDE, LuckFormulas.ParasiteOverrideBlob) then
         self._targetplayers[player] = true
 
         if not next(self._floaters) then

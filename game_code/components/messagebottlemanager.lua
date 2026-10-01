@@ -24,6 +24,11 @@ local WATER_RADIUS_CHECK_BIAS = -4
 local SHORE_CHECK_RADIUS = 2
 local SHORE_CHECK_ATTEMPTS = 12
 
+local WHIRL_PORTAL_TAGS = {"oceanwhirlbigportal"}
+local WHIRL_PORTAL_RADIUS = 16 -- Perfectly matching the spatial cell radius!
+
+local BLOCKER_RADIUS = 1
+
 --------------------------------------------------------------------------
 --[[ Member variables ]]
 --------------------------------------------------------------------------
@@ -78,6 +83,16 @@ local function getoffsetfromtreasurespawnpoint(point_ind, radius, attempts, doer
 
 	-- If a point was found a check is also made to make sure it's not right next to land
 	if FindSwimmableOffset(Vector3(x, y, z), 0, SHORE_CHECK_RADIUS, SHORE_CHECK_ATTEMPTS) == nil then
+		return nil
+	end
+	
+	-- Don't spawn close to a big whirl portal
+	if TheSim:CountEntities(x, y, z, WHIRL_PORTAL_RADIUS, WHIRL_PORTAL_TAGS) > 0 then
+		return nil
+	end
+
+	-- Don't spawn close to a blocker
+	if IsPointCoveredByBlocker(x, y, z, BLOCKER_RADIUS) then
 		return nil
 	end
 
@@ -192,7 +207,7 @@ function self:UseMessageBottle(bottle, doer, is_not_from_hermit)
 			pos, reason = gettreasurepos(doer)
 
 			if pos and pos.x ~= nil then
-				local treasure = messagebottletreasures.GenerateTreasure(pos)
+				local treasure = messagebottletreasures.GenerateTreasure(pos, nil, nil, nil, doer)
 				treasure.Transform:SetPosition(pos.x, pos.y, pos.z)
 				treasure:ListenForEvent("on_submerge", AddMinimapMarker)
 			end

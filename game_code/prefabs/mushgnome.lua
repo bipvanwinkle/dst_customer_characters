@@ -121,6 +121,7 @@ local function normal_fn()
         return inst
     end
 
+	inst.override_combat_fx_height = ""
     inst.scrapbook_damage = 0
 
     local color = .5 + math.random() * .5
@@ -140,6 +141,7 @@ local function normal_fn()
 
     ------------------------------------------
     inst:SetStateGraph("SGmushgnome")
+	inst.sg.mem.burn_on_electrocute = true
 
     ------------------------------------------
 
@@ -150,12 +152,14 @@ local function normal_fn()
     inst.components.burnable.flammability = TUNING.LEIF_FLAMMABILITY
     inst.components.burnable:SetOnBurntFn(OnBurnt)
     inst.components.propagator.acceptsheat = true
+    inst.components.burnable:SetBurnTime(8 * TUNING.PLANTMOB_BURNTIME_MULT)
 
     MakeMediumFreezableCharacter(inst, "body")
 
     ------------------
     inst:AddComponent("health")
     inst.components.health:SetMaxHealth(TUNING.MUSHGNOME_HEALTH)
+    inst.components.health.fire_damage_scale = TUNING.PLANTMOB_FIRE_DAMAGE_SCALE
 
     ------------------
 

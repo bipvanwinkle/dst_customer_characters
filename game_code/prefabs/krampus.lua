@@ -10,6 +10,7 @@ local prefabs =
     "charcoal",
     "monstermeat",
     "krampus_sack",
+    "krampuscorpse",
 }
 
 local brain = require "brains/krampusbrain"
@@ -77,6 +78,9 @@ local function fn()
     if not TheWorld.ismastersim then
         return inst
     end
+
+	inst.override_combat_fx_radius = 1
+	inst.override_combat_fx_size = "med"
 
     inst:AddComponent("inventory")
     inst.components.inventory.ignorescangoincontainer = true

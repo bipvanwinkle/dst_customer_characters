@@ -14,6 +14,7 @@ local prefabs =
     "cutgrass",
     "plantmeat",
     "twigs",
+    "grassgatorcorpse",
 }
 
 local grass_gator = {"plantmeat","plantmeat","plantmeat","plantmeat","plantmeat","plantmeat","plantmeat","cutgrass","twigs","cutgrass","twigs"}
@@ -212,6 +213,8 @@ local function create_base(build)
 
     MakeLargeBurnableCharacter(inst, "grass_gator_body")
     MakeLargeFreezableCharacter(inst, "grass_gator_body")
+    inst.components.burnable:SetBurnTime(10 * TUNING.PLANTMOB_BURNTIME_MULT)
+    inst.components.health.fire_damage_scale = TUNING.PLANTMOB_FIRE_DAMAGE_SCALE
 
     MakeHauntablePanic(inst)
 
@@ -220,7 +223,6 @@ local function create_base(build)
     inst.components.locomotor.runspeed = TUNING.GRASSGATOR_RUNSPEED
     inst.components.locomotor:CanPathfindOnWater()
 
-
     inst:AddComponent("sleeper")
     inst.components.sleeper:SetResistance(3)
     inst.components.sleeper:SetSleepTest(ShouldSleep)
@@ -228,12 +230,12 @@ local function create_base(build)
 
     inst:SetBrain(brain)
     inst:SetStateGraph("SGgrassgator")
+	inst.sg.mem.burn_on_electrocute = true
 
     inst:AddComponent("embarker")
     inst.components.embarker.embark_speed = inst.components.locomotor.runspeed
 
     inst.components.locomotor:SetAllowPlatformHopping(true)
-
 
     inst:AddComponent("amphibiouscreature")
     inst.components.amphibiouscreature:SetBanks("grass_gator", "grass_gator_water")

@@ -132,8 +132,11 @@ local function TryFillLake(inst, skipanim, OnSandstormChanged)
 
     inst.components.fishable:Unfreeze()
 
-    inst.Physics:CollidesWith(COLLISION.CHARACTERS)
-    inst.Physics:CollidesWith(COLLISION.GIANTS)
+	inst.Physics:SetCollisionMask(
+		COLLISION.ITEMS,
+		COLLISION.CHARACTERS,
+		COLLISION.GIANTS
+	)
 
     inst.components.watersource.available = true
     inst:RemoveTag("NOCLICK")
@@ -162,8 +165,7 @@ local function OnSandstormChanged(inst, active, skipanim)
 
         inst.components.fishable:Freeze()
 
-        inst.Physics:ClearCollisionMask()
-        inst.Physics:CollidesWith(COLLISION.ITEMS)
+		inst.Physics:SetCollisionMask(COLLISION.ITEMS)
 
         inst.components.watersource.available = false
         inst:AddTag("NOCLICK")
@@ -190,8 +192,8 @@ local function OnLoad(inst, data)
     inst.regrowth = data == nil or data.regrowth ~= false
 end
 
-local function GetFish(inst)
-    return math.random() < 0.6 and "wetpouch" or "pondfish"
+local function GetFish(inst, fisherman)
+    return TryLuckRoll(fisherman, TUNING.OASISLAKE_WETPOUCH_CHANCE, LuckFormulas.LootDropperChance) and "wetpouch" or "pondfish"
 end
 
 local function fn()

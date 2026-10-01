@@ -40,8 +40,9 @@ local function GetSpecialHoundChance()
 end
 
 local function SpawnGuardHound(inst, attacker)
+    local do_seasonal_spawn = TryLuckRoll(attacker, GetSpecialHoundChance(), LuckFormulas.ChildSpawnerRareChild)
     local prefab =
-        (math.random() >= GetSpecialHoundChance() and "hound") or
+        (not do_seasonal_spawn and "hound") or
         ((TheWorld.state.iswinter or TheWorld.state.isspring) and "icehound") or
         "firehound"
     local defender = inst.components.childspawner:SpawnChild(attacker, prefab)
@@ -66,7 +67,7 @@ local function SpawnAllGuards(inst, attacker)
         inst.AnimState:PushAnimation("idle", false)
         local num_to_release = inst.components.childspawner.childreninside
         for k = 1, num_to_release do
-            SpawnGuardHound(inst)
+            SpawnGuardHound(inst, attacker)
         end
     end
 end
@@ -100,7 +101,7 @@ end
 local HAUNTTARGET_MUST_TAGS = { "_combat" }
 local HAUNTTARGET_CANT_TAGS = { "wall", "playerghost", "houndmound", "hound", "houndfriend", "INLIMBO" }
 
-local function OnHaunt(inst, haunter)
+local function OnHaunt(inst)
     if inst.components.childspawner == nil or
         not inst.components.childspawner:CanSpawn() or
         math.random() > TUNING.HAUNT_CHANCE_HALF then

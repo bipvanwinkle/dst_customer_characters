@@ -135,7 +135,7 @@ local function OnHit(inst)
     inst:PlayEyeballHitAnim()
 end
 
-local function OnBuilt(inst)
+local function OnBuiltFn(inst)
     inst.SoundEmitter:PlaySound("rifts3/oculus_ice_radius/place")
     inst.AnimState:PlayAnimation("place")
     inst.AnimState:PushAnimation("idle_loop", false)
@@ -151,7 +151,7 @@ local function CreateGlobalIcon(inst)
 end
 
 local function OnEyeballGiven(inst, item, giver)
-    if not POPULATING then
+    if not (POPULATING or inst:IsAsleep()) then
         inst.SoundEmitter:PlaySound("rifts3/oculus_ice_radius/eyeball_place")
     end
 
@@ -236,6 +236,20 @@ local function OnRemoveEntity(inst)
     if inst.ice ~= nil then
         inst.ice:KillFX()
     end
+end
+
+local function OnEntityWake(inst)
+    if inst:IsAsleep() then
+        return
+    end
+
+    if inst._active:value() and not inst.SoundEmitter:PlayingSound(AMB_SOUNDNAME) then
+        inst.SoundEmitter:PlaySound("rifts3/oculus_ice_radius/ambient_lp", AMB_SOUNDNAME)
+    end
+end
+
+local function OnEntitySleep(inst)
+    inst.SoundEmitter:KillSound(AMB_SOUNDNAME)
 end
 
 ---------------------------------------------------------------------------------------------------------------
@@ -453,8 +467,8 @@ local function sentrywardfn()
     inst.OnEyeballTaken = OnEyeballTaken
     inst.CreateGlobalIcon = CreateGlobalIcon
 
-    inst.OnBuilt = OnBuilt
-    inst:ListenForEvent("onbuilt", inst.OnBuilt)
+    inst.OnBuiltFn = OnBuiltFn
+    inst:ListenForEvent("onbuilt", inst.OnBuiltFn)
 
     inst:AddComponent("maprevealer")
     inst:AddComponent("lootdropper")
@@ -489,6 +503,9 @@ local function sentrywardfn()
     -----------------------------
 
     inst.OnRemoveEntity = OnRemoveEntity
+
+    inst.OnEntityWake  = OnEntityWake
+    inst.OnEntitySleep = OnEntitySleep
 
     MakeHauntableWork(inst)
 
@@ -529,7 +546,7 @@ for k, v in pairs(FUELTYPE) do
     table.insert(NOTAGS, v.."_fueled")
 end
 
-local FREEZETARGET_ONEOF_TAGS = { "heatrock", "freezable", "fire", "smolder" }
+local FREEZETARGET_ONEOF_TAGS = { "heatrock", "freezable", "fire", "smolder", "inventoryitemtemperature" }
 local function OnUpdateIceCircle(inst, x, z)
     inst._radius = inst._radius * .98 + TUNING.DEERCLOPSEYEBALL_SENTRYWARD_GROUND_ICE_RADIUS * .02
 
@@ -544,11 +561,9 @@ local function OnUpdateIceCircle(inst, x, z)
                     v.components.freezable:AddColdness(.1, 1, true)
                 end
             end
-            if v.components.temperature ~= nil then
-                local newtemp = math.max(v.components.temperature.mintemp, TUNING.DEER_ICE_TEMPERATURE)
-                if newtemp < v.components.temperature:GetCurrent() then
-                    v.components.temperature:SetTemperature(newtemp)
-                end
+            local ent_temp = GetEntityTemperature(v)
+            if ent_temp and TUNING.DEER_ICE_TEMPERATURE < ent_temp then
+                SetEntityTemperature(v, TUNING.DEER_ICE_TEMPERATURE)
             end
             if v.components.grogginess ~= nil and not v.components.grogginess:IsKnockedOut() then
                 local curgrog = v.components.grogginess.grog_amount
@@ -606,7 +621,7 @@ local function fxfn()
 
     inst._task = inst:DoTaskInTime(0, OnInitIceCircle)
 
-    if not POPULATING then
+    if not (POPULATING or inst:IsAsleep()) then
         inst.SoundEmitter:PlaySound("dontstarve/creatures/together/deer/fx/ice_circle_LP", ICE_SOUNDNAME)
         inst.SoundEmitter:SetVolume(ICE_SOUNDNAME, 0.8)
 

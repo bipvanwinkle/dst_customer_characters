@@ -15,11 +15,17 @@ local normal_prefabs =
 {
     "froglegs",
     "frogsplash",
+    "frogcorpse",
 }
 
 local lunar_prefabs =
 {
     "froglegs",
+}
+
+local mutated_scrapbook_adddeps =
+{
+	"lunarthrall_plant_gestalt",
 }
 
 -----------------------------------------------------------------------------------------------------------------
@@ -60,9 +66,9 @@ local function retargetfn(inst)
         local cant_tags   = inst.islunar and LUNAR_RETARGET_CANT_TAGS or RETARGET_CANT_TAGS
 
         return FindEntity(inst, target_dist, function(guy)
-            if not guy.components.health:IsDead() then
-                return guy.components.inventory ~= nil
-            end
+			return not guy.components.health:IsDead()
+				and guy.components.inventory ~= nil
+				and inst.components.combat:CanTarget(guy)
         end,
         RETARGET_MUST_TAGS, -- see entityreplica.lua
         cant_tags
@@ -208,6 +214,8 @@ local function lunar_common_postinit(inst)
 	inst.Transform:SetScale(LUNARFROG_SCALE, LUNARFROG_SCALE, LUNARFROG_SCALE)
 
 	inst:AddTag("lunar_aligned")
+    inst:AddTag("gestaltmutant")
+    inst:AddTag("soulless")
 
 	inst.AnimState:SetSymbolLightOverride("flameanim", 0.1)
 	inst.AnimState:SetSymbolBloom("flameanim")
@@ -224,9 +232,12 @@ local function lunarfn()
         return inst
     end
 
+	inst.scrapbook_adddeps = mutated_scrapbook_adddeps
+
     inst.sounds = LUNAR_SOUNDS
 
     inst.islunar = true
+    inst.sg.mem.nocorpse = true
 
     inst:AddComponent("planarentity")
 

@@ -87,6 +87,7 @@ local function common_server(inst)
 
     MakeMediumFreezableCharacter(inst, "fruit2")
     MakeMediumBurnableCharacter(inst, "fruit2")
+    inst.components.burnable:SetBurnTime(8 * TUNING.PLANTMOB_BURNTIME_MULT)
 
     MakeHauntablePanic(inst)
 
@@ -217,7 +218,10 @@ local function fn()
         return inst
     end
 
+	inst.override_combat_fx_size = "med"
+
     inst:SetStateGraph("SGfruitfly")
+	inst.sg.mem.burn_on_electrocute = true
     inst:SetBrain(brain)
 
     common_server(inst)
@@ -234,6 +238,7 @@ local function fn()
 
     inst:AddComponent("health")
     inst.components.health:SetMaxHealth(TUNING.LORDFRUITFLY_HEALTH)
+    inst.components.health.fire_damage_scale = TUNING.PLANTMOB_FIRE_DAMAGE_SCALE
 
     inst:AddComponent("knownlocations")
     inst:DoTaskInTime(0, RememberKnownLocation)
@@ -265,7 +270,7 @@ local function fn()
 end
 
 local function CanTargetAndAttack(inst)
-    return inst.components.follower.leader == nil and inst.hascausedhavoc
+    return inst.components.follower:GetLeader() == nil and inst.hascausedhavoc
 end
 
 local function ShouldKeepTarget(inst, target)
@@ -314,6 +319,9 @@ local function minifn()
         return inst
     end
 
+	inst.override_combat_fx_size = "tiny"
+	inst.override_combat_fx_height = "low"
+
     common_server(inst)
 
     inst:AddComponent("follower")
@@ -329,6 +337,7 @@ local function minifn()
 
     inst:AddComponent("health")
     inst.components.health:SetMaxHealth(TUNING.FRUITFLY_HEALTH)
+    inst.components.health.fire_damage_scale = TUNING.PLANTMOB_FIRE_DAMAGE_SCALE
 
     inst.components.sleeper:SetSleepTest(ShouldSleep)
     inst.components.sleeper:SetWakeTest(ShouldWake)
@@ -345,6 +354,7 @@ local function minifn()
 
     inst:SetBrain(brain)
     inst:SetStateGraph("SGfruitfly")
+	inst.sg.mem.burn_on_electrocute = true
 
     inst:ListenForEvent("attacked", MiniOnAttacked)
 
@@ -378,7 +388,7 @@ local function OnStopFollowing(inst)
 end
 
 local function OnStartFollowing(inst)
-    if inst.components.follower.leader:HasTag("fruitflyfruit") then
+    if inst.components.follower.leader:HasTag("fruitflyfruit") then -- Getting leader directly special case.
         inst:AddTag("companion")
     end
 end
@@ -416,6 +426,9 @@ local function friendlyfn()
         return inst
     end
 
+	inst.override_combat_fx_size = "tiny"
+	inst.override_combat_fx_height = ""
+
     common_server(inst)
 
     inst:AddComponent("follower")
@@ -423,6 +436,7 @@ local function friendlyfn()
     inst:ListenForEvent("startfollowing", OnStartFollowing)
 
     inst:AddComponent("health")
+    inst.components.health.fire_damage_scale = TUNING.PLANTMOB_FIRE_DAMAGE_SCALE
     inst:AddComponent("combat")
     inst.components.combat.hiteffectsymbol = "fruit2"
     inst.components.combat:SetKeepTargetFunction(FriendlyShouldKeepTarget)
@@ -438,6 +452,7 @@ local function friendlyfn()
 
     inst:SetBrain(friendlybrain)
     inst:SetStateGraph("SGfruitfly")
+	inst.sg.mem.burn_on_electrocute = true
 
     return inst
 end
@@ -520,7 +535,7 @@ local function OnInit(inst)
         if fruitfly ~= nil and
             fruitfly.components.health ~= nil and
             not fruitfly.components.health:IsDead() and
-            fruitfly.components.follower.leader ~= inst then
+            fruitfly.components.follower.leader ~= inst then -- Getting leader directly special case.
                 fruitfly.components.follower:SetLeader(inst)
         end
     end
@@ -556,7 +571,6 @@ local function fruitfn()
     inst:AddComponent("inspectable")
     inst.components.inspectable.getstatus = getstatus
     inst:AddComponent("inventoryitem")
-
 
     MakeHauntableLaunch(inst)
 

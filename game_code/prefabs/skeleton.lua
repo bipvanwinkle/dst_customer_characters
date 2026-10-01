@@ -25,37 +25,6 @@ SetSharedLootTable('skeleton_player',
 
 -----------------------------------------------------------------------------------------------
 
-local function Player_GetDescription(inst, viewer)
-    if inst.char ~= nil and not viewer:HasTag("playerghost") then
-        local mod = GetGenderStrings(inst.char)
-        local desc = GetDescription(viewer, inst, mod)
-        local name = inst.playername or STRINGS.NAMES[string.upper(inst.char)]
-
-        -- No translations for player killer's name.
-        if inst.pkname ~= nil then
-            return string.format(desc, name, inst.pkname)
-        end
-
-        -- Permanent translations for death cause.
-        if inst.cause == "unknown" then
-            inst.cause = "shenanigans"
-
-        elseif inst.cause == "moose" then
-            inst.cause = math.random() < .5 and "moose1" or "moose2"
-        end
-
-        -- Viewer based temp translations for death cause.
-        local cause =
-            inst.cause == "nil"
-            and (
-                (viewer == "waxwell" or viewer == "winona") and "charlie" or "darkness"
-            )
-            or inst.cause
-
-        return string.format(desc, name, STRINGS.NAMES[string.upper(cause)] or STRINGS.NAMES.SHENANIGANS)
-    end
-end
-
 local function Player_Decay(inst)
     local x, y, z = inst.Transform:GetWorldPosition()
     inst:Remove()
@@ -69,7 +38,7 @@ local function Player_SetSkeletonDescription(inst, char, playername, cause, pkna
     inst.userid = userid
     inst.pkname = pkname
     inst.cause = pkname == nil and cause:lower() or nil
-    inst.components.inspectable.getspecialdescription = Player_GetDescription
+    inst.components.inspectable.getspecialdescription = GetPlayerDeathDescription
 end
 
 local function Player_SetSkeletonAvatarData(inst, client_obj)
@@ -97,6 +66,12 @@ local function OnLoad(inst, data)
         inst.animnum = data.anim
         inst.AnimState:PlayAnimation("idle"..tostring(inst.animnum))
     end
+
+    if not TheSim:HasPlayerSkeletons() then
+        local grave = SpawnPrefab("shallow_grave")
+        local x,y,z = inst.Transform:GetWorldPosition()
+        grave.Transform:SetPosition(x,y,z)
+    end
 end
 
 local function Player_OnSave(inst, data)
@@ -120,25 +95,27 @@ end
 local function Player_OnLoad(inst, data)
     OnLoad(inst, data)
 
-    if data ~= nil and data.char ~= nil and (data.cause ~= nil or data.pkname ~= nil) then
-        inst.char = data.char
-        inst.playername = data.playername -- Backward compatibility for nil playername.
-        inst.userid = data.userid
-        inst.pkname = data.pkname -- Backward compatibility for nil pkname.
-        inst.cause = data.cause
+    if not data or not data.char or (not data.cause and not data.pkname) then
+        return
+    end
 
-        if inst.components.inspectable ~= nil then
-            inst.components.inspectable.getspecialdescription = Player_GetDescription
-        end
+    inst.char = data.char
+    inst.playername = data.playername -- Backward compatibility for nil playername.
+    inst.userid = data.userid
+    inst.pkname = data.pkname -- Backward compatibility for nil pkname.
+    inst.cause = data.cause
 
-        if data.age ~= nil and data.age > 0 then
-            inst.skeletonspawntime = -data.age
-        end
+    if inst.components.inspectable ~= nil then
+        inst.components.inspectable.getspecialdescription = GetPlayerDeathDescription
+    end
 
-        if data.avatar ~= nil then
-            -- Load legacy data.
-            inst.components.playeravatardata:OnLoad(data.avatar)
-        end
+    if data.age ~= nil and data.age > 0 then
+        inst.skeletonspawntime = -data.age
+    end
+
+    if data.avatar then
+        -- Load legacy data.
+        inst.components.playeravatardata:OnLoad(data.avatar)
     end
 end
 
@@ -153,6 +130,8 @@ local function common_fn(custom_init, data)
     inst.entity:AddSoundEmitter()
 
     MakeSmallObstaclePhysics(inst, 0.25)
+
+    inst:AddTag("skeleton")
 
     inst.AnimState:SetBank("skeleton")
     inst.AnimState:SetBuild("skeletons")
@@ -189,14 +168,13 @@ local function common_fn(custom_init, data)
 
     if not TheSim:HasPlayerSkeletons() then
         inst:Hide()
-        inst:DoTaskInTime(0, inst.Remove)
+        inst:DoTaskInTime(0, inst.Remove)        
     end
 
     return inst
 end
 
 -----------------------------------------------------------------------------------------------
-
 local function regular_fn()
     return common_fn(nil, {animnum_min=1, animnum_max=6})
 end

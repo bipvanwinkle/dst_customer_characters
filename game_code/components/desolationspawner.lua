@@ -16,7 +16,11 @@ local UPDATE_PERIOD = 11 -- less likely to update on the same frame as others
 local SEARCH_RADIUS = 50
 local BASE_RADIUS = 20
 local EXCLUDE_RADIUS = 3
-local MIN_PLAYER_DISTANCE = 64 * 1.2 -- this is our "outer" sleep radius
+local MIN_PLAYER_DISTANCE = ENTITY_POPOUT_RADIUS -- this is our "outer" sleep radius
+
+local SKIP_PLANT_CHECK = {
+    ["tree_rock_sapling"] = true,
+}
 
 --------------------------------------------------------------------------
 --[[ Member variables ]]
@@ -60,7 +64,8 @@ local function TestForRegrow(x, y, z, prefab, searchtags)
         return false
     end
 
-    if not (_map:CanPlantAtPoint(x, y, z) and
+    if not SKIP_PLANT_CHECK[prefab]
+        and not (_map:CanPlantAtPoint(x, y, z) and
             _map:CanPlacePrefabFilteredAtPoint(x, y, z, prefab))
         or (RoadManager ~= nil and RoadManager:IsOnRoad(x, 0, z)) then
         -- Not ground we can grow on
@@ -119,7 +124,7 @@ local function PopulateAreaData(prefab)
                     if _areadata[i][prefab] == nil then
                         _areadata[i][prefab] =
                         {
-                            denstiy = densities[prefab],
+                            density = densities[prefab],
                             regrowtime = _internaltimes[prefab] + math.random() * _replacementdata[prefab].regrowtime, -- initial offset is randomized
                         }
                     -- else this was already populated by Load
@@ -200,6 +205,19 @@ self:SetSpawningForType("palmconetree", "palmcone_sapling", TUNING.PALMCONETREE_
     return (_worldstate.iswinter and 0) or TUNING.PALMCONETREE_REGROWTH_TIME_MULT
 end)
 
+-- NOTE: This is deprecated, but needs to stay here for previous saves and retrofit
+self:SetSpawningForType("tree_rock", "tree_rock_sapling", TUNING.TREE_ROCK_REGROWTH.DESOLATION_RESPAWN_TIME, {"rock_tree"}, function()
+    return TUNING.TREE_ROCK_REGROWTH_TIME_MULT
+end)
+
+self:SetSpawningForType("tree_rock1", "tree_rock_sapling", TUNING.TREE_ROCK_REGROWTH.DESOLATION_RESPAWN_TIME, {"rock_tree"}, function()
+    return TUNING.TREE_ROCK_REGROWTH_TIME_MULT
+end)
+
+self:SetSpawningForType("tree_rock2", "tree_rock_sapling", TUNING.TREE_ROCK_REGROWTH.DESOLATION_RESPAWN_TIME, {"rock_tree"}, function()
+    return TUNING.TREE_ROCK_REGROWTH_TIME_MULT
+end)
+
 inst:DoTaskInTime(0, PopulateAreaDataFromReplacements)
 
 --------------------------------------------------------------------------
@@ -249,13 +267,15 @@ end
 function self:OnLoad(data)
     for area, areadata in pairs(data.areas) do
         for prefab, prefabdata in pairs(areadata) do
-            if _areadata[area] == nil then
-                _areadata[area] = {}
-            end
-            _areadata[area][prefab] = {
-                density = prefabdata.density,
-                regrowtime = prefabdata.regrowtime + _internaltimes[prefab],
-            }
+			if prefabdata.density and prefabdata.regrowtime and _internaltimes[prefab] then
+				if _areadata[area] == nil then
+					_areadata[area] = {}
+				end
+				_areadata[area][prefab] = {
+					density = prefabdata.density,
+					regrowtime = prefabdata.regrowtime + _internaltimes[prefab],
+				}
+			end
         end
     end
 end

@@ -137,28 +137,35 @@ local function fn(bank, build, anim, minimap, isbackground)
     return inst
 end
 
+local function closed_init_poi(inst)
+	if inst:HasTag("NOCLICK") then
+		inst.scrapbook_ignore = true -- when hidden, can't be seen
+	elseif not TheNet:IsDedicated() then
+		inst:AddComponent("pointofinterest")
+		inst.components.pointofinterest:SetHeight(200)
+	end
+end
+
 local function closed_fn()
     local inst = fn("cave_entrance", "cave_entrance", "idle_closed", "cave_closed.png", false)
 
     inst.scrapbook_anim = "idle_closed"    
-
-    if not TheNet:IsDedicated() then
-        inst:AddComponent("pointofinterest")
-        inst.components.pointofinterest:SetHeight(200)
-        inst.components.pointofinterest:SetShouldShowFn(function(inst)
-            return not inst:HasTag("NOCLICK")
-        end)
-    end
+	inst.scrapbook_thingtype = "POI" --specify this because pointofinterest component is missing when hidden
 
     if not TheWorld.ismastersim then
+		inst.OnEntityReplicated = closed_init_poi
+
         return inst
     end
+
+	closed_init_poi(inst)
 
     inst:AddComponent("workable")
     inst.components.workable:SetWorkAction(ACTIONS.MINE)
     inst.components.workable:SetWorkLeft(TUNING.ROCKS_MINE)
     inst.components.workable:SetOnWorkCallback(OnWork)
 
+    inst.components.worldmigrator.shard_name = "Caves" -- SERVER_LEVEL_SHARDS
     inst.components.worldmigrator:SetEnabled(false)
     inst:ListenForEvent("migration_activate_other", activatebyother)
 
@@ -214,6 +221,7 @@ local function open_fn()
 
     inst.components.inspectable.getstatus = GetStatus
 
+    inst.components.worldmigrator.shard_name = "Caves" -- SERVER_LEVEL_SHARDS
     inst:ListenForEvent("migration_available", open)
     inst:ListenForEvent("migration_unavailable", close)
     inst:ListenForEvent("migration_full", full)

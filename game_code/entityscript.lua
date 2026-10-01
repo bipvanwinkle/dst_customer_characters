@@ -218,6 +218,7 @@ EntityScript = Class(function(self, entity)
     self.lower_components_shadow = {}
     self.GUID = entity:GetGUID()
     self.spawntime = GetTime()
+	self.sleepstatepending = true --haven't received initial sleep state from engine yet
     self.persists = true
     self.inlimbo = false
     self.name = nil
@@ -278,10 +279,10 @@ function EntityScript:GetSaveRecord()
 
             record.puid = platform.components.walkableplatform:GetUID()
 
-            record.rx = rx and math.floor(rx*1000)/1000 or 0
-            record.rz = rz and math.floor(rz*1000)/1000 or 0
+			record.rx = rx and math.floor(rx * 1000 + 0.5) * 0.001 or 0
+			record.rz = rz and math.floor(rz * 1000 + 0.5) * 0.001 or 0
 			if ry and ry ~= 0 then
-				ry = math.floor(ry*1000)/1000
+				ry = math.floor(ry * 1000 + 0.5) * 0.001
 				record.ry = ry ~= 0 and ry or nil
             end
         end
@@ -296,11 +297,11 @@ function EntityScript:GetSaveRecord()
 		x, y, z = 0, 0, 0
 	end
 
-    record.x = x and math.floor(x*1000)/1000 or 0
-    record.z = z and math.floor(z*1000)/1000 or 0
+	record.x = x and math.floor(x * 1000 + 0.5) * 0.001 or 0
+	record.z = z and math.floor(z * 1000 + 0.5) * 0.001 or 0
     --y is often 0 in our game, so be selective.
 	if y and y ~= 0 then
-		y = math.floor(y*1000)/1000
+		y = math.floor(y * 1000 + 0.5) * 0.001
 		record.y = y ~= 0 and y or nil
     end
 
@@ -323,6 +324,7 @@ function EntityScript:Show()
     self.entity:Show(false)
 end
 
+-- NOTES(Omar): Deprecated, we do not use this function (still use the hack though!)
 function EntityScript:StackableSkinHack(target)
     -- NOTES(JBK): This is a replacement function for old comments that were the following line.
     -- (this does not work on clients, so we're going to use the AnimState hack instead)
@@ -349,7 +351,7 @@ function EntityScript:RemoveFromScene()
     self.inlimbo = true
     self.entity:Hide()
 
-    self:StopBrain()
+	self:_DisableBrain_Internal()
 
     if self.sg then
         self.sg:Stop()
@@ -398,10 +400,14 @@ function EntityScript:ReturnToScene()
         self.MiniMapEntity:SetEnabled(true)
     end
 
-    self:RestartBrain()
-
-    if self.sg then
-        self.sg:Start()
+	if self.brainfn or self.sg then
+		local asleep = self:IsAsleep()
+		if self.brainfn and not (asleep or self.sleepstatepending) then
+			self:_EnableBrain_Internal()
+		end
+		if self.sg then
+			self.sg:Start(asleep)
+		end
     end
     self:PushEvent("exitlimbo")
 end
@@ -738,9 +744,33 @@ function EntityScript:GetDisplayName()
     return name
 end
 
+--Can NOT be used on clients
+function EntityScript:GetWetMultiplier()
+	if self:HasTag("wet") then
+		return 1
+	elseif self:HasTag("moistureimmunity") then
+        return 0
+	elseif self.components.inventoryitem then --Inventoryitemmoisture can give us percent, but keep it consistent with how it was before, for now......
+        return self.components.inventoryitem:IsWet() and 1 or 0
+	end
+
+	local moisture = self.components.temp_moisture or self.components.moisture --or self.components.inventoryitem 
+	if moisture then
+        return moisture:GetMoisturePercent()
+    else
+        return
+        (
+			(TheWorld.state.iswet and not self:HasTag("rainimmunity")) or
+			(self:HasTag("swimming") and not self:HasTag("likewateroffducksback"))
+        ) and 1 or 0
+    end
+end
+
 --Can be used on clients
 function EntityScript:GetIsWet()
-    if self:HasTag("moistureimmunity") then
+	if self:HasTag("wet") then
+		return true
+	elseif self:HasTag("moistureimmunity") then
         return false
     end
 
@@ -748,8 +778,7 @@ function EntityScript:GetIsWet()
     if replica then
         return replica:IsWet()
     else
-        return self:HasTag("wet")
-            or (TheWorld.state.iswet and not self:HasTag("rainimmunity"))
+		return (TheWorld.state.iswet and not self:HasTag("rainimmunity"))
             or (self:HasTag("swimming") and not self:HasTag("likewateroffducksback"))
     end
 end
@@ -889,6 +918,10 @@ function EntityScript:RemovePlatformFollower(child)
         self.platformfollowers[child] = nil
     end
     child.entity:SetPlatform(nil)
+
+	if self.OnRemovePlatformFollower then
+		self:OnRemovePlatformFollower(child)
+	end
 end
 
 function EntityScript:AddPlatformFollower(child)
@@ -905,6 +938,10 @@ function EntityScript:AddPlatformFollower(child)
 
     self.platformfollowers[child] = true
     child.entity:SetPlatform(self.entity)
+
+	if self.OnAddPlatformFollower then
+		self:OnAddPlatformFollower(child)
+	end
 end
 
 --only works on master sim
@@ -1038,30 +1075,74 @@ function EntityScript:RunScript(name)
     fn(self)
 end
 
-function EntityScript:RestartBrain()
-    self:StopBrain()
-    if self.brainfn ~= nil then
-        --if type(self.brainfn) ~= "table" then print(self, self.brainfn) end
-        self.brain = self.brainfn()
-        if self.brain ~= nil then
-            self.brain.inst = self
-            self.brain:Start()
-        end
-    end
+function EntityScript:RestartBrain(reason)
+	reason = reason or ""
+	if self._brainstopped and self._brainstopped[reason] then
+		self._brainstopped[reason] = nil
+		if next(self._brainstopped) == nil then
+			self._brainstopped = nil
+			if self.brain then
+				self.brain:_Start_Internal()
+			end
+		end
+	end
 end
 
-function EntityScript:StopBrain()
-    if self.brain ~= nil then
-        self.brain:Stop()
-        self.brain = nil
-    end
+function EntityScript:StopBrain(reason)
+	reason = reason or ""
+	if self._brainstopped then
+		self._brainstopped[reason] = true
+	else
+		self._brainstopped = { [reason] = true }
+		if self.brain then
+			self.brain:_Stop_Internal()
+		end
+	end
 end
 
 function EntityScript:SetBrain(brainfn)
     self.brainfn = brainfn
-    if self.brain ~= nil then
-        self:RestartBrain()
-    end
+	--V2C: -sleepstatepending check to prevent brain starting at construction when :IsAsleep() always returns false
+	self._braindisabled = brainfn and (self.sleepstatepending or self:IsInLimbo() or self:IsAsleep()) or nil
+	if self.brain then
+		self.brain:_Stop_Internal()
+	end
+	self.brain = brainfn and not self._braindisabled and brainfn() or nil
+	if self.brain then
+		self.brain.inst = self
+		if not self._brainstopped then
+			self.brain:_Start_Internal()
+		end
+	end
+end
+
+--V2C: should only be called from OnEntitySleep, RemoveFromScene
+function EntityScript:_DisableBrain_Internal()
+	if self.brainfn then
+		--_braindisabled flag is only valid if we have a brainfn.
+		--Don't bother checking "not self._braindisabled".  This code is safe to run
+		--multiple times, and we can also assume that the engine properly calls this
+		--only when necessary.
+		self._braindisabled = true
+		if self.brain then
+			self.brain:_Stop_Internal()
+			self.brain = nil
+		end
+	end
+end
+
+--V2C: should only be called from OnEntityWake, ReturnToScene
+function EntityScript:_EnableBrain_Internal()
+	if self._braindisabled then
+		self._braindisabled = nil
+		self.brain = self.brainfn()
+		if self.brain then
+			self.brain.inst = self
+			if not self._brainstopped then
+				self.brain:_Start_Internal()
+			end
+		end
+	end
 end
 
 function EntityScript:SetStateGraph(name)
@@ -1072,8 +1153,11 @@ function EntityScript:SetStateGraph(name)
     assert(sg ~= nil)
     if sg ~= nil then
         self.sg = StateGraphInstance(sg, self)
-        SGManager:AddInstance(self.sg)
+		SGManager:AddInstance(self.sg, self:IsAsleep())
         self.sg:GoToState(self.sg.sg.defaultstate)
+		if self:IsInLimbo() then
+			self.sg:Stop()
+		end
         return self.sg
     end
 end
@@ -1199,7 +1283,7 @@ function EntityScript:StopAllWatchingWorldStates()
     self.worldstatewatching = nil
 end
 
-function EntityScript:PushEvent(event, data)
+function EntityScript:PushEvent_Internal(event, data, immediate)
     if self.event_listeners then
         local listeners = self.event_listeners[event]
         if listeners then
@@ -1217,15 +1301,25 @@ function EntityScript:PushEvent(event, data)
         end
     end
 
-    if self.sg and
-        self.sg:IsListeningForEvent(event) and
-        SGManager:OnPushEvent(self.sg) then
-        self.sg:PushEvent(event, data)
+	if self.sg then
+		if immediate then
+			self.sg:HandleEvent(event, data)
+		elseif self.sg:IsListeningForEvent(event) and SGManager:OnPushEvent(self.sg) then
+			self.sg:PushEvent(event, data)
+		end
     end
 
     if self.brain then
         self.brain:PushEvent(event, data)
     end
+end
+
+function EntityScript:PushEvent(event, data)
+	self:PushEvent_Internal(event, data, false)
+end
+
+function EntityScript:PushEventImmediate(event, data)
+	self:PushEvent_Internal(event, data, true)
 end
 
 function EntityScript:SetPhysicsRadiusOverride(radius)
@@ -1347,6 +1441,25 @@ function EntityScript:FaceAwayFromPoint(dest, force)
 		return
 	end
     self.Transform:SetRotation(math.atan2(z - dest.z, dest.x - x) / DEGREES + 180)
+end
+
+function EntityScript:IsEntityInFrontConeSlice(otherinst, wholearcangle_degrees, max_dist, circle_dist)
+    -- Distances are optional.
+    -- circle_dist lets a small circle around self to be counted regardless of the angle.
+    if max_dist or circle_dist then
+        local dsq = self:GetDistanceSqToInst(otherinst)
+        if circle_dist and (dsq < circle_dist * circle_dist) then
+            return true -- This is valid close.
+        end
+        if max_dist and (dsq > max_dist * max_dist) then
+            return false -- Too far.
+        end
+    end
+
+    -- More expensive calculations for cone slice.
+    local rotation = self.Transform:GetRotation()
+    local forward_vector = Vector3(math.cos(-rotation / RADIANS), 0 , math.sin(-rotation / RADIANS))
+    return IsWithinAngle(self:GetPosition(), forward_vector, wholearcangle_degrees / RADIANS, otherinst:GetPosition())
 end
 
 function EntityScript:IsAsleep()
@@ -1877,7 +1990,7 @@ end
 
 function EntityScript:GetAdjective()
 	if self.displayadjectivefn ~= nil then
-		return self:displayadjectivefn(self)
+		return self:displayadjectivefn()
 	elseif self:HasTag("critter") then
 		for k in pairs(TUNING.CRITTER_TRAITS) do
 			if self:HasTag("trait_"..k) then
@@ -1983,6 +2096,8 @@ function EntityScript:IsLightGreaterThan(lightThresh)
     end
 end
 
+--
+
 function EntityScript:DebuffsEnabled()
     return self.components.debuffable == nil or self.components.debuffable:IsEnabled()
 end
@@ -1997,7 +2112,7 @@ function EntityScript:GetDebuff(name)
         or nil
 end
 
-function EntityScript:AddDebuff(name, prefab, data, skip_test, pre_buff_fn)
+function EntityScript:AddDebuff(name, prefab, data, skip_test, pre_buff_fn, buffer)
     if self.components.debuffable == nil then
         self:AddComponent("debuffable")
     end
@@ -2006,7 +2121,7 @@ function EntityScript:AddDebuff(name, prefab, data, skip_test, pre_buff_fn)
         if pre_buff_fn then
             pre_buff_fn()
         end
-        self.components.debuffable:AddDebuff(name, prefab, data)
+        self.components.debuffable:AddDebuff(name, prefab, data, buffer)
         return true
     end
 
@@ -2018,5 +2133,45 @@ function EntityScript:RemoveDebuff(name)
         self.components.debuffable:RemoveDebuff(name)
     end
 end
+
+--
+
+-- For mob/corpse death states on save/load
+function EntityScript:SetDeathLootLevel(num)
+    local deathloothandler = self.components.deathloothandler
+    if deathloothandler == nil then
+        deathloothandler = self:AddComponent("deathloothandler")
+    end
+
+    deathloothandler:SetLevel(num)
+end
+
+function EntityScript:GetDeathLootLevel()
+    local deathloothandler = self.components.deathloothandler
+    return (deathloothandler and deathloothandler:GetLevel())
+        or 0
+end
+
+-- To handle just dropping it like usual, OR store it in the corpse if we're corpsing.
+function EntityScript:DropDeathLoot()
+    self:SetDeathLootLevel(1)
+    --
+    local lootdropper = self.components.lootdropper
+    if lootdropper then
+        if self.components.health.is_corpsing then
+            self.components.deathloothandler:StoreLoot(lootdropper:GenerateLoot())
+        else
+            lootdropper:DropLoot(self:GetPosition())
+        end
+    end
+end
+
+function EntityScript:GetDeathLoot()
+    local deathloothandler = self.components.deathloothandler
+    return (deathloothandler and deathloothandler:GetLoot())
+        or nil
+end
+
+--
 
 require("entityscriptproxy")

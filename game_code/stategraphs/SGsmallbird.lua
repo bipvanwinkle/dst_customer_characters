@@ -1,6 +1,5 @@
 require("stategraphs/commonstates")
 
-
 local actionhandlers =
 {
     ActionHandler(ACTIONS.EAT, "eat"),
@@ -12,24 +11,31 @@ local events =
     CommonHandlers.OnSleep(),
     CommonHandlers.OnLocomote(false,true),
     CommonHandlers.OnFreeze(),
-    EventHandler("attacked", function(inst)
+	CommonHandlers.OnElectrocute(),
+	EventHandler("attacked", function(inst, data)
         if not inst.components.health:IsDead() then
-            inst.sg:GoToState("hit")
+			if CommonHandlers.TryElectrocuteOnAttacked(inst, data) then
+				return
+			elseif not inst.sg:HasStateTag("electrocute") then
+				inst.sg:GoToState("hit")
+			end
         end
     end),
     EventHandler("doattack", function(inst)
-        if not inst.components.health:IsDead() and not inst.sg:HasStateTag("busy") then
+        if inst.components.health and not inst.components.health:IsDead() and not inst.sg:HasStateTag("busy") then
             inst.sg:GoToState("attack")
         end
     end),
+    CommonHandlers.OnDeath(),
 
-    EventHandler("death", function(inst) inst.sg:GoToState("death") end),
+	-- Corpse handlers
+	CommonHandlers.OnCorpseChomped(),
 }
 
 local function CheckForNewLeader(inst)
-    if inst.components.follower ~= nil and inst.components.follower.leader == nil then
+    if inst.components.follower ~= nil and inst.components.follower:GetLeader() == nil then
         inst.userfunctions.FollowLeader(inst)
-        if inst.components.follower.leader == nil then
+        if inst.components.follower:GetLeader() == nil then
             --Didn't find a leader yet
             return
         end
@@ -50,7 +56,7 @@ local states =
             inst.Physics:Stop()
             inst.AnimState:PlayAnimation("idle", true)
             inst.sg:SetTimeout(4 + 4 * math.random())
-            if inst.components.follower ~= nil and inst.components.follower.leader == nil then
+            if inst.components.follower ~= nil and inst.components.follower:GetLeader() == nil then
                 inst.sg.statemem.checkleadertask = inst:DoPeriodicTask(1, CheckForNewLeader, 0)
             end
         end,
@@ -149,9 +155,13 @@ local states =
             inst.AnimState:PlayAnimation("death")
             inst.components.locomotor:StopMoving()
             RemovePhysicsColliders(inst)
-            inst.components.lootdropper:DropLoot(Vector3(inst.Transform:GetWorldPosition()))
+            inst:DropDeathLoot()
         end,
 
+        events =
+        {
+            CommonHandlers.OnCorpseDeathAnimOver(),
+        },
     },
 
 
@@ -302,6 +312,9 @@ CommonStates.AddSleepStates(states,
     },
 })
 CommonStates.AddFrozenStates(states)
+CommonStates.AddElectrocuteStates(states)
 
-return StateGraph("smallbird", states, events, "idle", actionhandlers)
+CommonStates.AddInitState(states, "idle")
+CommonStates.AddCorpseStates(states)
 
+return StateGraph("smallbird", states, events, "init", actionhandlers)

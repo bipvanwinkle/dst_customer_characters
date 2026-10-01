@@ -16,6 +16,7 @@ local SpawnFader = Class(function(self, inst)
     self.inst = inst
 
     self._fade = net_tinybyte(inst.GUID, "spawnfader._fade", "fadedirty")
+    self._fadeout = net_bool(inst.GUID, "spawnfader._fadeout")
     self.fadeval = 0
     self.updating = false
 
@@ -33,6 +34,30 @@ function SpawnFader:OnRemoveFromEntity()
 end
 
 function SpawnFader:FadeIn()
+    if TheWorld.ismastersim then
+        self._fade:set(7)
+        self._fadeout:set(false)
+    else
+        self._fade:set_local(7)
+        self._fadeout:set_local(false)
+    end
+    self.fadeval = 1
+    if not self.updating then
+        self.updating = true
+        self.inst:StartUpdatingComponent(self)
+        self.inst:AddTag("NOCLICK")
+        self:OnUpdate(FRAMES)
+    end
+end
+
+function SpawnFader:FadeOut()
+    if TheWorld.ismastersim then
+        self._fade:set(7)
+        self._fadeout:set(true)
+    else
+        self._fade:set_local(7)
+        self._fadeout:set_local(true)
+    end
     self.fadeval = 1
     if not self.updating then
         self.updating = true
@@ -51,8 +76,18 @@ end
 
 function SpawnFader:OnUpdate(dt)
     self.fadeval = math.max(0, self.fadeval - dt)
+	if TheWorld.ismastersim then
+		self._fade:set_local(math.floor(7 * self.fadeval + .5))
+	end
 
-    local k = 1 - self.fadeval * self.fadeval
+    local fadingout = self._fadeout:value()
+    local k
+    if fadingout then
+        k = 1 - self.fadeval
+        k = 1 - k * k
+    else
+        k = 1 - self.fadeval * self.fadeval
+    end
 
     self.inst.AnimState:OverrideMultColour(1, 1, 1, k)
 
@@ -65,12 +100,13 @@ function SpawnFader:OnUpdate(dt)
     if self.fadeval <= 0 then
         self.updating = false
         self.inst:StopUpdatingComponent(self)
-    end
-
-    if TheWorld.ismastersim then
-        self._fade:set_local(math.floor(7 * self.fadeval + .5))
-        if not self.updating then
-            self.inst:RemoveTag("NOCLICK")
+        if fadingout then
+            self.inst:PushEvent("spawnfaderout")
+        else
+			if TheWorld.ismastersim then
+				self.inst:RemoveTag("NOCLICK")
+			end
+            self.inst:PushEvent("spawnfaderin")
         end
     end
 end

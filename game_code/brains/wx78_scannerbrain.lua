@@ -11,8 +11,13 @@ end)
 
 -----------------------------------------------------------------------------------------
 
+local function GetLeader(inst)
+    return inst.components.follower and inst.components.follower:GetLeader()
+end
+
 local function GetLeaderPosition(inst)
-    return (inst.components.follower and inst.components.follower.leader and inst.components.follower.leader:GetPosition())
+    local leader = GetLeader(inst)
+    return (leader and leader:GetPosition())
         or inst:GetPosition()
 end
 
@@ -23,7 +28,7 @@ local function ReturnToPlayerAfterFinishedScan(inst)
         return nil
     end
 
-    local leader = (inst.components.follower ~= nil and inst.components.follower.leader)
+    local leader = GetLeader(inst)
     if not leader then
         inst:OnReturnedAfterSuccessfulScan()
         return
@@ -31,8 +36,9 @@ local function ReturnToPlayerAfterFinishedScan(inst)
 
     local flyto_position = nil
     local offset = nil
-    if inst.components.follower ~= nil and inst.components.follower.leader ~= nil then
-        flyto_position = inst.components.follower.leader:GetPosition()
+    local leader = GetLeader(inst)
+    if leader then
+        flyto_position = leader:GetPosition()
         local angle_to_leader = inst:GetAngleToPoint(flyto_position:Get())
         offset = FindWalkableOffset(flyto_position, angle_to_leader, 1.0)
     else
@@ -50,7 +56,7 @@ local function ReturnToPlayerAfterFinishedScan(inst)
             inst:OnReturnedAfterSuccessfulScan()
         end
         act:AddSuccessAction(on_finished)
-        act:AddFailAction(on_finished)
+        -- act:AddFailAction(on_finished)
     end
     return act
 end
@@ -58,10 +64,6 @@ end
 -----------------------------------------------------------------------------------------
 
 local TARGET_FOLLOW, MAX_TARGET_FOLLOW = 0.1, 2.0
-
--- If the scantarget's physics radius pushes our dist above this, clamp to this.
--- Clip a hair below the actual scan distance to avoid stop/start wonkiness.
-local HIGHEST_ADJUSTED_MAXFOLLOWDIST = TUNING.WX78_SCANNER_SCANDIST - 0.05
 
 local function GetScanTarget(inst)
     return (not inst.sg:HasStateTag("scanned") and inst.components.entitytracker:GetEntity("scantarget"))
@@ -76,7 +78,10 @@ end
 
 local function GetMaxScanFollowDistance(inst)
     local target = GetScanTarget(inst)
-    return (target ~= nil and math.min(HIGHEST_ADJUSTED_MAXFOLLOWDIST, target:GetPhysicsRadius(0) + MAX_TARGET_FOLLOW))
+    -- If the scantarget's physics radius pushes our dist above this, clamp to this.
+    -- Clip a hair below the actual scan distance to avoid stop/start wonkiness.
+    local scandist = inst:GetScannerScanDistance() - 0.05
+    return (target ~= nil and math.min(scandist, target:GetPhysicsRadius(0) + MAX_TARGET_FOLLOW))
         or MAX_TARGET_FOLLOW
 end
 

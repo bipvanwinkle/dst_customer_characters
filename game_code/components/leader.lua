@@ -1,3 +1,5 @@
+local SourceModifierList = require("util/sourcemodifierlist")
+
 local function OnNewCombatTarget(inst, data)
     inst.components.leader:OnNewTarget(data.target)
 end
@@ -14,6 +16,8 @@ local Leader = Class(function(self, inst)
     self.inst = inst
     self.followers = {}
     self.numfollowers = 0
+    self.itemfollowers = {} -- Do not save this temporary table it is for virtual followers that treat this leader as their leader for interaction based logic.
+    self.numitemfollowers = 0
 
 	--self.loyaltyeffectiveness = nil
 
@@ -30,10 +34,17 @@ function Leader:OnRemoveFromEntity()
     self.inst:RemoveEventCallback("attacked", OnAttacked)
     self.inst:RemoveEventCallback("death", OnDeath)
     self:RemoveAllFollowers()
+    if self.roll_call_sources then
+		self.roll_call_sources:Reset()
+	end
+end
+
+function Leader:SetForceLeash()
+    self.forceleash = true
 end
 
 function Leader:IsFollower(guy)
-    return self.followers[guy] ~= nil
+    return self.followers[guy] ~= nil or self.itemfollowers[guy] ~= nil
 end
 
 function Leader:OnAttacked(attacker)
@@ -43,11 +54,20 @@ function Leader:OnAttacked(attacker)
                 k.components.combat:SuggestTarget(attacker)
             end
         end
+        for k in pairs(self.itemfollowers) do
+            if k.components.combat ~= nil and k.components.follower ~= nil and k.components.follower.canaccepttarget then
+                k.components.combat:SuggestTarget(attacker)
+            end
+        end
     end
 end
 
+function Leader:GetNumFollowers() -- Use this instead of CountFollowers(nil)
+    return self.numfollowers
+end
+
 function Leader:CountFollowers(tag)
-    if tag == nil then
+    if tag == nil then -- Kept for previous behaviour
         return self.numfollowers
     end
 
@@ -57,6 +77,11 @@ function Leader:CountFollowers(tag)
             count = count + 1
 		end
 	end
+    for k in pairs(self.itemfollowers) do
+        if k:HasTag(tag) then
+            count = count + 1
+		end
+    end
 	return count
 end
 
@@ -71,8 +96,29 @@ function Leader:GetFollowersByTag(tag)
             table.insert(followers, k)
         end
     end
+    for k in pairs(self.itemfollowers) do
+        if k:HasTag(tag) then
+            table.insert(followers, k)
+        end
+    end
 
     return followers
+end
+
+function Leader:SetIsRollCaller(source, boolval)
+    if not self.roll_call_sources then
+        self.roll_call_sources = SourceModifierList(self.inst, false, SourceModifierList.boolean)
+    end
+
+    self.roll_call_sources:SetModifier(source, boolval)
+end
+
+function Leader:IsRollCalling()
+    if self.inst.components.leaderrollcall and self.inst.components.leaderrollcall:IsEnabled() then
+        return true
+    end
+
+    return self.roll_call_sources and self.roll_call_sources:Get() or false
 end
 
 function Leader:IsTargetedByFollowers(target)
@@ -81,14 +127,39 @@ function Leader:IsTargetedByFollowers(target)
             return true
         end
     end
+    for follower in pairs(self.itemfollowers) do
+        if follower.combat ~= nil and follower.combat:TargetIs(target) then
+            return true
+        end
+    end
+end
+
+function Leader:IsTargetPet(target)
+    local dismiss_pet = target ~= nil and self.inst.components.petleash ~= nil and self.inst.components.petleash:IsPet(target)
+
+    if target and self.inst.components.inventory then
+        for k, v in pairs(self.inst.components.inventory.equipslots) do
+            if v and v.components.petleash ~= nil and v.components.petleash:IsPet(target) then
+                dismiss_pet = true
+                break
+            end
+        end
+    end
+
+    return dismiss_pet
 end
 
 function Leader:OnNewTarget(target)
-	if target ~= nil and self.inst.components.petleash ~= nil and self.inst.components.petleash:IsPet(target) then
+	if self:IsTargetPet(target) then
 		--dismissing pets, don't share target
 		return
 	elseif target == nil or (target.components.minigame_participator == nil or (target:HasTag("player") and TheNet:GetPVPEnabled())) then
 		for k in pairs(self.followers) do
+			if k.components.combat ~= nil and k.components.follower ~= nil and k.components.follower.canaccepttarget and k:IsValid() then
+				k.components.combat:SuggestTarget(target)
+			end
+		end
+		for k in pairs(self.itemfollowers) do
 			if k.components.combat ~= nil and k.components.follower ~= nil and k.components.follower.canaccepttarget and k:IsValid() then
 				k.components.combat:SuggestTarget(target)
 			end
@@ -144,6 +215,20 @@ function Leader:AddFollower(follower)
 	end
 end
 
+function Leader:AddItemFollower(itemfollower)
+    if self.itemfollowers[itemfollower] == nil then
+        self.itemfollowers[itemfollower] = true
+        self.numitemfollowers = self.numitemfollowers + 1
+    end
+end
+
+function Leader:RemoveItemFollower(itemfollower)
+    if self.itemfollowers[itemfollower] ~= nil then
+        self.itemfollowers[itemfollower] = nil
+        self.numitemfollowers = self.numitemfollowers - 1
+    end
+end
+
 function Leader:RemoveFollowersByTag(tag, validateremovefn)
     for k in pairs(self.followers) do
         if k:HasTag(tag) and (validateremovefn == nil or validateremovefn(k)) then
@@ -176,6 +261,11 @@ end
 
 function Leader:IsBeingFollowedBy(prefabName)
     for k in pairs(self.followers) do
+        if k.prefab == prefabName then
+            return true
+        end
+    end
+    for k in pairs(self.itemfollowers) do
         if k.prefab == prefabName then
             return true
         end

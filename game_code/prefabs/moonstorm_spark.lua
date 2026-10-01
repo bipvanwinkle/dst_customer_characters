@@ -10,41 +10,51 @@ local prefabs =
 
 local brain = require "brains/sporebrain"
 
+local SPARK_MUST_TAGS = { "_combat" }
+local SPARK_CANT_TAGS = { "playerghost", "INLIMBO", "flight", "invisible", "notarget", "noattack", "moonstorm_static", "wall", "structure" }
+local CHARGE_MUST_TAGS = { "moonsparkchargeable" }
 
-local SPARK_CANT_TAGS = { "playerghost", "INLIMBO", "moonstorm_static","wall","structure"}
-local SPARK_MUST_TAGS = { "moonsparkchargeable" }
+local function dospark2(inst)
+	inst.Light:SetRadius(1.5)
+end
+
+local function dospark1(inst, dospark)
+	inst.Light:SetRadius(2)
+
+	local x, y, z = inst.Transform:GetWorldPosition()
+	for i, ent in ipairs(TheSim:FindEntities(x, y, z, 4, SPARK_MUST_TAGS, SPARK_CANT_TAGS)) do
+		if ent:IsValid() and not ent:IsInLimbo() and
+			not (ent.components.inventory and ent.components.inventory:IsInsulated()) and
+			not (ent.components.health and ent.components.health:IsDead()) and
+			ent.components.combat and ent.components.combat:CanBeAttacked()
+		then
+			local damage_mult = 1
+			if not IsEntityElectricImmune(ent) then
+				damage_mult = TUNING.ELECTRIC_DAMAGE_MULT + TUNING.ELECTRIC_WET_DAMAGE_MULT * ent:GetWetMultiplier()
+			end
+			ent.components.combat:GetAttacked(inst, damage_mult * TUNING.MOONSTORM_SPARK_DAMAGE, nil, "electric")
+			if ent.components.hauntable and ent.components.hauntable.panicable then
+				ent.components.hauntable:Panic(2)
+			end
+		end
+	end
+
+	for i, ent in ipairs(TheSim:FindEntities(x, y, z, 4, CHARGE_MUST_TAGS)) do
+        if ent.components.moonsparkchargeable then
+            ent.components.moonsparkchargeable:DoSpark(inst)
+        end
+	end
+
+	inst:DoTaskInTime(0.5, dospark2)
+	inst.sparktask = inst:DoTaskInTime(5 + math.random() * 10, dospark)
+end
 
 local function dospark(inst)
     if inst:IsInLimbo() then
         print(debugstack())
     end
-    local fx = inst:SpawnChild("moonstorm_spark_shock_fx")
-    inst.sparktask = inst:DoTaskInTime(5/30, function()
-        inst.Light:SetRadius(2)
-        local pos = Vector3(inst.Transform:GetWorldPosition())
-        local ents = TheSim:FindEntities(pos.x, pos.y, pos.z, 4, nil, SPARK_CANT_TAGS)
-        if #ents > 0 then
-            for i, ent in ipairs(ents)do
-                if ent.components.combat ~= nil and (ent.components.inventory == nil or not ent.components.inventory:IsInsulated()) then
-                    ent.components.combat:GetAttacked(inst, TUNING.LIGHTNING_DAMAGE, nil, "electric")
-                    if ent.components.hauntable ~= nil and ent.components.hauntable.panicable then
-                        ent.components.hauntable:Panic(2)
-                    end
-                end
-            end
-        end
-        ents = TheSim:FindEntities(pos.x, pos.y, pos.z, 4, SPARK_MUST_TAGS)
-        if #ents > 0 then
-            for i, ent in ipairs(ents)do
-                ent.components.fueled:SetPercent(math.min(1,ent.components.fueled:GetPercent()+0.1))
-            end
-        end
-        inst:DoTaskInTime(0.5,function()
-            inst.Light:SetRadius(1.5)
-        end)
-        inst.sparktask = inst:DoTaskInTime(5 + math.random()* 10, dospark)
-    end)
-
+	inst:SpawnChild("moonstorm_spark_shock_fx")
+	inst.sparktask = inst:DoTaskInTime(5/30, dospark1, dospark)
 end
 
 local function depleted(inst)
@@ -53,21 +63,9 @@ local function depleted(inst)
     else
         inst.components.workable:SetWorkable(false)
         inst:PushEvent("death")
-        inst:RemoveTag("spore") -- so crowding no longer detects it
         inst.persists = false
         -- clean up when offscreen, because the death event is handled by the SG
         inst:DoTaskInTime(3, inst.Remove)
-    end
-end
-
-local SPORE_TAGS = {"spore"}
-local function checkforcrowding(inst)
-    local x, y, z = inst.Transform:GetWorldPosition()
-    local spores = TheSim:FindEntities(x,y,z, TUNING.MUSHSPORE_MAX_DENSITY_RAD, SPORE_TAGS)
-    if #spores > TUNING.MUSHSPORE_MAX_DENSITY then
-        inst.components.perishable:SetPercent(0)
-    else
-        inst.crowdingtask = inst:DoTaskInTime(TUNING.MUSHSPORE_DENSITY_CHECK_TIME + math.random()*TUNING.MUSHSPORE_DENSITY_CHECK_VAR, checkforcrowding)
     end
 end
 
@@ -75,10 +73,6 @@ local function onpickup(inst)
     --These last longer when held
     inst.components.perishable:SetLocalMultiplier( TUNING.SEG_TIME * 3/ TUNING.PERISH_SLOW )
     inst.SoundEmitter:KillSound("idle_LP")
-    if inst.crowdingtask ~= nil then
-        inst.crowdingtask:Cancel()
-        inst.crowdingtask = nil
-    end
     if inst.sparktask then
         inst.sparktask:Cancel()
         inst.sparktask = nil
@@ -108,9 +102,6 @@ local function ondropped(inst)
         end
     end
 
-    if inst.crowdingtask == nil then
-        inst.crowdingtask = inst:DoTaskInTime(TUNING.MUSHSPORE_DENSITY_CHECK_TIME + math.random()*TUNING.MUSHSPORE_DENSITY_CHECK_VAR, checkforcrowding)
-    end
     inst.Light:Enable(true)
 
     if not inst.sparktask then
@@ -154,6 +145,12 @@ local function OnSleep(inst)
     inst.SoundEmitter:KillSound("idle_LP")
 end
 
+local function DisplayAdjectiveFn(inst)
+	return inst:HasTag("stale") and STRINGS.UI.HUD.STALE_POWER
+        or inst:HasTag("spoiled") and STRINGS.UI.HUD.SPOILED_POWER
+        or nil
+end
+
 local function fn()
     local inst = CreateEntity()
 
@@ -184,11 +181,13 @@ local function fn()
     inst:AddTag("show_spoilage")
     inst:AddTag("moonstorm_spark")
 
-    inst.scrapbook_damage = TUNING.LIGHTNING_DAMAGE
+	inst.scrapbook_damage = TUNING.MOONSTORM_SPARK_DAMAGE * TUNING.ELECTRIC_DAMAGE_MULT --show dry damage, not immune damage
     inst.scrapbook_animpercent = 0.5
     inst.scrapbook_anim = "idle_flight_loop"
     inst.scrapbook_animoffsetx = 20
     inst.scrapbook_animoffsety = 35
+
+    inst.displayadjectivefn = DisplayAdjectiveFn
 
     inst.entity:SetPristine()
 
@@ -222,6 +221,9 @@ local function fn()
 
     inst:AddComponent("stackable")
 
+	inst:AddComponent("electricattacks")
+	inst.components.electricattacks:AddSource(inst)
+
     MakeHauntablePerish(inst, .5)
 
     inst:ListenForEvent("onputininventory", onpickup)
@@ -232,9 +234,6 @@ local function fn()
 
     inst:SetStateGraph("SGspore")
     inst:SetBrain(brain)
-
-    -- note: the first check is faster, because this might be from dropping a stack
-    inst.crowdingtask = inst:DoTaskInTime(1 + math.random()*TUNING.MUSHSPORE_DENSITY_CHECK_VAR, checkforcrowding)
 
     inst.sparktask = inst:DoTaskInTime(5 + math.random()* 10, dospark)
 

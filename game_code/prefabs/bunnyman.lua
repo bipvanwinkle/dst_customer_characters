@@ -23,6 +23,8 @@ local prefabs =
     "carrot",
 	"shadow_despawn",
 	"statue_transition_2",
+
+    "bunnymancorpse",
 }
 
 local beardlordloot = { "beardhair", "beardhair", "monstermeat" }
@@ -150,7 +152,7 @@ local function ShouldAcceptItem(inst, item)
         (   --accept food, but not too many carrots for loyalty!
             inst.components.eater:CanEat(item) and
             (   (item.prefab ~= "carrot" and item.prefab ~= "carrot_cooked") or
-                inst.components.follower.leader == nil or
+                inst.components.follower:GetLeader() == nil or
                 inst.components.follower:GetLoyaltyPercent() <= .9
             )
         )
@@ -224,7 +226,11 @@ local function OnAttacked(inst, data)
 end
 
 local function OnNewTarget(inst, data)
-    inst.components.combat:ShareTarget(data.target, SHARE_TARGET_DIST, function(dude) return dude.prefab == inst.prefab end, MAX_TARGET_SHARES)
+    if inst:HasTag("shadowthrall_parasite_hosted") then
+        inst.components.combat:ShareTarget(data.target, SHARE_TARGET_DIST, IsHost, MAX_TARGET_SHARES)
+    else
+        inst.components.combat:ShareTarget(data.target, SHARE_TARGET_DIST, function(dude) return dude.prefab == inst.prefab end, MAX_TARGET_SHARES)
+    end
 end
 
 local RETARGET_MUST_TAGS = { "_combat", "_health" }
@@ -269,7 +275,7 @@ local function battlecry(combatcmp, target)
 end
 
 local function GetStatus(inst)
-    return inst.components.follower.leader ~= nil and "FOLLOWER" or nil
+    return inst.components.follower:GetLeader() ~= nil and "FOLLOWER" or nil
 end
 
 local function LootSetupFunction(lootdropper)
@@ -277,7 +283,7 @@ local function LootSetupFunction(lootdropper)
 	if IsForcedNightmare(lootdropper.inst) then
 		-- forced beard lord
 		lootdropper:SetLoot(forced_beardlordloot)
-	elseif IsCrazyGuy(guy ~= nil and guy.components.follower ~= nil and guy.components.follower.leader or guy) then
+	elseif IsCrazyGuy(guy ~= nil and guy.components.follower ~= nil and guy.components.follower:GetLeader() or guy) then
         -- beard lord
         lootdropper:SetLoot(beardlordloot)
     else
@@ -335,7 +341,7 @@ local function ShouldAggro(inst, target)
     return true
 end
 
-local SCRAPBOOK_HIDE_SYMBOLS = { "hat", "ARM_carry", "HAIR_HAT" }
+local SCRAPBOOK_HIDE_LAYERS = { "hat", "ARM_carry", "HAIR_HAT" }
 
 local function fn()
     local inst = CreateEntity()
@@ -389,7 +395,7 @@ local function fn()
         return inst
     end
 
-    inst.scrapbook_hide = SCRAPBOOK_HIDE_SYMBOLS
+	inst.scrapbook_hide = SCRAPBOOK_HIDE_LAYERS
 
     --Remove these tags so that they can be added properly when replicating components below
     inst:RemoveTag("_named")

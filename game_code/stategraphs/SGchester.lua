@@ -7,18 +7,18 @@ local MAX_FX_SCALE = 1.6
 
 local function ToggleOffPhysics(inst)
     inst.sg.statemem.isphysicstoggle = true
-    inst.Physics:ClearCollisionMask()
-    inst.Physics:CollidesWith(COLLISION.GROUND)
+	inst.Physics:SetCollisionMask(COLLISION.GROUND)
 end
 
 local function ToggleOnPhysics(inst)
     inst.sg.statemem.isphysicstoggle = nil
-    inst.Physics:ClearCollisionMask()
-    inst.Physics:CollidesWith(COLLISION.WORLD)
-    inst.Physics:CollidesWith(COLLISION.OBSTACLES)
-    inst.Physics:CollidesWith(COLLISION.SMALLOBSTACLES)
-    inst.Physics:CollidesWith(COLLISION.CHARACTERS)
-    inst.Physics:CollidesWith(COLLISION.GIANTS)
+	inst.Physics:SetCollisionMask(
+		COLLISION.WORLD,
+		COLLISION.OBSTACLES,
+		COLLISION.SMALLOBSTACLES,
+		COLLISION.CHARACTERS,
+		COLLISION.GIANTS
+	)
 end
 
 local function ClearStatusAilments(inst)
@@ -65,27 +65,26 @@ local function SetContainerCanBeOpened(inst, canbeopened)
 	end
 end
 
-local actionhandlers =
-{
-}
-
 local events=
 {
     CommonHandlers.OnStep(),
     CommonHandlers.OnSleep(),
+	CommonHandlers.OnElectrocute(),
     CommonHandlers.OnLocomote(false,true),
     CommonHandlers.OnHop(),
 	CommonHandlers.OnSink(),
     CommonHandlers.OnFallInVoid(),
-    EventHandler("attacked", function(inst)
+	EventHandler("attacked", function(inst, data)
         if inst.components.health and not inst.components.health:IsDead() and not inst.sg:HasStateTag("devoured") then
-            inst.sg:GoToState("hit")
-
-            inst.SoundEmitter:PlaySound(inst.sounds.hurt)
-
+			if CommonHandlers.TryElectrocuteOnAttacked(inst, data) then
+				inst.SoundEmitter:PlaySound(inst.sounds.hurt)
+				return
+			elseif not inst.sg:HasStateTag("electrocute") then
+				inst.sg:GoToState("hit")
+				inst.SoundEmitter:PlaySound(inst.sounds.hurt)
+			end
         end
     end),
-    EventHandler("death", function(inst) inst.sg:GoToState("death") end),
     EventHandler("morph", function(inst, data)
         inst.sg:GoToState("morph", data.morphfn)
     end),
@@ -101,6 +100,10 @@ local events=
             inst.sg:GoToState("devoured", data)
         end
     end),
+    CommonHandlers.OnDeath(),
+
+    -- Corpse handlers
+	CommonHandlers.OnCorpseChomped(),
 }
 
 local states=
@@ -136,7 +139,6 @@ local states=
         },
    },
 
-
     State{
         name = "death",
         tags = {"busy"},
@@ -153,6 +155,11 @@ local states=
             inst.Physics:Stop()
             RemovePhysicsColliders(inst)
         end,
+
+        events =
+        {
+            CommonHandlers.OnCorpseDeathAnimOver(),
+        },
     },
 
     State{
@@ -277,7 +284,7 @@ local states=
 
     State{
         name = "transition",
-        tags = {"busy"},
+		tags = { "busy", "noelectrocute" },
         onenter = function(inst)
             inst.Physics:Stop()
 
@@ -329,7 +336,7 @@ local states=
 
     State{
         name = "morph",
-        tags = {"busy"},
+		tags = { "busy", "noelectrocute" },
         onenter = function(inst, morphfn)
             inst.Physics:Stop()
 
@@ -395,7 +402,7 @@ local states=
 
     State{
         name = "knockbacklanded",
-        tags = { "knockback", "busy", "nopredict", "nomorph", "nointerrupt", "jumping" },
+		tags = { "knockback", "busy", "nopredict", "nomorph", "nointerrupt", "jumping", "noelectrocute" },
 
         onenter = function(inst, data)
             ClearStatusAilments(inst)
@@ -508,7 +515,7 @@ local states=
 
     State{
         name = "devoured",
-        tags = { "devoured", "invisible", "noattack", "notalking", "nointerrupt", "busy", "silentmorph" },
+		tags = { "devoured", "invisible", "noattack", "notalking", "nointerrupt", "busy", "silentmorph", "noelectrocute" },
 
         onenter = function(inst, data)
             local attacker = data.attacker
@@ -517,7 +524,7 @@ local states=
             inst:ClearBufferedAction()
             inst.AnimState:PlayAnimation("empty")
 
-            inst:StopBrain()
+			inst:StopBrain("SGchester_devoured")
 
             inst:Hide()
             inst.DynamicShadow:Enable(false)
@@ -555,16 +562,14 @@ local states=
                         inst.Physics:Teleport(x, 0, z)
                     end
 
-                    inst.sg:HandleEvent("knockback", {
+					inst:PushEventImmediate("knockback", {
                         knocker = attacker,
                         radius = data ~= nil and data.radius or physradius + 1,
                         strengthmult = data ~= nil and data.strengthmult or nil,
                     })
                 else
-                    inst.sg:HandleEvent("knockback")
-
+					inst:PushEventImmediate("knockback")
                 end
-
             end),
         },
 
@@ -587,7 +592,7 @@ local states=
                     end
                 end
             end
-            inst:RestartBrain()
+			inst:RestartBrain("SGchester_devoured")
             inst:Show()
             inst.DynamicShadow:Enable(true)
             if inst.sg.statemem.isphysicstoggle then
@@ -690,17 +695,14 @@ CommonStates.AddWalkStates(states, {
 
 CommonStates.AddHopStates(states, true, nil,
 {
-
     hop_pre =
     {
-        TimeEvent(0, function(inst)
-            -- TODO(DANY):  This is when Chester starts jumping on the boat. There are a few other creatures that can jump on the boat
-            --              but I thought it would make sense to just get chester working properly and then we can look at hooking up
-            --              the other ones after.
-            -- TODO(DANY):  This is when Chester lands on the boat.
-            inst.SoundEmitter:PlaySound("dontstarve/common/dropGeneric")
-        end),
-    }
+        SoundFrameEvent(0, "turnoftides/common/together/boat/jump", .8),
+    },
+    hop_pst =
+    {
+        SoundFrameEvent(0, "turnoftides/common/together/boat/jump_on_small"),
+    },
 })
 
 CommonStates.AddSleepStates(states,
@@ -727,6 +729,22 @@ CommonStates.AddSleepStates(states,
 CommonStates.AddSimpleState(states, "hit", "hit", {"busy"})
 CommonStates.AddSinkAndWashAshoreStates(states)
 CommonStates.AddVoidFallStates(states)
+CommonStates.AddElectrocuteStates(states, nil, nil,
+{
+	loop_onenter = function(inst)
+		SetContainerCanBeOpened(inst, false)
+	end,
+	loop_onexit = function(inst)
+		if not inst.sg.statemem.not_interrupted then
+			SetContainerCanBeOpened(inst, true)
+		end
+	end,
+	pst_onexit = function(inst)
+		SetContainerCanBeOpened(inst, true)
+	end,
+})
 
-return StateGraph("chester", states, events, "idle", actionhandlers)
+CommonStates.AddInitState(states, "idle")
+CommonStates.AddCorpseStates(states)
 
+return StateGraph("chester", states, events, "init")

@@ -62,17 +62,6 @@ end
 
 ------------------------------------------
 
-local function EnablePickupSound(inst)
-	inst.pickupsound = nil
-end
-
-local function OnTempDisablePickupSound(inst)
-	if inst.pickupsound == nil then
-		inst.pickupsound = "NONE"
-		inst:DoStaticTaskInTime(2 * FRAMES, EnablePickupSound)
-	end
-end
-
 local function KillEmber(inst)
     inst:ListenForEvent("animover", inst.Remove)
 
@@ -84,7 +73,7 @@ local function toground(inst)
     inst.persists = false
 
     if inst._task == nil then
-        inst._task = inst:DoTaskInTime(TUNING.WILLOW_EMBER_DURATION, KillEmber) -- NOTES(JBK): This is 1.1 max keep it in sync with "[WST]"
+        inst._task = inst:DoTaskInTime(TUNING.WILLOW_EMBER_DURATION, KillEmber)
     end
 
     if inst.AnimState:IsCurrentAnimation("idle_loop") then
@@ -175,7 +164,7 @@ local function ConsumeEmbers(inst, doer, amount)
 					for j = i, inventory:GetNumSlots() do
 						local v2 = inventory:GetItemInSlot(j)
 						if v2 and v2 ~= inst and v2.prefab == inst.prefab then
-							inst._tempdisablepickupsound:push()
+							inst.components.clientpickupsoundsuppressor:IgnoreNextPickupSound()
 							inst.pickupsound = "NONE"
 							inst.components.stackable:SetStackSize(v2.components.stackable:StackSize())
 							inventory:RemoveItem(v2, true):Remove()
@@ -204,8 +193,8 @@ local function ConsumeEmbers(inst, doer, amount)
 	end
 end
 
-local SPAWN_FIRE_CANT =     { "player", "INLIMBO", "FX", "NOCLICK" }
-local SPAWN_FIRE_CANT_PVP = { "INLIMBO", "FX", "NOCLICK" }
+local SPAWN_FIRE_CANT =     { "player", "INLIMBO", "NOCLICK" } -- "FX" don't exclude FX, we want to find miasma
+local SPAWN_FIRE_CANT_PVP = { "INLIMBO", "NOCLICK" }  -- "FX" don't exclude FX, we want to find miasma
 
 local function ThrowFire_SpawnFire(inst, doer, pos)
     local x, y, z = pos:Get()
@@ -219,37 +208,41 @@ local function ThrowFire_SpawnFire(inst, doer, pos)
     end
 
     for i, target in ipairs(ents) do
-        if target ~= doer and
-            target.components.burnable ~= nil
-        then
-            if target.components.freezable ~= nil and target.components.freezable:IsFrozen() then
-                target.components.freezable:Unfreeze()
+        if target ~= doer then
+            if target:HasTag("miasma") and target.ForceKillMiasma then
+                target:ForceKillMiasma()
+            elseif not target:HasTag("FX") then
+                if target.components.burnable ~= nil then
+                    if target.components.freezable ~= nil and target.components.freezable:IsFrozen() then
+                        target.components.freezable:Unfreeze()
 
-            elseif target.components.fueled == nil or (
-                target.components.fueled.fueltype ~= FUELTYPE.BURNABLE and
-                target.components.fueled.secondaryfueltype ~= FUELTYPE.BURNABLE
-            ) then
-                -- Does not take burnable fuel, so just burn it.
-                if target.components.burnable.canlight or target.components.combat ~= nil then
-                    target.components.burnable:Ignite(true, inst, doer)
-                end
+                    elseif target.components.fueled == nil or (
+                        target.components.fueled.fueltype ~= FUELTYPE.BURNABLE and
+                        target.components.fueled.secondaryfueltype ~= FUELTYPE.BURNABLE
+                    ) then
+                        -- Does not take burnable fuel, so just burn it.
+                        if target.components.burnable.canlight or target.components.combat ~= nil then
+                            target.components.burnable:Ignite(true, inst, doer)
+                        end
 
-            elseif target.components.fueled.accepting then
-                -- Takes burnable fuel, so fuel it.
-                local fuel = SpawnPrefab("boards")
+                    elseif target.components.fueled.accepting then
+                        -- Takes burnable fuel, so fuel it.
+                        local fuel = SpawnPrefab("boards")
 
-                if fuel ~= nil then
-                    if fuel.components.fuel ~= nil and
-                        fuel.components.fuel.fueltype == FUELTYPE.BURNABLE
-                    then
-                        target.components.fueled:TakeFuelItem(fuel)
-                    else
-                        fuel:Remove()
+                        if fuel ~= nil then
+                            if fuel.components.fuel ~= nil and
+                                fuel.components.fuel.fueltype == FUELTYPE.BURNABLE
+                            then
+                                target.components.fueled:TakeFuelItem(fuel)
+                            else
+                                fuel:Remove()
+                            end
+                        end
                     end
+                elseif target:HasTag("canlight") then
+                    target:PushEvent("onlighterlight")
                 end
             end
-        elseif target ~= doer and target:HasTag("canlight") then
-            target:PushEvent("onlighterlight")
         end
     end
 end
@@ -282,7 +275,9 @@ end
 
 local function DoBurstFire(doer, inst, ent)
 	if ent:IsValid() then
-		if ent.components.burnable then
+        if ent:HasTag("miasma") and ent.ForceKillMiasma then
+            ent:ForceKillMiasma()
+		elseif ent.components.burnable then
 			ent.components.burnable:Ignite(nil, inst, doer)
 		else
 			ent:PushEvent("onlighterlight")
@@ -636,6 +631,7 @@ local SKILLTREE_SPELL_DEFS =
         label = STRINGS.PYROMANCY.FIRE_THROW,
         onselect = function(inst)
             inst.components.spellbook:SetSpellName(STRINGS.PYROMANCY.FIRE_THROW)
+			inst.components.spellbook:SetSpellAction(nil)
             inst.components.aoetargeting:SetDeployRadius(0)
             inst.components.aoetargeting:SetShouldRepeatCastFn(ShouldRepeatFireThrow)
             inst.components.aoetargeting.reticule.reticuleprefab = "reticuleaoefiretarget_1"
@@ -668,6 +664,7 @@ local SKILLTREE_SPELL_DEFS =
         label = STRINGS.PYROMANCY.FIRE_BURST,
         onselect = function(inst)
             inst.components.spellbook:SetSpellName(STRINGS.PYROMANCY.FIRE_BURST)
+			inst.components.spellbook:SetSpellAction(nil)
             inst.components.aoetargeting:SetDeployRadius(0)
             inst.components.aoetargeting:SetShouldRepeatCastFn(ShouldRepeatFireBurst)
             inst.components.aoetargeting.reticule.reticuleprefab = "reticulemultitarget"
@@ -700,6 +697,7 @@ local SKILLTREE_SPELL_DEFS =
         label = STRINGS.PYROMANCY.FIRE_BALL,
         onselect = function(inst)
             inst.components.spellbook:SetSpellName(STRINGS.PYROMANCY.FIRE_BALL)
+			inst.components.spellbook:SetSpellAction(nil)
             inst.components.aoetargeting:SetDeployRadius(0)
             inst.components.aoetargeting:SetShouldRepeatCastFn(ShouldRepeatFireBall)
             
@@ -733,6 +731,7 @@ local SKILLTREE_SPELL_DEFS =
         label = STRINGS.PYROMANCY.FIRE_FRENZY,
         onselect = function(inst)
             inst.components.spellbook:SetSpellName(STRINGS.PYROMANCY.FIRE_FRENZY)
+			inst.components.spellbook:SetSpellAction(nil)
             inst.components.aoetargeting:SetDeployRadius(0)
             inst.components.aoetargeting:SetShouldRepeatCastFn(nil)
             inst.components.aoetargeting.reticule.reticuleprefab = "reticuleaoefiretarget_1"
@@ -765,6 +764,7 @@ local SKILLTREE_SPELL_DEFS =
         label = STRINGS.PYROMANCY.LUNAR_FIRE,
         onselect = function(inst)
             inst.components.spellbook:SetSpellName(STRINGS.PYROMANCY.LUNAR_FIRE)
+			inst.components.spellbook:SetSpellAction(nil)
             inst.components.aoetargeting:SetDeployRadius(0)
             inst.components.aoetargeting:SetShouldRepeatCastFn(nil)
             inst.components.aoetargeting.reticule.reticuleprefab = "reticuleline"
@@ -812,6 +812,7 @@ local SKILLTREE_SPELL_DEFS =
         label = STRINGS.PYROMANCY.SHADOW_FIRE,
         onselect = function(inst)
             inst.components.spellbook:SetSpellName(STRINGS.PYROMANCY.SHADOW_FIRE)
+			inst.components.spellbook:SetSpellAction(nil)
             inst.components.aoetargeting:SetDeployRadius(0)
             inst.components.aoetargeting:SetShouldRepeatCastFn(nil)
             inst.components.aoetargeting.reticule.reticuleprefab = "reticuleaoe5line"
@@ -893,7 +894,6 @@ local function OnUpdateSpellsDirty(inst)
 end
 
 local function DoOnClientInit(inst)
-	inst:ListenForEvent("willow_ember._tempdisablepickupsound", OnTempDisablePickupSound)
     inst:ListenForEvent("willow_ember._updatespells", OnUpdateSpellsDirty)
 	DoClientUpdateSpells(inst)
 end
@@ -957,8 +957,9 @@ local function fn()
     inst.components.aoetargeting.reticule.twinstickmode = 1
     inst.components.aoetargeting.reticule.twinstickrange = 8
 
+	inst:AddComponent("clientpickupsoundsuppressor")
+
     inst._updatespells = net_event(inst.GUID, "willow_ember._updatespells")
-	inst._tempdisablepickupsound = net_event(inst.GUID, "willow_ember._tempdisablepickupsound")
 
     inst.entity:SetPristine()
 

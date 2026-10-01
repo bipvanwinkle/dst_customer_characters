@@ -45,32 +45,41 @@ local function getstring(inst, stringdata)
 end
 
 -- UMBRELLA
-local function using_umbrella(inst)
-    local equipped = inst.components.inventory:GetEquippedItem(EQUIPSLOTS.HANDS)
-    return equipped and equipped:HasTag("umbrella") or nil
+local function holding_umbrella(inst) --hand slot specifically
+	local tool = inst.components.inventory:GetEquippedItem(EQUIPSLOTS.HANDS)
+	return tool ~= nil and tool:HasTag("umbrella")
+end
+
+local function equipped_umbrella(inst) --any slot
+	return inst.components.inventory:EquipHasTag("umbrella")
 end
 
 local function has_umbrella(inst)
-    return inst.components.inventory:FindItem(function(testitem) return testitem:HasTag("umbrella") end)
+	local ret--[[, num]] = inst.components.inventory:HasItemWithTag("umbrella", 1)
+	return ret
 end
 
-local function getumbrella(inst)
-    local handequipped = inst.components.inventory:GetEquippedItem(EQUIPSLOTS.HANDS)
-    return inst.components.inventory:FindItem(function(testitem) return testitem:HasTag("umbrella") end) or (handequipped and  handequipped:HasTag("umbrella") and handequipped )
+local function item_is_umbrella(item)
+	return item:HasTag("umbrella")
 end
 
 local function EquipUmbrella(inst)
-    local umbrella = getumbrella(inst)
+	local umbrella = inst.components.inventory:FindItem(item_is_umbrella)
     if umbrella then
         inst.components.inventory:Equip(umbrella)
     end
 end
 
-local function UnEquipHands(inst)
-    local item = inst.components.inventory:Unequip(EQUIPSLOTS.HANDS)
-    inst.components.inventory:GiveItem(item)
+local function try_unequip_umbrella(item, inst)
+	if item:HasTag("umbrella") then
+		item = inst.components.inventory:Unequip(item.components.equippable.equipslot)
+		inst.components.inventory:GiveItem(item)
+	end
 end
 
+local function UnEquipUmbrella(inst)
+	inst.components.inventory:ForEachEquipment(try_unequip_umbrella, inst)
+end
 
 -- COAT
 local function using_coat(inst)
@@ -151,14 +160,14 @@ local function HasValidHome(inst)
         and not home:HasTag("burnt")
 end
 
-local function allnighttest(inst)
-    if inst.segs and inst.segs["night"] + inst.segs["dusk"] >= 16 then
-        return true
+local function GoHomeImmediatelyAction(inst)
+    if HasValidHome(inst) then
+        return BufferedAction(inst, inst.components.homeseeker.home, ACTIONS.GOHOME)
     end
 end
 
 local function GoHomeAction(inst)
-    if HasValidHome(inst) and not allnighttest(inst) then
+    if HasValidHome(inst) and not inst:AllNightTest() then
         return BufferedAction(inst, inst.components.homeseeker.home, ACTIONS.GOHOME)
     end
 end
@@ -206,9 +215,11 @@ local function getfriendlevelspeech(inst, target)
         end
 
         -- override if there are rewards.
+        local is_chatter
         local rewardstr = inst.rewardcheck(inst)
         if rewardstr then
             str = rewardstr
+            is_chatter = true
             if inst.giverewardstask then
                 inst.giverewardstask:Cancel()
                 inst.giverewardstask = nil
@@ -245,7 +256,7 @@ local function getfriendlevelspeech(inst, target)
             inst.components.timer:StartTimer("complain_time",10 + (math.random()*30))
         end
 
-        return str
+        return str, is_chatter
     end
 end
 
@@ -260,11 +271,16 @@ local function GetFaceTargetFn(inst)
     local shouldface = target ~= nil and not target:HasTag("notarget") and target or nil
 
     if shouldface and not inst.sg:HasStateTag("busy") and not inst.sg:HasStateTag("alert") and not inst.hasgreeted then
-        local str = getfriendlevelspeech(inst, target)
+        local str, is_chatter = getfriendlevelspeech(inst, target)
         if str then
             -- TODO (SAM) Leaving this as Say for now, because some of the getfriendspeechlevel options
             -- format in the player's name.
-            inst.components.npc_talker:Say(str, nil, true)
+            if is_chatter then
+                local sound = nil -- stub
+                inst.components.npc_talker:Chatter(str, nil, nil, nil, nil, sound)
+            else
+                inst.components.npc_talker:Say(str, nil, true)
+            end
         end
         inst.hasgreeted = true
     end
@@ -307,20 +323,33 @@ local function DoCommentAction(inst)
     end
 end
 
-local HARVEST_TAGS = {"dried"}
+local function IsItemHarvestableMeat(item)
+    return item.components.dryable == nil and item.components.edible and item.components.edible.foodtype == FOODTYPE.MEAT
+end
+
 local function DoHarvestMeat(inst)
     local source = inst.CHEVO_marker
     if source then
-        local x,y,z = source.Transform:GetWorldPosition()
-        local ents = TheSim:FindEntities(x,y,z, inst.island_radius, HARVEST_TAGS)
+        local x, y, z = source.Transform:GetWorldPosition()
+        local ents = inst:GetAllMeatRacksNear(x, y, z)
         local target = nil
-        for i,ent in ipairs(ents)do
-            if ent.components.dryer and ent.components.dryer:IsDone() then
+        local targetitem = nil
+        for _, ent in ipairs(ents) do
+            local container = ent.components.dryingrack and ent.components.dryingrack:GetContainer() or nil
+            if container and not container:IsEmpty() then
+                targetitem = container:FindItem(IsItemHarvestableMeat)
+                if targetitem then
+                    target = ent
+                    break
+                end
+            elseif ent.components.dryer and ent.components.dryer:IsDone() then
                 target = ent
+                targetitem = nil
+                break
             end
         end
         if target then
-            return BufferedAction(inst, target, ACTIONS.HARVEST)
+            return BufferedAction(inst, target, ACTIONS.HARVEST, targetitem)
         end
     end
 end
@@ -339,9 +368,12 @@ local function DoHarvestBerries(inst)
 end
 
 local FISHING_MARKER_TAGS = {"hermitcrab_marker_fishing"}
-local FISH_TAGS = {"oceanfish"}
+
+local FISH_TAGS = {"oceanfish", "oceanfishable"}
+local FISH_NO_TAGS = {"INLIMBO"}
+
 local function DoFishingAction(inst)
-    if not using_umbrella(inst) then
+	if not holding_umbrella(inst) and not inst:IsInBadLivingArea() then
         local source = inst.CHEVO_marker
         if source then
             local x,y,z = source.Transform:GetWorldPosition()
@@ -350,7 +382,7 @@ local function DoFishingAction(inst)
             for i,ent in ipairs(ents)do
                 local x1,y1,z1 = ent.Transform:GetWorldPosition()
 
-                local fish = TheSim:FindEntities(x1,y1,z1, 8, FISH_TAGS)
+                local fish = TheSim:FindEntities(x1,y1,z1, 8, FISH_TAGS, FISH_NO_TAGS)
                 if #fish > mostfish.total then
                     mostfish = {total=#fish,idx=i}
                 end
@@ -380,11 +412,16 @@ local function runawaytest(inst)
             inst.hasgreeted = nil
         end
         if player and not inst.sg:HasStateTag("busy") and not inst.hasgreeted then
-            local str = getfriendlevelspeech(inst, player)
+            local str, is_chatter = getfriendlevelspeech(inst, player)
             if str then
                 -- TODO (SAM) Leaving this as Say for now, because some of the getfriendspeechlevel options
                 -- format in the player's name.
-                inst.components.npc_talker:Say(str, nil, true)
+                if is_chatter then
+                    local sound = nil -- stub
+                    inst.components.npc_talker:Chatter(str, nil, nil, nil, nil, sound)
+                else
+                    inst.components.npc_talker:Say(str, nil, true)
+                end
             end
             inst.hasgreeted = true
         end
@@ -392,28 +429,38 @@ local function runawaytest(inst)
     end
 end
 
+local RUN_AWAY_FROM_PIG_PARAMS =
+{
+	tags = { "pig", "_combat" },
+	fn = function(guy, inst)
+		return guy.components.combat:TargetIs(inst)
+	end,
+}
+
 local function DoBottleToss(inst)
-    if not inst.components.timer:TimerExists("bottledelay") and not using_umbrella(inst) then
+	if not inst.components.timer:TimerExists("bottledelay") and not holding_umbrella(inst) and not inst:IsInBadLivingArea() then
         local source = inst.CHEVO_marker
         if source then
             local x,y,z = source.Transform:GetWorldPosition()
             local ents = TheSim:FindEntities(x,y,z, inst.island_radius, FISHING_MARKER_TAGS)
             if #ents > 0 then
-                local pos = ents[math.random(1,#ents)]:GetPosition()
+                for attempt = 1, 3 do
+                    local pos = ents[math.random(1,#ents)]:GetPosition()
 
-                if pos then
-                    local equipped = inst.components.inventory:GetEquippedItem(EQUIPSLOTS.HANDS)
-                    local bottle = inst.components.inventory:FindItem(function(item) return item.prefab == "messagebottle_throwable" end) or (equipped and  equipped.prefab == "messagebottle_throwable" and equipped )
-                    if not bottle  then
-                        bottle = SpawnPrefab("messagebottle_throwable")
-                        inst.components.inventory:GiveItem(bottle)
-                    end
-                    if not bottle.components.equippable.isequipped then
-                        inst.components.inventory:Equip(bottle)
-                    end
+                    if pos and TheWorld.Map:IsOceanTileAtPoint(pos.x, 0, pos.z) then
+                        local equipped = inst.components.inventory:GetEquippedItem(EQUIPSLOTS.HANDS)
+                        local bottle = inst.components.inventory:FindItem(function(item) return item.prefab == "messagebottle_throwable" end) or (equipped and  equipped.prefab == "messagebottle_throwable" and equipped )
+                        if not bottle  then
+                            bottle = SpawnPrefab("messagebottle_throwable")
+                            inst.components.inventory:GiveItem(bottle)
+                        end
+                        if not bottle.components.equippable.isequipped then
+                            inst.components.inventory:Equip(bottle)
+                        end
 
-                    inst.dotalkingtimers(inst)
-                    return BufferedAction(inst, nil, ACTIONS.WATER_TOSS, bottle, pos)
+                        inst.dotalkingtimers(inst)
+                        return BufferedAction(inst, nil, ACTIONS.WATER_TOSS, bottle, pos)
+                    end
                 end
             end
         end
@@ -421,7 +468,7 @@ local function DoBottleToss(inst)
 end
 
 local SITTABLE_TAGS = {"cansit"}
-local SITTABLE_WONT_TAGS = {"uncomfortable_chair"}
+local SITTABLE_WONT_TAGS = { "uncomfortable_chair", "fire" }
 local function DoChairSit(inst)
     if not inst:HasTag("sitting_on_chair") and not inst.components.timer:TimerExists("sat_on_chair") then
         local source = inst.CHEVO_marker
@@ -442,9 +489,35 @@ local function DoChairSit(inst)
     end
 end
 
+local HOTSPRING_TAGS = { "hermithotspring" }
+local HOTSPRING_NO_TAGS = { "bathbombable" }
+local function DoSoakin(inst)
+	if not (inst.sg:HasStateTag("soakin")  or inst.components.timer:TimerExists("soaked_in_hotspring")) then
+		local x, y, z = inst.Transform:GetWorldPosition()
+		for _, v in ipairs(TheSim:FindEntities(x, y, z, 20, HOTSPRING_TAGS, HOTSPRING_NO_TAGS)) do
+			if v.components.bathingpool then
+				if v.components.timer then
+					local remaining = v.components.timer:GetTimeLeft("bathbombed")
+					if remaining == nil or remaining < TUNING.HERMITCRAB_HOTSPRING_SOAK_TIME then
+						return
+					end
+				end
+				return BufferedAction(inst, v, ACTIONS.SOAKIN)
+			end
+		end
+	end
+end
+
+local function ExitHotSpring(inst)
+	local target = inst.sg.statemem.occupying_bathingpool
+	if target and target.components.bathingpool then
+		target.components.bathingpool:LeavePool(inst)
+	end
+end
+
 local function DoTalkQueue(inst)
-    if inst.components.npc_talker:haslines() and not inst.sg:HasStateTag("talking") and not inst.sg:HasStateTag("busy") and not inst.components.timer:TimerExists("speak_time") then
-        inst.components.npc_talker:donextline()
+    if inst.components.npc_talker:HasLines() and not inst.sg:HasStateTag("talking") and not inst.sg:HasStateTag("busy") and not inst.components.timer:TimerExists("speak_time") then
+        inst.components.npc_talker:DoNextLine()
     end
 end
 
@@ -463,14 +536,179 @@ local CHATTERPARAMS_HIGH = {
 
 local HermitBrain = Class(Brain, function(self, inst)
     Brain._ctor(self, inst)
+    --
+    self.tea_shops = {} -- [ent] = true
+    self.selected_tea_shop = nil
 end)
+
+---------------------------------------------------------------------
+
+local function IsTeaShopValid(teashop)
+    return teashop ~= nil and teashop:IsValid()
+        and not (teashop:HasTag("burnt") or (teashop.components.burnable ~= nil and teashop.components.burnable:IsBurning()))
+end
+
+function HermitBrain:AddActiveTeaShop(teashop)
+    self.tea_shops[teashop] = true
+end
+
+function HermitBrain:RemoveActiveTeaShop(teashop)
+    self.tea_shops[teashop] = nil
+
+    if teashop == self.selected_tea_shop then
+        self.selected_tea_shop = nil
+        self.inst.components.locomotor:Stop()
+    end
+end
+
+function HermitBrain:AnyActiveTeaShop()
+    return next(self.tea_shops) ~= nil
+end
+
+function HermitBrain:GetFirstTeaShop()
+    return next(self.tea_shops)
+end
+
+function HermitBrain:ValidateTeaShops()
+    for teashop in pairs(self.tea_shops) do
+        if not IsTeaShopValid(teashop) then
+            self.tea_shops[teashop] = nil
+
+            if self.selected_tea_shop == teashop then
+                self.selected_tea_shop = nil
+            end
+        end
+    end
+end
+
+function HermitBrain:SelectTeaShop()
+    self:ValidateTeaShops()
+    self.selected_tea_shop = self:GetFirstTeaShop()
+
+    if self.selected_tea_shop ~= nil then
+        self.inst.components.npc_talker:Chatter("HERMITCRAB_ANNOUNCE_GOING_TEASHOP", math.random(#STRINGS.HERMITCRAB_ANNOUNCE_GOING_TEASHOP))
+        return true
+    end
+
+    return nil
+end
+
+function HermitBrain:CheckSelectedTeaShop()
+    self:ValidateTeaShops()
+    return IsTeaShopValid(self.selected_tea_shop)
+end
+
+function HermitBrain:GetSelectedTeaShopPos()
+	return self:CheckSelectedTeaShop() and self.selected_tea_shop:GetPosition() or nil
+end
+
+function HermitBrain:GetSelectedTeaShop()
+    return self:CheckSelectedTeaShop() and self.selected_tea_shop or nil
+end
+
+---------------------------------------------------------------------
+
+local function GetFirstHungryPetCritter(inst)
+    local pets = inst.components.petleash:GetPets()
+    for k, v in pairs(pets) do
+        local x, y, z = v.Transform:GetWorldPosition()
+        if v:HasTag("critter") and v:IsHungry() and not v:IsOnOcean(true) and not IsPointCoveredByBlocker(x, y, z) then
+            return v
+        end
+    end
+end
+local function IsPetCritterHungry(inst)
+    local pets = inst.components.petleash:GetPets()
+    for k, v in pairs(pets) do
+        local x, y, z = v.Transform:GetWorldPosition()
+        if v:HasTag("critter") and v:IsHungry() and not v:IsOnOcean(true) and not IsPointCoveredByBlocker(x, y, z) then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function is_honey(ent)
+    return ent.prefab == "honey"
+end
+local function GetFoodForCritter(inst)
+    local honey = inst.components.inventory:FindItem(is_honey)
+
+    if honey == nil then
+        honey = SpawnPrefab("honey")
+        inst.components.inventory:GiveItem(honey)
+    end
+
+    return honey
+end
+
+local function DoFeedPetCritterAction(inst)
+    if IsPetCritterHungry(inst) then
+        local buffered_action = BufferedAction(inst, GetFirstHungryPetCritter(inst), ACTIONS.FEED, GetFoodForCritter(inst))
+
+        buffered_action:AddSuccessAction(function()
+            inst.components.npc_talker:Chatter("HERMITCRAB_CRITTER_FEED", math.random(#STRINGS.HERMITCRAB_CRITTER_FEED))
+		end)
+
+        return buffered_action
+    end
+end
+
+---------------------------------------------------------------------
+
+local WANDER_DIST = 12
+local LIGHTSOURCE_TAGS = { "lightsource" }
+local function CanWanderAtPoint(pos)
+    if not TheWorld.state.isday then
+        for i, v in ipairs(TheSim:FindEntities(pos.x, pos.y, pos.z, WANDER_DIST, LIGHTSOURCE_TAGS)) do
+            local x, y, z = v.Transform:GetWorldPosition()
+            local light_radius = v.Light and v.Light:GetCalculatedRadius()
+            local light_radius_sq = light_radius and light_radius * light_radius
+            if light_radius_sq and distsq(pos.x, pos.z, x, z) < light_radius_sq then
+                return true
+            end
+        end
+
+        return false
+    end
+
+    return true
+end
 
 function HermitBrain:OnStart()
 
-    local day = WhileNode( function() return TheWorld.state.isday or allnighttest(self.inst) end, "IsDay",
+    local day = WhileNode( function() return TheWorld.state.isday or self.inst:AllNightTest() end, "IsDay",
         PriorityNode{
             WhileNode( function() return not self.inst.sg:HasStateTag("mandatory") end, "unfriendly",
                 PriorityNode{
+                    WhileNode(function() return not self.inst.sg:HasStateTag("busy") and self.inst.hermitcrab_skinrequest ~= nil and HasValidHome(self.inst) end, "skinrequest",
+                        ChattyNode(self.inst, {
+                            name = function(inst) return "HERMITCRAB_TALK_ONSKINREQUEST." .. inst:getgeneralfriendlevel() end,
+                            chatterparams = CHATTERPARAMS_LOW,
+                        }, DoAction(self.inst, GoHomeImmediatelyAction, "go home", true))),
+                    IfNode(function() return IsPetCritterHungry(self.inst) end, "Is critter hungry",
+                        DoAction(self.inst, DoFeedPetCritterAction, "feed critter", true, 10)),
+                    IfNode(function() return self:SelectTeaShop() end, "go to tea shop",
+						PriorityNode({
+							IfNode(function() return self.inst.sg:HasStateTag("soakin") end, "exit hotspring",
+								ActionNode(function() ExitHotSpring(self.inst) end)),
+							FailIfSuccessDecorator(
+								Leash(self.inst,
+									function()
+										local pos = self:GetSelectedTeaShopPos()
+										if pos then
+											return pos
+										end
+										self.inst.components.locomotor:Stop()
+									end,
+									function() return self.selected_tea_shop:GetPhysicsRadius(0) + 1.5 end,
+									function() return self.selected_tea_shop:GetPhysicsRadius(0) + 1 end,
+									true)),
+							IfNode(function() return self:CheckSelectedTeaShop() end, "tea shop exists",
+								ActionNode(function() self.selected_tea_shop:PushEventImmediate("hermitcrab_entered", { hermitcrab = self.inst }) end)),
+						}, .25)),
+
                     WhileNode( function() return self.inst.comment_data ~= nil end, "comment",
                         DoAction(self.inst, DoCommentAction, "comment", true, 10 )),
                     ChattyNode(self.inst, {
@@ -494,14 +732,15 @@ function HermitBrain:OnStart()
                             DoAction(self.inst, DoChairSit, "sit on chairs", true ),
                             DoAction(self.inst, DoFishingAction, "gone fishing", true ),
                             DoAction(self.inst, DoBottleToss, "bottle", true ),
-                            IfNode( function() return not self.inst.sg:HasStateTag("sitting") end, "not sitting",
-                                Wander(self.inst, GetHomePos, MAX_WANDER_DIST, nil, nil, nil, nil, {should_run = false})
+							DoAction(self.inst, DoSoakin, "soak in hotspring", true),
+							IfNode( function() return not self.inst.sg:HasAnyStateTag("sitting", "soakin") end, "not sitting or soaking in hotspring",
+                                Wander(self.inst, GetHomePos, MAX_WANDER_DIST, nil, nil, nil, CanWanderAtPoint, {should_run = false})
                             ),
                         },0.5),
                 },0.5),
         }, 0.5)
 
-    local night = WhileNode( function() return not TheWorld.state.isday and not allnighttest(self.inst) end, "IsNight",
+    local night = WhileNode( function() return not TheWorld.state.isday and not self.inst:AllNightTest() end, "IsNight",
         PriorityNode{
             RunAway(self.inst, "player", START_RUN_DIST, STOP_RUN_DIST, function(target) return ShouldRunAway(self.inst, target) end ),
             ChattyNode(self.inst, { name = "HERMITCRAB_GO_HOME", chatterparams = CHATTERPARAMS_LOW },
@@ -514,16 +753,31 @@ function HermitBrain:OnStart()
     local root =
         PriorityNode(
         {
-
+            WhileNode(function() return self.inst.sg.mem.teleporting end, "Teleporting",
+                PriorityNode({
+                    DoAction(self.inst, DoTalkQueue, "finish talking", true),
+                    WaitNode(1),
+                })
+            ),
+			WhileNode(function() return self.inst.sg:HasStateTag("soakin") end, "soaking in hotspring",
+				PriorityNode{
+					IfNode(function() return not self.inst.components.timer:TimerExists("soaktime") end, "exit hotspring",
+						ActionNode(function() ExitHotSpring(self.inst) end)),
+					ActionNode(function()
+						if self.inst.components.npc_talker:HasLines() and self.inst.sg.statemem.soakintalktask == nil then
+							self.inst.components.npc_talker:DoNextLine()
+						end
+					end),
+				}),
             WhileNode( function() return BrainCommon.ShouldTriggerPanic(self.inst) end, "PanicHaunted",
                 ChattyNode(self.inst, { name = "HERMITCRAB_PANICHAUNT", chatterparams = CHATTERPARAMS_LOW },
                     Panic(self.inst))),
-            RunAway(self.inst, function(guy) return guy:HasTag("pig") and guy.components.combat and guy.components.combat.target == self.inst end, RUN_AWAY_DIST, STOP_RUN_AWAY_DIST ),
+			RunAway(self.inst, RUN_AWAY_FROM_PIG_PARAMS, RUN_AWAY_DIST, STOP_RUN_AWAY_DIST ),
 
-            IfNode( function() return not self.inst.sg:HasStateTag("busy") and TheWorld.state.israining and has_umbrella(self.inst) and not using_umbrella(self.inst) end, "umbrella",
+            IfNode( function() return not self.inst.sg:HasStateTag("busy") and TheWorld.state.israining and has_umbrella(self.inst) and not equipped_umbrella(self.inst) end, "umbrella",
                     DoAction(self.inst, EquipUmbrella, "umbrella", true )),
-            IfNode( function() return not self.inst.sg:HasStateTag("busy") and not TheWorld.state.israining and using_umbrella(self.inst) end, "stop umbrella",
-                    DoAction(self.inst, UnEquipHands, "stop umbrella", true )),
+            IfNode( function() return not self.inst.sg:HasStateTag("busy") and not TheWorld.state.israining and equipped_umbrella(self.inst) end, "stop umbrella",
+					DoAction(self.inst, UnEquipUmbrella, "stop umbrella", true )),
             IfNode( function() return not self.inst.sg:HasStateTag("busy") and TheWorld.state.issnowing and has_coat(self.inst) and not using_coat(self.inst) end, "coat",
                     DoAction(self.inst, EquipCoat, "coat", true )),
             IfNode( function() return not self.inst.sg:HasStateTag("busy") and not TheWorld.state.issnowing and using_coat(self.inst) end, "stop coat",

@@ -6,13 +6,21 @@ local events =
     CommonHandlers.OnSleep(),
     CommonHandlers.OnFreeze(),
     CommonHandlers.OnAttack(),
-    CommonHandlers.OnAttacked(),
+	--CommonHandlers.OnAttacked(),
     CommonHandlers.OnDeath(),
-    -- EventHandler("attacked", function(inst)
-    --     if inst.components.health and not inst.components.health:IsDead() and not inst.sg:HasStateTag("busy") then
-    --         inst.sg:GoToState("hit")
-    --     end
-    -- end),
+	EventHandler("attacked", function(inst)
+		--@V2C: #HACK use custom handler that DOESN'T handle electrocute
+		--      prefab has another "attacked" handler that forces "shocked" state
+		if inst.components.health and not (inst.components.health:IsDead() or
+				inst.sg:HasStateTag("busy") or
+				CommonHandlers.HitRecoveryDelay(inst))
+		then
+			inst.sg:GoToState("hit")
+		end
+	end),
+
+	-- Corpse handlers
+	CommonHandlers.OnCorpseChomped(),
 }
 
 local states=
@@ -194,6 +202,13 @@ local states=
         },
     },
 
+	--New electrocute mechanics depend on this state name existing.
+	--Forward to old state for backward compatibility.
+	State{
+		name = "electrocute",
+		onenter = function(inst) inst.sg:GoToState("shocked") end,
+	},
+
     State{
         name = "shocked",
         tags = { "busy" },
@@ -257,6 +272,15 @@ CommonStates.AddCombatStates(states,
             inst.AnimState:ClearBloomEffectHandle()
         end),
     },
+},
+nil,
+{
+    deathanimfn = function(inst, data)
+        return (data ~= nil and data.corpsing and "death_2") or "death"
+    end,
+},
+{
+    has_corpse_handler = true,
 })
 CommonStates.AddFrozenStates(states)
 CommonStates.AddSleepStates(states,
@@ -277,4 +301,7 @@ CommonStates.AddSleepStates(states,
     },
 })
 
-return StateGraph("lightninggoat", states, events, "idle")
+CommonStates.AddInitState(states, "idle")
+CommonStates.AddCorpseStates(states)
+
+return StateGraph("lightninggoat", states, events, "init")

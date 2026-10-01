@@ -17,7 +17,7 @@ local item_assets =
 local prefabs =
 {
     "collapse_small",
-	"anchor_item", -- deprecated but kept for existing worlds and mods
+	"anchor_item",
 }
 
 local function on_hammered(inst, hammerer)
@@ -45,7 +45,7 @@ end
 
 local function onburnt(inst)
     inst.SoundEmitter:KillSound("mooring")
-    inst.sg:Stop()
+	inst:ClearStateGraph()
 end
 
 local function onbuilt(inst)

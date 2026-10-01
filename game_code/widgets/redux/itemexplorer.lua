@@ -22,10 +22,14 @@ require("skinsutils")
 local COMMERCE_WIDTH = 130
 local COMMERCE_HEIGHT = 45
 
-local ItemExplorer = Class(Widget, function(self, title_text, primary_item_type, item_table_getter, list_options, yotb_filter)
+local ItemExplorer = Class(Widget, function(self, title_text, primary_item_type, item_table_getter, list_options, filter_options)
     Widget._ctor(self, "ItemExplorer")
 
-    self.yotb_filter = yotb_filter
+    if filter_options then
+        self.filter_options = filter_options
+        self.yotb_filter = filter_options.yotb_filter
+        self.npccharacter = filter_options.npccharacter
+    end
 
     assert(primary_item_type and primary_item_type ~= "")
     self.primary_item_type = primary_item_type
@@ -366,8 +370,14 @@ function ItemExplorer:_GetActionInfoText(item_data)
 
     if item_data.is_owned then
         if IsUserCommerceAllowedOnItemData(item_data) then
+            local grindable_owned = TheInventory:GetOwnedItemCountForCommerce(item_data.item_key)
+            local total_owned = item_data.owned_count
             local doodad_value = TheItems:GetBarterSellPrice(item_data.item_key)
             text = subfmt(STRINGS.UI.BARTERSCREEN.COMMERCE_INFO_GRIND, {doodad_value=doodad_value})
+            if grindable_owned ~= total_owned then
+                local entitlement_count = total_owned - grindable_owned
+                text = text .. "\n" .. subfmt(STRINGS.UI.BARTERSCREEN.COMMERCE_INFO_GRIND_ENTITLEMENT, {entitlement_count = entitlement_count, total_owned = total_owned})
+            end
         else
             text = STRINGS.UI.BARTERSCREEN.COMMERCE_INFO_NOGRIND
         end
@@ -559,6 +569,17 @@ function ItemExplorer:RefreshItems(new_item_filter_fn)
     if self.last_interaction_target then
         prev_target_key = self.last_interaction_target.item_key
     end
+	if self.scroll_list.context.selection_type == "single" and self.hidden_selected_item_data == nil then
+		local selected_key = next(self.selected_items)
+		if selected_key then
+			for i, item_data in ipairs(self.scroll_list.items) do
+				if item_data.item_key == selected_key then
+					self.hidden_selected_item_data = item_data
+					break
+				end
+			end
+		end
+	end
     self:ClearSelection()
 
     local contained_items = self:_CreateWidgetDataListForItems(self.item_table, self.primary_item_type, self.activity_checker_fn)
@@ -576,6 +597,9 @@ function ItemExplorer:RefreshItems(new_item_filter_fn)
         if item_data.is_active then
             self.selected_items[item_data.item_key] = true
         end
+		if self.hidden_selected_item_data and self.hidden_selected_item_data.item_key == item_data.item_key then
+			self.hidden_selected_item_data = nil
+		end
     end
     self.progress:SetString(string.format("%d/%d", CountOwnedItems(contained_items), #contained_items))
     self.scroll_list:SetItemsData(contained_items)
@@ -671,6 +695,9 @@ function ItemExplorer:_UpdateClickedWidget(item_widget, was_active)
                     prev_data.widget:UpdateSelectionState()
 				end
             end
+		elseif self.hidden_selected_item_data then
+			self:_SetItemActiveFlag(self.hidden_selected_item_data, false)
+			self.hidden_selected_item_data = nil
         elseif was_active and self.selection_allow_nil and not self.ignore_selection_allow_nil then
             -- Just one thing is selected and it was already selected, turn it off.
             self:_SetItemActiveFlag(item_widget.data, false)
@@ -852,7 +879,7 @@ function ItemExplorer:_CreateWidgetDataListForItems(item_table, item_type, activ
             item_latest[key] = inv_item.modified_time
         end
 
-        if inv_item.item_id == TEMP_ITEM_ID and GetRarityForItem(key) ~= "Event" and GetRarityForItem(key) ~= "Reward" and GetRarityForItem(key) ~= "ProofOfPurchase" and GetRarityForItem(key) ~= "Complimentary"  then            item_dlc_owned[key] = true
+        if inv_item.item_id == TEMP_ITEM_ID and GetRarityForItem(key) ~= "Event" and GetRarityForItem(key) ~= "Reward" and GetRarityForItem(key) ~= "ProofOfPurchase" and GetRarityForItem(key) ~= "Resurrected" and GetRarityForItem(key) ~= "Complimentary"  then            item_dlc_owned[key] = true
         end
 	end
 
@@ -862,7 +889,7 @@ function ItemExplorer:_CreateWidgetDataListForItems(item_table, item_type, activ
         if GetTypeForItem(item_key) == item_type and ShouldDisplayItemInCollection(item_key) then
             local is_owned = item_latest[item_key] ~= nil
             local timestamp = item_latest[item_key]
-            if IsDefaultSkinOwned(item_key) then
+            if IsDefaultSkinOwned(item_key) or TheInventory:CheckOwnership(item_key) then
                 is_owned = true
                 timestamp = 0
             end

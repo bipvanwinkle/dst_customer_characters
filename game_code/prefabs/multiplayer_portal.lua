@@ -90,6 +90,10 @@ local function MakePortal(name, bank, build, assets, prefabs, common_postinit, m
             return inst
         end
 
+        if name == "multiplayer_portal_moonrock" then
+            WORLDSTATETAGS.SetTagEnabled("CELESTIAL_PORTAL_BUILT", true)
+        end
+
         inst.scrapbook_adddeps = { "moonrockidol", "multiplayer_portal_moonrock_constr_plans" }
 
         inst:SetStateGraph("SGmultiplayerportal")
@@ -371,6 +375,12 @@ local function moonrock_onaccept(inst, giver)--, item)
 			elseif k.components.container ~= nil then
 				k.components.container:DropEverything()
 			end
+            if k.components.socketholder then
+                local items = k.components.socketholder:UnsocketEverything()
+                for _, item in ipairs(items) do
+                    Launch2(item, k, 1, 1, 0.2, 0, 4)
+                end
+            end
 		end
 	end
 

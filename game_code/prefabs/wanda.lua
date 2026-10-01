@@ -224,6 +224,7 @@ local function onnewstate(inst)
 end
 
 local function onbecamehuman(inst, data, isloading)
+    inst.sg.mem.nocorpse = true -- We don't leave a skeleton, so we don't leave a corpse either.
 	inst.age_state = nil
 	onhealthchange(inst, nil, true)
 

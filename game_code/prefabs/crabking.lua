@@ -729,6 +729,12 @@ local function StartCastSpell(inst, freeze)
     inst.arms = nil
 end
 
+local function OnCrabMobLanded(inst)
+    inst:RemoveComponent("complexprojectile") -- To remove projectile tag.
+
+    inst:PushEvent("hit_ground")
+end
+
 local function LaunchCrabMob(inst, prefab)
     local pos = inst:GetPosition()
 
@@ -739,6 +745,8 @@ local function LaunchCrabMob(inst, prefab)
 
         if TheWorld.Map:IsVisualGroundAtPoint(pos.x+offset.x, 0, pos.z+offset.z) then
             local mob = inst:LaunchProjectile(pos+offset, prefab)
+
+            mob.components.complexprojectile:SetOnHit(OnCrabMobLanded)
 
             mob.components.sleeper:SetSleepTest(nil)
             mob.components.sleeper:SetWakeTest(nil)
@@ -763,6 +771,9 @@ local function LaunchCrabMob(inst, prefab)
 
             mob.components.health:SetMaxHealth(health)
             mob.components.health:SetPercent(1) -- For pushing events?
+
+            mob.sg:GoToState("flying")
+
             break
         end
     end
@@ -1975,6 +1986,7 @@ local function dofreeze(inst)
     local range = inst.crab and inst.crab:IsValid() and inst.crab:GetFreezeRange() or (TUNING.CRABKING_FREEZE_RANGE * 0.75)
     local ents = TheSim:FindEntities(pos.x, pos.y, pos.z, range, nil, FREEZE_CANT_TAGS)
     for i,v in pairs(ents)do
+        -- NOTE: this code is not used anymore, but if it were reused, please use GetEntityTemperature and SetEntityTemperature to account for items
         if v.components.temperature then
             local rate = (TUNING.CRABKING_BASE_FREEZE_AMOUNT + ((inst.crab and inst.crab:IsValid() and inst.crab.gemcount.blue or 0) * TUNING.CRABKING_FREEZE_INCRAMENT)) /( (TUNING.CRABKING_CAST_TIME_FREEZE - (inst.crab and inst.crab:IsValid() and math.floor(inst.crab.gemcount.yellow/2) or 0) ) /interval)
             if v.components.moisture then
@@ -2074,8 +2086,7 @@ local function chipfn(type)
     phys:SetFriction(0)
     phys:SetDamping(5)
     phys:SetCollisionGroup(COLLISION.FLYERS)
-    phys:ClearCollisionMask()
-    phys:CollidesWith((TheWorld.has_ocean and COLLISION.GROUND) or COLLISION.WORLD)
+	phys:SetCollisionMask(TheWorld.has_ocean and COLLISION.GROUND or COLLISION.WORLD)
     phys:SetCapsule(0.5, 1)
 
     local s  = 0.7

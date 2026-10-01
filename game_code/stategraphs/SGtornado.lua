@@ -55,7 +55,7 @@ local TARGET_TAGS = { "_combat" }
 for k, v in pairs(WORK_ACTIONS) do
     table.insert(TARGET_TAGS, k.."_workable")
 end
-local TARGET_IGNORE_TAGS = { "INLIMBO" }
+local TARGET_IGNORE_TAGS = { "INLIMBO", "tornado_immune" }
 
 local function destroystuff(inst)
     local x, y, z = inst.Transform:GetWorldPosition()
@@ -67,7 +67,7 @@ local function destroystuff(inst)
                 not v.components.health:IsDead() and
                 v.components.combat ~= nil and
                 v.components.combat:CanBeAttacked() and
-                (TheNet:GetPVPEnabled() or not (inst.WINDSTAFF_CASTER_ISPLAYER and v:HasTag("player"))) then
+                (TheNet:GetPVPEnabled() or not (inst.WINDSTAFF_CASTER_ISPLAYER and v:HasAnyTag("player", "possessedbody"))) then
                 local damage =
                     inst.WINDSTAFF_CASTER_ISPLAYER and
                     v:HasTag("player") and

@@ -85,11 +85,10 @@ local function play_song(inst, song)
 
     if inst._stop_song_task then
         inst._stop_song_task:Cancel()
-        inst._stop_song_task = nil
     end
     inst._stop_song_task = inst:DoTaskInTime(TUNING.PHONOGRAPH_PLAY_TIME, inst.TurnOffMachine)
 
-    inst._tend_update_task = inst:DoPeriodicTask(1, song_update, 1)
+	inst._tend_update_task = inst:DoPeriodicTask(1, song_update, POPULATING and math.random() or nil)
 end
 
 local function GetRecordSong(inst)
@@ -156,6 +155,9 @@ local function fn()
     inst:AddTag("recordplayer")
     inst:AddTag("furnituredecor")
 
+	--groundonlymachine (from machine component) added to pristine state for optimization
+	inst:AddTag("groundonlymachine")
+
     MakeInventoryFloatable(inst, "med", 0.07, 0.72)
 
     inst.entity:SetPristine()
@@ -194,6 +196,7 @@ local function fn()
 
     --
     local machine = inst:AddComponent("machine")
+	machine:SetGroundOnlyMachine(true)
     machine.turnonfn = inst.TryToPlayRecord
     machine.turnofffn = inst.StopPlayingRecord
     machine.enabled = false

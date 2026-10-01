@@ -88,21 +88,20 @@ end
 
 local SPECTATOR_CANT_TAGS = {"monster", "player"}
 local SPECTATOR_ONEOF_TAGS = {"character"}
-local PARTICIPATOR_MUST_TAG = {"player"}
 function Minigame:DoActivePulse()
 	local x, y, z = self.inst.Transform:GetWorldPosition()
 
 	if self.spectator_dist and self.spectator_dist > 0 then
 		local spectators = TheSim:FindEntities(x, y, z, self.spectator_dist, nil, SPECTATOR_CANT_TAGS, SPECTATOR_ONEOF_TAGS)
 		for _, spectator in ipairs(spectators) do
-			if spectator.components.follower == nil or spectator.components.follower.leader == nil then
+			if spectator.components.follower == nil or spectator.components.follower:GetLeader() == nil then
 				self:AddSpectator(spectator)
 			end
 		end
 	end
 
 	if self.participator_dist and self.participator_dist > 0 then
-		local participators = TheSim:FindEntities(x, y, z, self.participator_dist, PARTICIPATOR_MUST_TAG)
+		local participators = FindPlayersInRange(x, y, z, self.participator_dist)
 		for _, participator in ipairs(participators) do
 			self:AddParticipator(participator)
 		end

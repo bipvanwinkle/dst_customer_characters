@@ -18,9 +18,12 @@ Wander = Class(BehaviourNode, function(self, inst, homelocation, max_dist, times
 	self.checkpointFn = checkpointFn
 
 	self.wander_dist = data and data.wander_dist or 12
+    self.ignore_walls = data and data.ignore_walls or nil
 	self.offest_attempts = data and data.offest_attempts or 8
 
 	self.should_run = data and data.should_run or nil
+
+    self.leashwhengoinghome = data and data.leashwhengoinghome or nil
 
     self.times =
     {
@@ -144,16 +147,23 @@ function Wander:PickNewDirection()
             end
         else
             local can_pathfind_in_water = self.inst.components.locomotor:CanPathfindOnWater()
-            offset, check_angle, deflected = FindWalkableOffset(
-                pt, angle, radius, attempts,
-                true, false, self.checkpointFn,
-                can_pathfind_in_water) -- try to avoid walls
-            if not check_angle then
-                --print(self.inst, "no los wander, fallback to ignoring walls")
+            if self.ignore_walls then
                 offset, check_angle, deflected = FindWalkableOffset(
                     pt, angle, radius, attempts,
                     true, true, self.checkpointFn,
-                    can_pathfind_in_water) -- if we can't avoid walls
+                    can_pathfind_in_water)
+            else
+                offset, check_angle, deflected = FindWalkableOffset(
+                    pt, angle, radius, attempts,
+                    true, false, self.checkpointFn,
+                    can_pathfind_in_water) -- try to avoid walls
+                if not check_angle then
+                    --print(self.inst, "no los wander, fallback to ignoring walls")
+                    offset, check_angle, deflected = FindWalkableOffset(
+                        pt, angle, radius, attempts,
+                        true, true, self.checkpointFn,
+                        can_pathfind_in_water) -- if we can't avoid walls
+                end
             end
         end
 
@@ -178,7 +188,9 @@ function Wander:PickNewDirection()
         end
     end
 
-    self:Wait(self.times.minwalktime+math.random()*self.times.randwalktime)
+    if not self.leashwhengoinghome or self.leashwhengoinghome and not self.far_from_home then
+        self:Wait(self.times.minwalktime+math.random()*self.times.randwalktime)
+    end
 end
 
 function Wander:HoldPosition()

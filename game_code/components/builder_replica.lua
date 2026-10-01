@@ -170,6 +170,34 @@ function Builder:RemoveRecipe(recipename)
     end
 end
 
+function Builder:SetRecipeCraftingLimit(index, recipename, amount)
+    if self.classified ~= nil then
+        local recipe = CRAFTINGSTATION_LIMITED_RECIPES_LOOKUPS[recipename] or 0
+        if recipe == 0 then
+            amount = 0
+        end
+        self.classified.craftinglimit_recipe[index]:set(recipe)
+        self.classified.craftinglimit_amount[index]:set(amount)
+    end
+end
+function Builder:GetAllRecipeCraftingLimits()
+    local craftinglimits = {}
+    if self.classified ~= nil then
+        for i = 1, CRAFTINGSTATION_LIMITED_RECIPES_COUNT do
+            local recipename = CRAFTINGSTATION_LIMITED_RECIPES[self.classified.craftinglimit_recipe[i]:value()]
+            if recipename then
+                local amount = self.classified.craftinglimit_amount[i]:value()
+                craftinglimits[recipename] = amount
+            end
+        end
+    end
+    for _, recipename in ipairs(EXTERNALLY_HANDLED_LIMITED_RECIPES) do
+        local recipe = AllRecipes[recipename]
+        craftinglimits[recipename] = recipe:getlimitedrecipecount(self.inst)
+    end
+    return craftinglimits
+end
+
 function Builder:BufferBuild(recipename)
     if self.inst.components.builder ~= nil then
         self.inst.components.builder:BufferBuild(recipename)
@@ -252,17 +280,53 @@ function Builder:KnowsRecipe(recipe, ignore_tempbonus, cached_tech_trees)
         return self.inst.components.builder:KnowsRecipe(recipe, ignore_tempbonus, cached_tech_trees)
     elseif self.classified ~= nil then
         if recipe ~= nil then
-			if self.classified.isfreebuildmode:value() then
+			if self.classified.isfreebuildmode:value() and not PREFAB_SKINS_SHOULD_NOT_SELECT[recipe.product] then
 				return true
-			elseif recipe.builder_tag ~= nil and not self.inst:HasTag(recipe.builder_tag) then -- builder_tag check is require due to character swapping
+			end
+            
+            local has_unlocked_skin = false
+            if recipe.unlocks_from_skin and (self.inst == ThePlayer) then
+                local prefabskins = PREFAB_SKINS[recipe.product]
+                if prefabskins ~= nil then
+                    for _, skin in ipairs(prefabskins) do
+                        if TheInventory:CheckOwnership(skin) then
+                            has_unlocked_skin = true
+                            if recipe.unlocks_from_skin == SKINUNLOCKS.ALWAYS then
+                                return true
+                            end
+                        end
+                    end
+                end
+                if recipe.unlocks_from_skin == SKINUNLOCKS.ALWAYS then
+                    return false
+                end
+            end
+
+			--the following builder_tag/skill checks are require due to character swapping
+			if (recipe.builder_tag and not self.inst:HasTag(recipe.builder_tag)) or
+				(recipe.no_builder_tag and self.inst:HasTag(recipe.no_builder_tag))
+			then
 				return false
-            elseif recipe.builder_skill ~= nil and not self.inst.components.skilltreeupdater:IsActivated(recipe.builder_skill) then -- builder_skill check is require due to character swapping
+			end
+			local skilltreeupdater = self.inst.components.skilltreeupdater
+			if (recipe.builder_skill and not (skilltreeupdater and skilltreeupdater:IsActivated(recipe.builder_skill))) or
+				(recipe.no_builder_skill and skilltreeupdater and skilltreeupdater:IsActivated(recipe.no_builder_skill))
+			then
 				return false
-			elseif self.classified.recipes[recipe.name] ~= nil and self.classified.recipes[recipe.name]:value() then
+			end
+			--
+
+			if self.classified.recipes[recipe.name] and self.classified.recipes[recipe.name]:value() then
+                if recipe.unlocks_from_skin then
+                    return has_unlocked_skin
+                end
 				return true
 			end
 
             if cached_tech_trees and cached_tech_trees[recipe.level] ~= nil then
+                if recipe.unlocks_from_skin then
+                    return has_unlocked_skin and cached_tech_trees[recipe.level]
+                end
                 return cached_tech_trees[recipe.level]
             end
             for i, v in ipairs(TechTree.AVAILABLE_TECH) do
@@ -278,6 +342,9 @@ function Builder:KnowsRecipe(recipe, ignore_tempbonus, cached_tech_trees)
 
             if cached_tech_trees then
                 cached_tech_trees[recipe.level] = true
+            end
+            if recipe.unlocks_from_skin then
+                return has_unlocked_skin
             end
 			return true
         end
@@ -296,6 +363,9 @@ function Builder:HasIngredients(recipe)
 			if self.classified.isfreebuildmode:value() then
 				return true
 			end
+            if recipe.getlimitedrecipecount and recipe:getlimitedrecipecount(self.inst) <= 0 then
+                return false
+            end
             for i, v in ipairs(recipe.ingredients) do
                 if not self.inst.replica.inventory:Has(v.type, math.max(1, RoundBiasedUp(v.amount * self:IngredientMod())), true) then
                     return false
@@ -328,16 +398,27 @@ function Builder:CanLearn(recipename)
         return self.inst.components.builder:CanLearn(recipename)
     elseif self.classified ~= nil then
         local recipe = GetValidRecipe(recipename)
-        return recipe ~= nil
-            and (recipe.builder_tag == nil or self.inst:HasTag(recipe.builder_tag))
-            and (recipe.builder_skill == nil or self.inst.components.skilltreeupdater:IsActivated(recipe.builder_skill))
+		if recipe == nil then
+			return false
+		elseif (recipe.builder_tag and not self.inst:HasTag(recipe.builder_tag)) or
+			(recipe.no_builder_tag and self.inst:HasTag(recipe.no_builder_tag))
+		then
+			return false
+		end
+		local skilltreeupdater = self.inst.components.skilltreeupdater
+		if (recipe.builder_skill and not (skilltreeupdater and skilltreeupdater:IsActivated(recipe.builder_skill))) or
+			(recipe.no_builder_skill and skilltreeupdater and skilltreeupdater:IsActivated(recipe.no_builder_skill))
+		then
+			return false
+		end
+		return true
     else
         return false
     end
 end
 
 function Builder:CanBuildAtPoint(pt, recipe, rot)
-    return TheWorld.Map:CanDeployRecipeAtPoint(pt, recipe, rot)
+    return TheWorld.Map:CanDeployRecipeAtPoint(pt, recipe, rot, self.inst)
 end
 
 function Builder:MakeRecipeFromMenu(recipe, skin)

@@ -55,6 +55,13 @@ local PIECES =
     {name="bearger_mutated",     moonevent=false,    gymweight=4},
     {name="yotd",                moonevent=false,    gymweight=3},
     {name="sharkboi",            moonevent=false,    gymweight=4},
+    {name="wormboss",            moonevent=false,    gymweight=4},
+    {name="daywalker2",          moonevent=false,    gymweight=4},
+    {name="yots",                moonevent=false,    gymweight=3},
+    {name="wagboss_robot",       moonevent=false,    gymweight=4},
+    {name="wagboss_lunar",       moonevent=false,    gymweight=4},
+    {name="yoth",                moonevent=false,    gymweight=3},
+    {name="vault_pillar_guard",  moonevent=false,    gymweight=4},
 }
 
 local MOON_EVENT_RADIUS = 12
@@ -126,7 +133,7 @@ local function StartStruggle(inst)
 end
 
 local function StopStruggle(inst)
-    if inst._task ~= nil and inst.forcebreak ~= true then
+	if inst._task and inst.forcebreak == nil then
         inst._task:Cancel()
         inst._task = nil
     end
@@ -137,10 +144,10 @@ local function CheckMorph(inst)
         return
     end
 
-    if PIECES[inst.pieceid].moonevent
-        and TheWorld.state.isnewmoon
-        and not inst:IsAsleep() then
-
+	if PIECES[inst.pieceid].moonevent and
+		(TheWorld.state.isfullmoon or TheWorld.state.isnewmoon) and
+		not inst:IsAsleep()
+	then
         StartStruggle(inst)
     else
         StopStruggle(inst)
@@ -158,10 +165,18 @@ end
 local function onworkfinished(inst)
     local is_moonglass = (inst.materialid ~= nil and MATERIALS[inst.materialid].name == MOONGLASS_NAME)
 
+	local rook_sized_collapse
     if not is_moonglass and (inst._task ~= nil or inst.forcebreak) then
         inst.SoundEmitter:PlaySound("dontstarve/wilson/rock_break")
 
-        local creature = SpawnPrefab("shadow_"..PIECES[inst.pieceid].name)
+		local creaturename = PIECES[inst.pieceid].name
+		if TheWorld.state.isnewmoon or inst.forcebreak == "shadow" then
+			creaturename = "shadow_"..creaturename
+		elseif creaturename == "rook" then
+			rook_sized_collapse = true
+		end
+
+		local creature = SpawnPrefab(creaturename)
         creature.Transform:SetPosition(inst.Transform:GetWorldPosition())
         creature.Transform:SetRotation(inst.Transform:GetRotation())
         creature.sg:GoToState("taunt")
@@ -174,12 +189,21 @@ local function onworkfinished(inst)
         local x, y, z = inst.Transform:GetWorldPosition()
         local ents = TheSim:FindEntities(x, y, z, MOON_EVENT_RADIUS, MOONCHESS_MUST_TAGS)
         for i, v in ipairs(ents) do
-            v.forcebreak = true
+			if v._task and v.forcebreak ~= "shadow" then
+				v.forcebreak = inst.forcebreak or "auto"
+			end
         end
     end
 
     inst.components.lootdropper:DropLoot()
-    local fx = SpawnPrefab("collapse_small")
+
+	local fx
+	if rook_sized_collapse then
+		fx = SpawnPrefab("collapse_big")
+		fx.Transform:SetScale(0.8, 0.8, 0.8)
+	else
+		fx = SpawnPrefab("collapse_small")
+	end
     fx.Transform:SetPosition(inst.Transform:GetWorldPosition())
     fx:SetMaterial("stone")
     inst:Remove()
@@ -191,7 +215,7 @@ local function getstatus(inst)
 end
 
 local function OnShadowChessRoar(inst, forcebreak)
-    inst.forcebreak = true
+	inst.forcebreak = "shadow"
     StartStruggle(inst)
 end
 
@@ -210,6 +234,7 @@ local function onload(inst, data)
             inst.OnEntityWake = nil
             inst.OnEntitySleep = nil
 
+			inst:StopWatchingWorldState("isfullmoon", CheckMorph)
             inst:StopWatchingWorldState("isnewmoon", CheckMorph)
             inst:RemoveEventCallback("shadowchessroar", OnShadowChessRoar)
         end
@@ -251,6 +276,9 @@ local function makepiece(pieceid, materialid)
     end
     if PIECES[pieceid].moonevent and (materialid == nil or MATERIALS[materialid].name ~= MOONGLASS_NAME) then
         table.insert(prefabs, "shadow_"..PIECES[pieceid].name)
+		if PIECES[pieceid].name == "rook" then
+			table.insert(prefabs, "collapse_big")
+		end
     end
 
     local function fn()
@@ -325,6 +353,7 @@ local function makepiece(pieceid, materialid)
             if PIECES[pieceid].moonevent then
                 inst.OnEntityWake = CheckMorph
                 inst.OnEntitySleep = CheckMorph
+				inst:WatchWorldState("isfullmoon", CheckMorph)
                 inst:WatchWorldState("isnewmoon", CheckMorph)
             end
 

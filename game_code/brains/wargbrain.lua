@@ -37,8 +37,8 @@ end
 --------------------------------------------------------------------------
 
 local SEE_DIST = 30
-local CARCASS_TAGS = { "meat_carcass" }
-local CARCASS_NO_TAGS = { "fire" }
+local CARCASS_TAGS = { "creaturecorpse" }
+local CARCASS_NO_TAGS = { "NOCLICK", "fire" }
 function WargBrain:SelectCarcass()
 	self.carcass = FindEntity(self.inst, SEE_DIST, nil, CARCASS_TAGS, CARCASS_NO_TAGS)
 	return self.carcass ~= nil
@@ -47,7 +47,7 @@ end
 function WargBrain:CheckCarcass()
 	return not (self.carcass.components.burnable ~= nil and self.carcass.components.burnable:IsBurning())
 		and self.carcass:IsValid()
-		and self.carcass:HasTag("meat_carcass")
+		and self.carcass:HasTag("creaturecorpse")
 end
 
 function WargBrain:GetCarcassPos()
@@ -69,6 +69,9 @@ function WargBrain:OnStart()
 
 		IfNode(function() return not ismutated end, "NormalPanic",
 			BrainCommon.PanicTrigger(self.inst)),
+
+        IfNode(function() return not ismutated end, "NormalElectricPanic",
+            BrainCommon.ElectricFencePanicTrigger(self.inst)),
 
         MinPeriod(self.inst, TUNING.WARG_SUMMONPERIOD, true,
             IfNode(function() return CanSpawnChild(self.inst) end, "needs follower",
@@ -100,7 +103,7 @@ function WargBrain:OnStart()
 							function() return self.inst.components.combat:GetHitRange() + self.carcass:GetPhysicsRadius(0) - 1 end,
 							true)),
 					IfNode(function() return self:CheckCarcass() and not self.inst.components.combat:InCooldown() end, "chomp",
-						ActionNode(function() self.inst.sg:HandleEvent("chomp", { target = self.carcass }) end)),
+						ActionNode(function() self.inst:PushEventImmediate("chomp", { target = self.carcass }) end)),
 					FaceEntity(self.inst,
 						function() return self.carcass end,
 						function() return self:CheckCarcass() end),

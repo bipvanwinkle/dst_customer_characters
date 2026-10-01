@@ -1,14 +1,16 @@
 local assets =
 {
     Asset("ANIM", "anim/moon_tree_petal.zip"),
+    Asset("ANIM", "anim/meat_rack_food_petals.zip"),
 }
 
 local prefabs =
 {
 	"moon_tree_blossom_worldgen",
+    "moon_tree_blossom_dried",
 }
 
-local function OnPickup(inst, pickupguy, src_pos)
+local function OnPutInInventory(inst, pickupguy, src_pos)
     inst.components.perishable:StartPerishing()
 end
 
@@ -30,6 +32,8 @@ local function fn()
 
     inst:AddTag("cattoy")
     inst:AddTag("vasedecoration")
+	--dryable (from dryable component) added to pristine state for optimization
+	inst:AddTag("dryable")
 
     MakeInventoryFloatable(inst)
 
@@ -42,7 +46,7 @@ local function fn()
     inst:AddComponent("inspectable")
 
     inst:AddComponent("inventoryitem")
-	inst.components.inventoryitem:SetOnPickupFn(OnPickup)
+	inst.components.inventoryitem:SetOnPutInInventoryFn(OnPutInInventory)
 
     inst:AddComponent("tradable")
     inst:AddComponent("vasedecoration")
@@ -59,6 +63,12 @@ local function fn()
     inst.components.perishable:SetPerishTime(TUNING.PERISH_FAST)
     inst.components.perishable:StartPerishing()
     inst.components.perishable.onperishreplacement = "spoiled_food"
+
+    inst:AddComponent("dryable")
+    inst.components.dryable:SetProduct("moon_tree_blossom_dried")
+    inst.components.dryable:SetDryTime(TUNING.DRY_FAST)
+	inst.components.dryable:SetBuildFile("meat_rack_food_petals")
+    inst.components.dryable:SetDriedBuildFile("meat_rack_food_petals")
 
     MakeSmallBurnable(inst)
     MakeSmallPropagator(inst)

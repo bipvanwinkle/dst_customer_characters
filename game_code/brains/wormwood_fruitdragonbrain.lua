@@ -15,7 +15,7 @@ local FruitDragonBrain = Class(Brain, function(self, inst)
 end)
 
 local function GetLeader(inst)
-    return inst.components.follower and inst.components.follower:GetLeader() or nil
+    return inst.components.follower and inst.components.follower:GetLeader()
 end
 
 local function GetLeaderLocation(inst)
@@ -33,6 +33,7 @@ function FruitDragonBrain:OnStart()
     local root = PriorityNode(
     {
 		BrainCommon.PanicTrigger(self.inst),
+        BrainCommon.ElectricFencePanicTrigger(self.inst),
         Follow(self.inst, GetLeader, FOLLOW_DISTANCE_MIN, FOLLOW_DISTANCE_TARGET, FOLLOW_DISTANCE_MAX),
         ChaseAndAttack(self.inst, nil, MAX_CHASE_DIST),
 

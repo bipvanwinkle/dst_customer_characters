@@ -12,11 +12,6 @@ local assets =
     Asset("MINIMAP_IMAGE", "archive_moon_statue4"),
 }
 
-local prefabs =
-{
-
-}
-
 local assets_desk =
 {
     Asset("ANIM", "anim/archive_security_desk.zip"),
@@ -120,20 +115,18 @@ end
 local function statuefn()
 
     local inst = CreateEntity()
-    inst.anim = math.random(1,4)
 
     inst.entity:AddTransform()
     inst.entity:AddAnimState()
     inst.entity:AddSoundEmitter()
     inst.entity:AddMiniMapEntity()
-    inst.entity:AddLight()
     inst.entity:AddNetwork()
 
     MakeObstaclePhysics(inst, 0.66)
 
     inst.AnimState:SetBank("archive_moon_statue")
     inst.AnimState:SetBuild("archive_moon_statue")
-    inst.AnimState:PlayAnimation("idle_full_"..inst.anim)
+	inst.AnimState:PlayAnimation("idle_full_1")
     inst.scrapbook_anim = "idle_full_1"
 
     inst:AddTag("structure")
@@ -147,6 +140,11 @@ local function statuefn()
     if not TheWorld.ismastersim then
         return inst
     end
+
+	inst.anim = math.random(4)
+	if inst.anim ~= 1 then
+		inst.AnimState:PlayAnimation("idle_full_"..tostring(inst.anim))
+	end
 
     inst:AddComponent("inspectable")
 
@@ -172,40 +170,45 @@ end
 local _storyprogress = 0
 local NUM_STORY_LINES = 5
 
-local function getstatus(inst)
-    if inst.storyprogress == nil then
-        _storyprogress = (_storyprogress % NUM_STORY_LINES) + 1
-        inst.storyprogress = _storyprogress
-    end
+local function rune_AdvanceStory(inst)
+	if inst.storyprogress == nil then
+		_storyprogress = (_storyprogress % NUM_STORY_LINES) + 1
+		inst.storyprogress = _storyprogress
+	end
+end
 
+local function getstatus(inst)
+	rune_AdvanceStory(inst)
     return "LINE_"..tostring(inst.storyprogress)
+end
+
+local function rune_getdescription(inst, viewer)
+	if viewer.components.inventory and viewer.components.inventory:EquipHasTag("ancient_reader") then
+		rune_AdvanceStory(inst)
+		return STRINGS.ARCHIVE_RUNE_STATUE["LINE_"..tostring(inst.storyprogress)]
+	end
 end
 
 local function onsaveRune(inst, data)
     data.storyprogress = inst.storyprogress
-    data.animid = inst.animid
     data.anim = inst.anim
 end
 
-local function setruneanimation(inst)
-    if inst.anim == 1 then
-        inst.AnimState:PlayAnimation("idle")        
-    else
-        inst.AnimState:PlayAnimation("idle"..inst.anim)
-    end
-    inst.scrapbook_anim = "idle"
-end
-
 local function onloadRune(inst, data)
-    if data ~= nil and data.storyprogress ~= nil then
-        inst.storyprogress = data.storyprogress
-        _storyprogress = (_storyprogress % NUM_STORY_LINES) + 1
-    end
+	if data then
+		if data.storyprogress then
+			inst.storyprogress = data.storyprogress
+			_storyprogress = math.max(_storyprogress, inst.storyprogress)
+		end
 
-    if data ~= nil and data.anim ~= nil then
-        inst.anim = data.anim
-        setruneanimation(inst)
-    end
+		if data.anim then
+			inst.anim = data.anim
+			local anim = inst.anim == 1 and "idle" or ("idle"..tostring(inst.anim))
+			if not inst.AnimState:IsCurrentAnimation(anim) then
+				inst.AnimState:PlayAnimation(anim)
+			end
+		end
+	end
 end
 
 local function runefn()
@@ -215,25 +218,24 @@ local function runefn()
     inst.entity:AddAnimState()
     inst.entity:AddSoundEmitter()
     inst.entity:AddMiniMapEntity()
-    inst.entity:AddLight()
     inst.entity:AddNetwork()
 
     MakeObstaclePhysics(inst, 0.66)
 
-    inst.anim = math.random(1,3)
-
     inst.AnimState:SetBank("archive_rune")
     inst.AnimState:SetBuild("archive_runes")
-    setruneanimation(inst)
+	inst.AnimState:PlayAnimation("idle")
 
     inst.MiniMapEntity:SetIcon("archive_runes.png")
 
     inst:AddTag("structure")
     inst:AddTag("statue")
     inst:AddTag("dustable")
+	inst:AddTag("ancient_text")
 
     inst:SetPrefabNameOverride("archive_rune_statue")
 
+	inst.scrapbook_anim = "idle"
     inst.scrapbook_specialinfo = "ARCHIVERUNESTATUE"
 
     inst.entity:SetPristine()
@@ -242,8 +244,16 @@ local function runefn()
         return inst
     end
 
+	inst.scrapbook_speechstatus = "LINE_1"
+
+	inst.anim = math.random(3)
+	if inst.anim ~= 1 then
+		inst.AnimState:PlayAnimation("idle"..tostring(inst.anim))
+	end
+
     inst:AddComponent("inspectable")
     inst.components.inspectable.getstatus = getstatus
+	inst.components.inspectable.descriptionfn = rune_getdescription
 
     inst.OnLoad = onloadRune
     inst.OnSave = onsaveRune
@@ -301,6 +311,8 @@ local function getStatusPower(inst)
     return archive and not archive:GetPowerSetting() and "POWEROFF"
 end
 
+local SECURITY_SCRAPBOOK_HIDE_LAYER = { "moss" }
+
 local function securityfn()
     local inst = CreateEntity()
 
@@ -320,17 +332,20 @@ local function securityfn()
 
     MakeObstaclePhysics(inst, 0.66)
 
-    inst.anim = math.random(1,3)
-
     inst.AnimState:SetBuild("archive_security_desk")
     inst.AnimState:SetBank("archive_security_desk")
-    inst.AnimState:PlayAnimation("idle_leave",false)
+	inst.AnimState:PlayAnimation("idle_leave")
+	inst.AnimState:SetSymbolLightOverride("fx_beam", 1)
+	inst.AnimState:SetSymbolLightOverride("fx_archive_circles", 1)
+	inst.AnimState:SetSymbolLightOverride("fx_archive_point_loop", 1)
+	inst.AnimState:Hide("moss")
 
    -- inst.MiniMapEntity:SetIcon("statue_ruins.png")
 
     inst:AddTag("structure")
     inst:AddTag("statue")
     inst:AddTag("dustable")
+	inst:AddTag("security_desk")
 
     inst.scrapbook_specialinfo = "ARCHIVESECURITYDESK"
 
@@ -341,8 +356,10 @@ local function securityfn()
     end
 
     inst.scrapbook_anim = "idle"
+	inst.scrapbook_hide = SECURITY_SCRAPBOOK_HIDE_LAYER
 
     -------------------
+	--inst.anim = math.random(3) --is this even used?
     inst.canspawn = false
 
     inst:AddComponent("inspectable")
@@ -408,6 +425,76 @@ local POWERPOINT_POSSESSION_RANGE = 0.2
 local POWERPOINT_MUST_TAGS = { "security_powerpoint" }
 local POWERPOINT_CAN_TAGS =  { "INLIMBO", "FX" }
 
+local function FindFollowTargetTest(inst, target)
+    local item = target.components.inventory ~= nil and target.components.inventory:GetEquippedItem(EQUIPSLOTS.HANDS) or nil
+    if item == nil or item.prefab ~= "vault_compass" then
+        return false
+    end
+
+    if target.components.leader ~= nil then
+        local c = 0
+        local sparks = target.components.leader:GetFollowersByTag("power_point")
+        for i, v in ipairs(sparks) do
+            c = c + 1
+            if v == inst then
+                return true
+            end
+        end
+
+        return c < TUNING.MAX_SECURITY_PULSE_FOLLOWING
+    end
+end
+
+local function RecaculateFormationOffset(leader)
+    if not leader.components.leader then
+        return
+    end
+    local sparks = leader.components.leader:GetFollowersByTag("power_point")
+    local maxsparks = #sparks
+    local radius = 2 + math.random()
+    local angleoffset = math.random() * TWOPI
+    local x, y, z = leader.Transform:GetWorldPosition()
+	for i = 1, #sparks do
+        local angle = angleoffset + PI2 * (i - 1) / maxsparks
+        local offset = Vector3(radius * math.cos(angle), 0, radius * math.sin(angle))
+		local x1 = x + offset.x
+		local z1 = z + offset.z
+		local mindistsq = math.huge
+		local minj
+		for j, pet in ipairs(sparks) do
+			local dsq = pet:GetDistanceSqToPoint(x1, 0, z1)
+			if dsq < mindistsq then
+				mindistsq = dsq
+				minj = j
+			end
+		end
+		table.remove(sparks, minj).components.knownlocations:RememberLocation("formationoffset", offset, false)
+    end
+end
+
+local function SetSecurityPulseLeader(inst, leader)
+    if leader ~= nil then
+        leader:PushEvent("ms_securitysparkfollowing")
+        inst.patrol = false
+        inst.persists = false
+        inst.components.follower:SetLeader(leader)
+        RecaculateFormationOffset(leader)
+
+        local owner = inst.components.homeseeker ~= nil and inst.components.homeseeker.home or nil
+        if owner ~= nil and owner.components.childspawner ~= nil then
+            owner.components.childspawner:OnChildKilled(inst)
+        end
+    else
+        local oldleader = inst.components.follower:GetLeader()
+        -- inst.patrol = true -- don't patrol again, just despawn.
+        inst.components.follower:SetLeader(nil)
+        inst.components.knownlocations:ForgetLocation("formationoffset")
+        if oldleader then
+            RecaculateFormationOffset(oldleader)
+        end
+    end
+end
+
 local function FindSecurityPulseTarget(inst)
     local x, y, z = inst.Transform:GetWorldPosition()
     local ents = TheSim:FindEntities(x, y, z, inst.possession_range, POWERPOINT_MUST_TAGS, POWERPOINT_CAN_TAGS)
@@ -422,6 +509,25 @@ local function FindSecurityPulseTarget(inst)
 
     if ents[1] ~= nil then
         ents[1]:PushEvent("possess", { possesser = inst })
+        return
+    end
+
+    if not inst:IsAsleep() then
+        local leader = inst.components.follower:GetLeader()
+        if leader ~= nil then
+            if FindFollowTargetTest(inst, leader) then
+                return true
+            else
+                SetSecurityPulseLeader(inst, nil)
+            end
+        end
+
+        for i, v in ipairs(FindPlayersInRangeSq(x, y, z, 9*9, true)) do
+            if FindFollowTargetTest(inst, v) then
+                SetSecurityPulseLeader(inst, v)
+                break
+            end
+        end
     end
 end
 
@@ -436,6 +542,37 @@ end
 local function SetSfxPosition(inst)
     if inst.sfx_prefab ~= nil then
         inst.sfx_prefab.Transform:SetPosition(SFXRANGE, 0, 0)
+    end
+end
+
+local function Despawn(inst, opt_target)
+	if inst:IsAsleep() then
+		inst:Remove()
+		return
+	end
+	inst:StopBrain("despawn")
+    inst.components.locomotor:StopMoving()
+    inst.components.locomotor.walkspeed = 0
+    inst.persists = false
+    inst.SoundEmitter:PlaySound("grotto/creatures/centipede/electricity/small_explode")
+    inst.AnimState:PlayAnimation("despawn")
+	if opt_target then
+		inst.Physics:Teleport(opt_target.Transform:GetWorldPosition())
+		inst.AnimState:SetFinalOffset(4)
+	end
+    inst:ListenForEvent("animover", inst.Remove)
+    inst:ListenForEvent("entitysleep", inst.Remove)
+end
+
+local function OnPulseStartAction(inst, data)
+    if data ~= nil and data.action ~= nil and data.action.action == ACTIONS.GOHOME then
+        local home = data.action.target
+        if home ~= nil and home.components.childspawner ~= nil and home.components.childspawner.childreninside == 0 then
+            home.components.childspawner:TakeOwnership(inst)
+            inst:PerformBufferedAction()
+        else
+            inst:ClearBufferedAction()
+        end
     end
 end
 
@@ -458,11 +595,11 @@ local function securitypulsefn()
 
     inst.AnimState:SetBank("archive_security_pulse")
     inst.AnimState:SetBuild("archive_security_pulse")
-    inst.AnimState:PlayAnimation("idle",true)
+    inst.AnimState:PlayAnimation("idle", true)
     inst.AnimState:SetLightOverride(1)
 
     inst:AddTag("power_point")
-
+	inst:AddTag("flying")
 
     inst.entity:SetPristine()
 
@@ -476,14 +613,19 @@ local function securitypulsefn()
     inst:AddComponent("locomotor")
     inst.components.locomotor.walkspeed = TUNING.ARCHIVE_SECURITY.WALK_SPEED
 
+    inst:AddComponent("follower")
+    inst:AddComponent("knownlocations")
+
     inst.OnLocomote = OnLocomote -- Mods
     inst.FindSecurityPulseTarget = FindSecurityPulseTarget -- Mods
+    inst.Despawn = Despawn
 
     inst.sfx_prefab = inst:SpawnChild("archive_security_pulse_sfx")
 
     inst:ListenForEvent("locomote", inst.OnLocomote)
+    inst:ListenForEvent("startaction", OnPulseStartAction)
 
-    inst:DoPeriodicTask(.25, inst.FindSecurityPulseTarget)
+    inst:DoPeriodicTask(.25, inst.FindSecurityPulseTarget, 0)
     inst:DoTaskInTime(0, SetSfxPosition)
 
     inst:SetBrain(brain)
@@ -886,6 +1028,7 @@ local function switchbasefn()
     inst.scrapbook_build = "archive_switch"
     inst.scrapbook_specialinfo = "ARCHIVESWITCH"
     inst.scrapbook_speechname = "archive_switch"
+	inst.scrapbook_speechstatus = "GEMS"
 
     inst:DoTaskInTime(0,function()
         local x,y,z = inst.Transform:GetWorldPosition()
@@ -984,6 +1127,8 @@ local function portalfn()
     inst:AddComponent("inspectable")
     inst.components.inspectable.getstatus = getstatusportal
 
+    TheWorld:PushEvent("ms_register_vault_lobby_exit_target", inst)
+
     return inst
 end
 
@@ -1031,8 +1176,8 @@ local function worldgenitemfn()
 end
 
 
-return Prefab("archive_moon_statue",statuefn, assets, prefabs),
-       Prefab("archive_rune_statue", runefn, assets, prefabs),
+return Prefab("archive_moon_statue",statuefn, assets),
+       Prefab("archive_rune_statue", runefn, assets),
        Prefab("archive_security_desk", securityfn, assets_desk, prefabs_desk),
        Prefab("archive_security_pulse", securitypulsefn, assets_security, prefabs_security),
        Prefab("archive_security_pulse_sfx", securitypulse_sfxfn),

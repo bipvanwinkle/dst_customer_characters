@@ -1,20 +1,21 @@
-local modcompatability = require("modcompatability")
+local modcompatability = require"modcompatability"
 
 function ModInfoname(name)
 	local prettyname = KnownModIndex:GetModFancyName(name)
 	if prettyname == name then
 		return name
 	else
-		return name .. " (" .. prettyname .. ")"
+		return name.." ("..prettyname..")"
 	end
 end
+
 
 ReleaseID = {
 	IDs = {},
 	Current = nil,
-}
+	}
 
-function AddModReleaseID(name)
+function AddModReleaseID( name )
 	ReleaseID.IDs[name] = name
 	ReleaseID.Current = name
 end
@@ -25,32 +26,31 @@ CurrentRelease.GreaterOrEqualTo = function(rhs)
 end
 
 CurrentRelease.PrintID = function()
-	print("Current Release ID: " .. ((ReleaseID.Current ~= nil) and ("ReleaseID." .. ReleaseID.Current) or ".."))
+	print ("Current Release ID: " .. ((ReleaseID.Current ~= nil) and ("ReleaseID."..ReleaseID.Current) or ".."))
 end
+
 
 -- This isn't for modders to use: see environment version added in InsertPostInitFunctions
 function GetModConfigData(optionname, modname, get_local_config)
-	assert(
-		modname,
-		"modname must be supplied manually if calling GetModConfigData from outside of modmain or modworldgenmain. Use ModIndex:GetModActualName(fancyname) function [fancyname is name string from modinfo]."
-	)
+	assert(modname, "modname must be supplied manually if calling GetModConfigData from outside of modmain or modworldgenmain. Use ModIndex:GetModActualName(fancyname) function [fancyname is name string from modinfo].")
 	local force_local_options = false
-	if get_local_config ~= nil then
-		force_local_options = get_local_config
-	end
+	if get_local_config ~= nil then force_local_options = get_local_config end
 	local config, temp_options = KnownModIndex:GetModConfigurationOptions_Internal(modname, force_local_options)
 	if config and type(config) == "table" then
 		if temp_options then
 			return config[optionname]
 		else
-			for i, v in pairs(config) do
+			for i,v in pairs(config) do
 				if v.name == optionname then
 					if v.saved_server ~= nil and not get_local_config then
 						return v.saved_server
+
 					elseif v.saved_client ~= nil and get_local_config then
 						return v.saved_client
+
 					elseif v.saved ~= nil then
 						return v.saved
+
 					else
 						return v.default
 					end
@@ -62,36 +62,28 @@ function GetModConfigData(optionname, modname, get_local_config)
 end
 
 local function DoesCharacterExistInGendersTable(charactername)
-	for gender, characters in pairs(CHARACTER_GENDERS) do
-		if table.contains(characters, charactername) then
-			return true
-		end
-	end
-	return false
+    for gender,characters in pairs(CHARACTER_GENDERS) do
+        if table.contains(characters, charactername) then
+            return true
+        end
+    end
+    return false
 end
 
 local function AddModCharacter(name, gender, modes)
-	table.insert(MODCHARACTERLIST, name)
-	if not DoesCharacterExistInGendersTable(name) then
+    table.insert(MODCHARACTERLIST, name)
+    if not DoesCharacterExistInGendersTable(name) then
 		if gender == nil then
-			print(
-				"Warning: Mod Character "
-					.. name
-					.. ' does not currently specify a gender. Please update the call to AddModCharacter to include a gender. "FEMALE", "MALE", "ROBOT", or "NEUTRAL", or "PLURAL" '
-			)
+			print( "Warning: Mod Character " .. name .. " does not currently specify a gender. Please update the call to AddModCharacter to include a gender. \"FEMALE\", \"MALE\", \"ROBOT\", or \"NEUTRAL\", or \"PLURAL\" " )
 			gender = "NEUTRAL"
 		end
 		gender = gender:upper()
 		if not CHARACTER_GENDERS[gender] then
 			CHARACTER_GENDERS[gender] = {}
 		end
-		table.insert(CHARACTER_GENDERS[gender], name)
+		table.insert( CHARACTER_GENDERS[gender], name )
 	else
-		print(
-			"Warning: Mod Character "
-				.. name
-				.. " already exists in the CHARACTER_GENDERS table. It was either added previously, or added twice. You only need to call AddModCharacter now."
-		)
+		print( "Warning: Mod Character " .. name .. " already exists in the CHARACTER_GENDERS table. It was either added previously, or added twice. You only need to call AddModCharacter now." )
 	end
 
 	MODCHARACTERMODES[name] = modes
@@ -102,70 +94,65 @@ local function RemoveDefaultCharacter(name)
 		if not table.contains(MODCHARACTEREXCEPTIONS_DST, name) then
 			table.insert(MODCHARACTEREXCEPTIONS_DST, name)
 		else
-			print("Warning: Character " .. name .. " has already been removed")
+			print ("Warning: Character " .. name .. " has already been removed")
 		end
 	else
-		print("Warning: Character " .. name .. " is not a default character")
+		print ("Warning: Character " .. name .. " is not a default character")
 	end
 end
 
 -- Will assert if the modder has EnableModDebugPrint turned on, otherwise just print a warning for normal users.
 function moderror(message, level)
-	local modname = (global("env") and env.modname) or ModManager.currentlyloadingmod or "unknown mod"
-	local message = string.format("MOD ERROR: %s: %s", ModInfoname(modname), tostring(message))
-	if KnownModIndex:IsModErrorEnabled() then
-		level = level or 1
-		if level ~= 0 then
-			level = level + 1
-		end
-		return error(message, level)
-	else
-		print(message)
-		return
-	end
+    local modname = (global('env') and env.modname) or ModManager.currentlyloadingmod or "unknown mod"
+    local message = string.format("MOD ERROR: %s: %s", ModInfoname(modname), tostring(message))
+    if KnownModIndex:IsModErrorEnabled() then
+        level = level or 1
+        if level ~= 0 then
+            level = level + 1
+        end
+        return error(message, level)
+    else
+        print(message)
+        return
+    end
 end
 
 function modassert(test, message)
-	if not test then
-		return moderror(message)
-	else
-		return test
-	end
+    if not test then
+        return moderror(message)
+    else
+        return test
+    end
 end
 
 function modprint(...)
-	if KnownModIndex:IsModErrorEnabled() then
-		print(...)
-	end
+    if KnownModIndex:IsModErrorEnabled() then
+        print(...)
+    end
 end
 
 local function getfenvminfield(level, fieldname)
-	level = level + 1 -- increase level due to this function call
-	-- tail call doesn't have full debug info, its func is nil
-	-- use rawget to circumvent strict.lua's checks of _G that we might hit
-	while
-		debug.getinfo(level) ~= nil and (debug.getinfo(level).func == nil or rawget(getfenv(level), fieldname) == nil)
-	do
-		level = level + 1
-	end
-	assert(
-		debug.getinfo(level) ~= nil,
-		"Field " .. tostring(fieldname) .. " not found in callstack's functions' environments"
-	)
-	return getfenv(level)[fieldname]
+    level = level + 1 -- increase level due to this function call
+    -- tail call doesn't have full debug info, its func is nil
+    -- use rawget to circumvent strict.lua's checks of _G that we might hit
+    while debug.getinfo(level) ~= nil and (debug.getinfo(level).func == nil or rawget(getfenv(level), fieldname) == nil) do
+        level = level + 1
+    end
+    assert(debug.getinfo(level) ~= nil, "Field " .. tostring(fieldname) .. " not found in callstack's functions' environments")
+    return getfenv(level)[fieldname]
 end
 
 local function initprint(...)
-	if KnownModIndex:IsModInitPrintEnabled() then
-		local modname = getfenvminfield(3, "modname")
-		print(ModInfoname(modname), ...)
-	end
+    if KnownModIndex:IsModInitPrintEnabled() then
+        local modname = getfenvminfield(3, "modname")
+        print(ModInfoname(modname), ...)
+    end
 end
 
 -- Based on @no_signal's AddWidgetPostInit :)
 local function DoAddClassPostConstruct(classdef, postfn)
 	local constructor = classdef._ctor
-	classdef._ctor = function(self, ...)
+	classdef._ctor = function (self, ...)
 		constructor(self, ...)
 		postfn(self, ...)
 	end
@@ -173,7 +160,7 @@ end
 
 local function AddClassPostConstruct(package, postfn)
 	local classdef = require(package)
-	assert(type(classdef) == "table", "Class file path '" .. package .. "' doesn't seem to return a valid class.")
+	assert(type(classdef) == "table", "Class file path '"..package.."' doesn't seem to return a valid class.")
 	DoAddClassPostConstruct(classdef, postfn)
 end
 
@@ -184,13 +171,14 @@ local function AddGlobalClassPostConstruct(package, classname, postfn)
 		classdef = require(package)
 	end
 
-	assert(type(classdef) == "table", "Class '" .. classname .. "' wasn't loaded to global from '" .. package .. "'.")
+	assert(type(classdef) == "table", "Class '"..classname.."' wasn't loaded to global from '"..package.."'.")
 	DoAddClassPostConstruct(classdef, postfn)
 end
 
 local function InsertPostInitFunctions(env, isworldgen, isfrontend)
-	env.modassert = modassert
-	env.moderror = moderror
+
+    env.modassert = modassert
+    env.moderror = moderror
 
 	env.postinitfns = {}
 	env.postinitdata = {}
@@ -315,10 +303,10 @@ local function InsertPostInitFunctions(env, isworldgen, isfrontend)
 		initprint("AddRoom", arg1)
 		AddModRoom(env.modname, arg1, ...)
 	end
-	env.AddStartLocation = function(arg1, ...)
-		initprint("AddStartLocation", arg1)
-		AddModStartLocation(env.modname, arg1, ...)
-	end
+    env.AddStartLocation = function(arg1, ...)
+        initprint("AddStartLocation", arg1)
+        AddModStartLocation(env.modname, arg1, ...)
+    end
 
 	env.AddGameMode = function(game_mode, game_mode_text)
 		print("Warning: AddGameMode has been removed.")
@@ -326,8 +314,8 @@ local function InsertPostInitFunctions(env, isworldgen, isfrontend)
 		print("game_modes =")
 		print("{")
 		print("\t{")
-		print('\t\tname = "glutton",')
-		print('\t\tlabel = "Glutton",')
+		print("\t\tname = \"glutton\",")
+		print("\t\tlabel = \"Glutton\",")
 		print("\t\tsettings =")
 		print("\t\t{")
 		print("\t\t\tghost_sanity_drain = true,")
@@ -338,7 +326,7 @@ local function InsertPostInitFunctions(env, isworldgen, isfrontend)
 		print("}")
 	end
 
-	env.GetModConfigData = function(optionname, get_local_config)
+	env.GetModConfigData = function( optionname, get_local_config )
 		initprint("GetModConfigData", optionname, get_local_config)
 		return GetModConfigData(optionname, env.modname, get_local_config)
 	end
@@ -376,7 +364,14 @@ local function InsertPostInitFunctions(env, isworldgen, isfrontend)
 	env.AddTile = function(tile_name, tile_range, tile_data, ground_tile_def, minimap_tile_def, turf_def)
 		initprint("AddTile", tile_name)
 		mod_protect_TileManager = false
-		TileManager.AddTile(tile_name, tile_range, tile_data, ground_tile_def, minimap_tile_def, turf_def)
+		TileManager.AddTile(
+			tile_name,
+			tile_range,
+			tile_data,
+			ground_tile_def,
+			minimap_tile_def,
+			turf_def
+		)
 		mod_protect_TileManager = true
 	end
 
@@ -443,20 +438,15 @@ local function InsertPostInitFunctions(env, isworldgen, isfrontend)
 	end
 	------------------------------------------------------------------------------
 
-	env.AddAction = function(id, str, fn)
+
+	env.AddAction = function( id, str, fn )
 		local action
-		if type(id) == "table" and id.is_a and id:is_a(Action) then
+        if type(id) == "table" and id.is_a and id:is_a(Action) then
 			--backwards compatibility with old AddAction
-			action = id
-		else
-			assert(
-				str ~= nil and type(str) == "string",
-				'Must specify a string for your custom action! Example: "Perform My Action"'
-			)
-			assert(
-				fn ~= nil and type(fn) == "function",
-				'Must specify a fn for your custom action! Example: "function(act) --[[your action code]] end"'
-			)
+            action = id
+        else
+			assert( str ~= nil and type(str) == "string", "Must specify a string for your custom action! Example: \"Perform My Action\"")
+			assert( fn ~= nil and type(fn) == "function", "Must specify a fn for your custom action! Example: \"function(act) --[[your action code]] end\"")
 			action = Action()
 			action.id = id
 			action.str = str
@@ -464,10 +454,7 @@ local function InsertPostInitFunctions(env, isworldgen, isfrontend)
 		end
 		action.mod_name = env.modname
 
-		assert(
-			action.id ~= nil and type(action.id) == "string",
-			'Must specify an ID for your custom action! Example: "MYACTION"'
-		)
+		assert( action.id ~= nil and type(action.id) == "string", "Must specify an ID for your custom action! Example: \"MYACTION\"")
 
 		initprint("AddAction", action.id)
 		ACTIONS[action.id] = action
@@ -522,7 +509,7 @@ local function InsertPostInitFunctions(env, isworldgen, isfrontend)
 	end
 
 	env.postinitdata.MinimapAtlases = {}
-	env.AddMinimapAtlas = function(atlaspath)
+	env.AddMinimapAtlas = function( atlaspath )
 		initprint("AddMinimapAtlas", atlaspath)
 		table.insert(env.postinitdata.MinimapAtlases, atlaspath)
 	end
@@ -555,13 +542,13 @@ local function InsertPostInitFunctions(env, isworldgen, isfrontend)
 	end
 
 	env.postinitfns.ModShadersInit = {}
-	env.AddModShadersInit = function(fn)
+	env.AddModShadersInit = function( fn )
 		initprint("AddModShadersInit")
 		table.insert(env.postinitfns.ModShadersInit, fn)
 	end
 
 	env.postinitfns.ModShadersSortAndEnable = {}
-	env.AddModShadersSortAndEnable = function(fn)
+	env.AddModShadersSortAndEnable = function( fn )
 		initprint("AddModShadersSortAndEnable")
 		table.insert(env.postinitfns.ModShadersSortAndEnable, fn)
 	end
@@ -574,6 +561,7 @@ local function InsertPostInitFunctions(env, isworldgen, isfrontend)
 		end
 		table.insert(env.postinitfns.StategraphPostInit[stategraph], fn)
 	end
+
 
 	env.postinitfns.ComponentPostInit = {}
 	env.AddComponentPostInit = function(component, fn)
@@ -596,10 +584,8 @@ local function InsertPostInitFunctions(env, isworldgen, isfrontend)
 
 	-- An illustrative example of how to use a global prefab post init, in this case, we're making a player prefab post init.
 	env.AddPlayerPostInit = function(fn)
-		env.AddPrefabPostInitAny(function(inst)
-			if inst and inst:HasTag("player") then
-				fn(inst)
-			end
+		env.AddPrefabPostInitAny( function(inst)
+			if inst and inst:HasTag("player") then fn(inst) end
 		end)
 	end
 
@@ -640,7 +626,7 @@ local function InsertPostInitFunctions(env, isworldgen, isfrontend)
 
 	env.AddBrainPostInit = function(brain, fn)
 		initprint("AddBrainPostInit", brain)
-		local brainclass = require("brains/" .. brain)
+		local brainclass = require("brains/"..brain)
 		if brainclass.modpostinitfns == nil then
 			brainclass.modpostinitfns = {}
 		end
@@ -659,11 +645,11 @@ local function InsertPostInitFunctions(env, isworldgen, isfrontend)
 		initprint("AddCookerRecipe", cooker, recipe.name)
 		AddCookerRecipe(cooker, recipe, true) -- please do not try to bypass the true value. It will not work and result in server log spam and cause a worse cookbook experience for the mod users.
 		if env.cookerrecipes[cooker] == nil then
-			env.cookerrecipes[cooker] = {}
-		end
-		if recipe.name then
-			table.insert(env.cookerrecipes[cooker], recipe.name)
-		end
+	        env.cookerrecipes[cooker] = {}
+	    end
+	    if recipe.name then
+	        table.insert(env.cookerrecipes[cooker], recipe.name)
+	    end
 	end
 
 	env.AddModCharacter = function(name, gender, modes)
@@ -671,7 +657,7 @@ local function InsertPostInitFunctions(env, isworldgen, isfrontend)
 		AddModCharacter(name, gender, modes)
 	end
 
-	env.RemoveDefaultCharacter = function(name)
+	env.RemoveDefaultCharacter = function (name)
 		initprint("RemoveDefaultCharacter", name)
 		RemoveDefaultCharacter(name)
 	end
@@ -689,7 +675,7 @@ local function InsertPostInitFunctions(env, isworldgen, isfrontend)
 		-- filter_def.name: This is the filter's id and will need the string added to STRINGS.UI.CRAFTING_FILTERS[name]
 		-- filter_def.atlas: atlas for the icon,  can be a string or function
 		-- filter_def.image: icon to show in the crafting menu, can be a string or function
-		-- filter_def.image_size: (optional) custom image sizing
+		-- filter_def.image_size: (optional) custom image sizing 
 		-- filter_def.custom_pos: (optional) This will not be added to the grid of filters
 		-- filter_def.recipes: !This is not supported! Create the filter and then pass in the filter to AddRecipe2() or AddRecipeToFilter()
 
@@ -703,11 +689,11 @@ local function InsertPostInitFunctions(env, isworldgen, isfrontend)
 		local name = filter_def.name
 
 		if filter_def.atlas == nil then
-			initprint("Error: AddRecipeFilter " .. name .. " requires 'atlas'.")
+			initprint("Error: AddRecipeFilter "..name.." requires 'atlas'.")
 			return
 		end
 		if filter_def.image == nil then
-			initprint("Error: AddRecipeFilter " .. name .. " requires 'image'.")
+			initprint("Error: AddRecipeFilter "..name.." requires 'image'.")
 			return
 		end
 
@@ -763,6 +749,7 @@ local function InsertPostInitFunctions(env, isworldgen, isfrontend)
 			end
 		end
 
+
 		mod_protect_Recipe = true
 		rec:SetModRPCID()
 		return rec
@@ -778,11 +765,7 @@ local function InsertPostInitFunctions(env, isworldgen, isfrontend)
 		if config ~= nil and (config.builder_tag ~= nil or config.builder_skill ~= nil) then
 			env.AddRecipeToFilter(name, CRAFTING_FILTERS.CHARACTER.name)
 		else
-			initprint(
-				"Warning: AddCharacterRecipe called for recipe "
-					.. name
-					.. " without a builder_tag or builder_skill. This recipe will be added to the mods filter instead of the character filter."
-			)
+			initprint("Warning: AddCharacterRecipe called for recipe "..name.." without a builder_tag or builder_skill. This recipe will be added to the mods filter instead of the character filter.")
 			env.AddRecipeToFilter(name, CRAFTING_FILTERS.MODS.name)
 		end
 
@@ -791,6 +774,7 @@ local function InsertPostInitFunctions(env, isworldgen, isfrontend)
 				env.AddRecipeToFilter(name, filter_name)
 			end
 		end
+
 
 		mod_protect_Recipe = true
 		rec:SetModRPCID()
@@ -819,6 +803,7 @@ local function InsertPostInitFunctions(env, isworldgen, isfrontend)
 		--	env.AddRecipeToFilter(name, CRAFTING_FILTERS.CRAFTING_STATION.name)
 		--end
 
+
 		if rec.builder_tag ~= nil or rec.builder_skill ~= nil then
 			env.AddRecipeToFilter(arg1, CRAFTING_FILTERS.CHARACTER.name)
 		elseif not rec.is_deconstruction_recipe then
@@ -835,19 +820,12 @@ local function InsertPostInitFunctions(env, isworldgen, isfrontend)
 		return env.AddRecipe(...)
 	end
 
-	env.AddRecipeTab = function(rec_str, rec_sort, rec_atlas, rec_icon, rec_owner_tag, rec_crafting_station)
+    env.AddRecipeTab = function( rec_str, rec_sort, rec_atlas, rec_icon, rec_owner_tag, rec_crafting_station )
 		print("Warning: function AddRecipeTab in modmain is deprecated.")
-		CUSTOM_RECIPETABS[rec_str] = {
-			str = rec_str,
-			sort = rec_sort,
-			icon_atlas = rec_atlas,
-			icon = rec_icon,
-			owner_tag = rec_owner_tag,
-			crafting_station = rec_crafting_station,
-		}
+		CUSTOM_RECIPETABS[rec_str] = { str = rec_str, sort = rec_sort, icon_atlas = rec_atlas, icon = rec_icon, owner_tag = rec_owner_tag, crafting_station = rec_crafting_station }
 		STRINGS.TABS[rec_str] = rec_str
 		return CUSTOM_RECIPETABS[rec_str]
-	end
+    end
 
 	env.Prefab = Prefab
 
@@ -876,103 +854,102 @@ local function InsertPostInitFunctions(env, isworldgen, isfrontend)
 		AddReplicableComponent(name)
 	end
 
-	env.AddModRPCHandler = function(namespace, name, fn)
-		initprint("AddModRPCHandler", namespace, name)
-		AddModRPCHandler(namespace, name, fn)
+	env.AddModRPCHandler = function( namespace, name, fn )
+		initprint( "AddModRPCHandler", namespace, name )
+		AddModRPCHandler( namespace, name, fn )
 	end
 
-	env.AddClientModRPCHandler = function(namespace, name, fn)
-		initprint("AddClientModRPCHandler", namespace, name)
-		AddClientModRPCHandler(namespace, name, fn)
+	env.AddClientModRPCHandler = function( namespace, name, fn )
+		initprint( "AddClientModRPCHandler", namespace, name )
+		AddClientModRPCHandler( namespace, name, fn )
 	end
 
-	env.AddShardModRPCHandler = function(namespace, name, fn)
-		initprint("AddShardModRPCHandler", namespace, name)
-		AddShardModRPCHandler(namespace, name, fn)
+	env.AddShardModRPCHandler = function( namespace, name, fn )
+		initprint( "AddShardModRPCHandler", namespace, name )
+		AddShardModRPCHandler( namespace, name, fn )
 	end
 
-	env.GetModRPCHandler = function(namespace, name)
-		initprint("GetModRPCHandler", namespace, name)
-		return GetModRPCHandler(namespace, name)
+	env.GetModRPCHandler = function( namespace, name )
+		initprint( "GetModRPCHandler", namespace, name )
+		return GetModRPCHandler( namespace, name )
 	end
 
-	env.GetClientModRPCHandler = function(namespace, name)
-		initprint("GetClientModRPCHandler", namespace, name)
-		return GetClientModRPCHandler(namespace, name)
+	env.GetClientModRPCHandler = function( namespace, name )
+		initprint( "GetClientModRPCHandler", namespace, name )
+		return GetClientModRPCHandler( namespace, name )
 	end
 
-	env.GetShardModRPCHandler = function(namespace, name)
-		initprint("GetShardModRPCHandler", namespace, name)
-		return GetShardModRPCHandler(namespace, name)
+	env.GetShardModRPCHandler = function( namespace, name )
+		initprint( "GetShardModRPCHandler", namespace, name )
+		return GetShardModRPCHandler( namespace, name )
 	end
 
-	env.SendModRPCToServer = function(id_table, ...)
-		initprint("SendModRPCToServer", id_table.namespace, id_table.id)
-		SendModRPCToServer(id_table, ...)
+	env.SendModRPCToServer = function( id_table, ... )
+		initprint( "SendModRPCToServer", id_table.namespace, id_table.id )
+		SendModRPCToServer( id_table, ... )
 	end
 
-	env.SendModRPCToClient = function(id_table, ...)
-		initprint("SendModRPCToClient", id_table.namespace, id_table.id)
-		SendModRPCToClient(id_table, ...)
+	env.SendModRPCToClient = function( id_table, ... )
+		initprint( "SendModRPCToClient", id_table.namespace, id_table.id )
+		SendModRPCToClient( id_table, ... )
 	end
 
-	env.SendModRPCToShard = function(id_table, ...)
-		initprint("SendModRPCToShard", id_table.namespace, id_table.id)
-		SendModRPCToShard(id_table, ...)
+	env.SendModRPCToShard = function( id_table, ... )
+		initprint( "SendModRPCToShard", id_table.namespace, id_table.id )
+		SendModRPCToShard( id_table, ... )
 	end
 
 	env.MOD_RPC = MOD_RPC --legacy, mods should use GetModRPC below
 	env.CLIENT_MOD_RPC = CLIENT_MOD_RPC --legacy, mods should use GetClientModRPC below
 	env.SHARD_MOD_RPC = SHARD_MOD_RPC --legacy, mods should use GetShardModRPC below
 
-	env.GetModRPC = function(namespace, name)
-		initprint("GetModRPC", namespace, name)
-		return GetModRPC(namespace, name)
+	env.GetModRPC = function( namespace, name )
+		initprint( "GetModRPC", namespace, name )
+		return GetModRPC( namespace, name )
 	end
-	env.GetClientModRPC = function(namespace, name)
-		initprint("GetClientModRPC", namespace, name)
-		return GetClientModRPC(namespace, name)
+	env.GetClientModRPC = function( namespace, name )
+		initprint( "GetClientModRPC", namespace, name )
+		return GetClientModRPC( namespace, name )
 	end
-	env.GetShardModRPC = function(namespace, name)
-		initprint("GetModRPC", namespace, name)
-		return GetShardModRPC(namespace, name)
+	env.GetShardModRPC = function( namespace, name )
+		initprint( "GetModRPC", namespace, name )
+		return GetShardModRPC( namespace, name )
 	end
 
-	env.SetModHUDFocus = function(focusid, hasfocus)
-		initprint("SetModHUDFocus", focusid, hasfocus)
-		if ThePlayer == nil or ThePlayer.HUD == nil then
-			print("WARNING: SetModHUDFocus called when there is no active player HUD")
-		else
+    env.SetModHUDFocus = function(focusid, hasfocus)
+        initprint("SetModHUDFocus", focusid, hasfocus)
+        if ThePlayer == nil or ThePlayer.HUD == nil then
+            print("WARNING: SetModHUDFocus called when there is no active player HUD")
+        else
 			ThePlayer.HUD:SetModFocus(env.modname, focusid, hasfocus)
 		end
-	end
+    end
 
-	env.AddUserCommand = function(command_name, data)
-		initprint("AddUserCommand", command_name)
-		AddModUserCommand(env.modname, command_name, data)
-	end
+    env.AddUserCommand = function(command_name, data)
+        initprint("AddUserCommand", command_name)
+        AddModUserCommand(env.modname, command_name, data)
+    end
 
-	env.AddVoteCommand = function(command_name, init_options_fn, process_result_fn, vote_timeout)
-		initprint("AddVoteCommand", command_name, init_options_fn, process_result_fn, vote_timeout)
+	env.AddVoteCommand = function(command_name, init_options_fn, process_result_fn, vote_timeout )
+		initprint("AddVoteCommand", command_name, init_options_fn, process_result_fn, vote_timeout )
 
 		if env.vote_commands == nil then
-			env.vote_commands = {}
-		end
-		env.vote_commands[command_name] =
-			{ InitOptionsFn = init_options_fn, ProcessResultFn = process_result_fn, Timeout = vote_timeout or 15 }
+	        env.vote_commands = {}
+	    end
+		env.vote_commands[command_name] = { InitOptionsFn = init_options_fn, ProcessResultFn = process_result_fn, Timeout = vote_timeout or 15 }
 	end
 
 	env.ExcludeClothingSymbolForModCharacter = function(name, symbol)
-		initprint("ExcludeClothingSymbolForModCharacter", name, symbol)
+        initprint("ExcludeClothingSymbolForModCharacter", name, symbol)
 
 		if env.clothing_exclude == nil then
-			env.clothing_exclude = {}
-		end
-		if env.clothing_exclude[name] == nil then
+	        env.clothing_exclude = {}
+	    end
+	    if env.clothing_exclude[name] == nil then
 			env.clothing_exclude[name] = {}
-		end
-		table.insert(env.clothing_exclude[name], symbol)
-	end
+	    end
+	    table.insert( env.clothing_exclude[name], symbol )
+    end
 
 	env.RegisterInventoryItemAtlas = function(atlas, prefabname) -- for this to work properly (without having to spawn an item), you should be using the prefab name for the inventory image name
 		initprint("RegisterInventoryItemAtlas", atlas, prefabname)
@@ -986,7 +963,7 @@ local function InsertPostInitFunctions(env, isworldgen, isfrontend)
 
 	env.RegisterSkilltreeBGForCharacter = function(atlas, charactername)
 		initprint("AddSkilltreeBGForCharacter", atlas, charactername)
-		RegisterSkilltreeBGAtlas(atlas, charactername .. "_background.tex")
+		RegisterSkilltreeBGAtlas(atlas, charactername.."_background.tex")
 	end
 
 	env.RegisterSkilltreeIconsAtlas = function(atlas, tex)

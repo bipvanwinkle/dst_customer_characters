@@ -78,13 +78,16 @@ local function DoAOEAttack(inst, dist, radius, heavymult, mult, forcelanded, tar
 				if target == v then
 					targethit = true
 				end
+				if targets then
+					targets[v] = true
+					if mult and v.components.rider and v.components.rider.mount then
+						targets[v.components.rider.mount] = true
+					end
+				end
 				inst.components.combat:DoAttack(v)
 				if mult ~= nil then
 					local strengthmult = (v.components.inventory ~= nil and v.components.inventory:ArmorHasTag("heavyarmor") or v:HasTag("heavybody")) and heavymult or mult
 					v:PushEvent("knockback", { knocker = inst, radius = radius + dist + 3, strengthmult = strengthmult, forcelanded = forcelanded })
-				end
-				if targets ~= nil then
-					targets[v] = true
 				end
 			end
 		end
@@ -400,8 +403,10 @@ local states =
 					inst.sg.statemem.walk = data.walk
 				end
 				inst.AnimState:Hide("fx")
-				inst.Physics:ClearCollidesWith(COLLISION.OBSTACLES)
-				inst.Physics:ClearCollidesWith(COLLISION.SMALLOBSTACLES)
+				inst.Physics:ClearCollidesWith(bit.bor(
+					COLLISION.OBSTACLES,
+					COLLISION.SMALLOBSTACLES
+				))
 				SetTeamAttackCooldown(inst, true)
 			else
 				inst.sg.statemem.loops = data
@@ -478,8 +483,10 @@ local states =
 			if not inst.sg.statemem.running then
 				inst.SoundEmitter:KillSound("running")
 				inst.components.combat:SetRange(TUNING.SHADOWTHRALL_HANDS_ATTACK_RANGE)
-				inst.Physics:CollidesWith(COLLISION.OBSTACLES)
-				inst.Physics:CollidesWith(COLLISION.SMALLOBSTACLES)
+				inst.Physics:CollidesWith(bit.bor(
+					COLLISION.OBSTACLES,
+					COLLISION.SMALLOBSTACLES
+				))
 			end
 		end,
 	},

@@ -35,7 +35,7 @@ local function NoHoles(pt)
 end
 
 local function onattack(inst, owner, target)
-    if math.random() < 0.2 then
+    if TryLuckRoll(owner, TUNING.SHADOW_TENTACLE_RUINS_BAT_CHANCE, LuckFormulas.ShadowTentacleSpawn) then
         local pt
         if target ~= nil and target:IsValid() then
             pt = target:GetPosition()
@@ -43,7 +43,7 @@ local function onattack(inst, owner, target)
             pt = owner:GetPosition()
             target = nil
         end
-        local offset = FindWalkableOffset(pt, math.random() * TWOPI, 2, 3, false, true, NoHoles, false, true)
+        local offset = FindWalkableOffset(pt, math.random() * TWOPI, 2, 3, false, true, NoHoles, false, true, true)
         if offset ~= nil then
             inst.SoundEmitter:PlaySound("dontstarve/common/shadowTentacleAttack_1")
             inst.SoundEmitter:PlaySound("dontstarve/common/shadowTentacleAttack_2")

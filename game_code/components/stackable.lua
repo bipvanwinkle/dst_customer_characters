@@ -69,6 +69,22 @@ function Stackable:IsOverStacked()
 	return self.stacksize > (self.originalmaxsize or self.maxsize)
 end
 
+function Stackable:CanStackWith(item)
+    if self.inst.prefab ~= item.prefab then
+        return false
+    end
+
+    if self.inst.skinname ~= item.skinname then
+        return false
+    end
+
+    if self.inst.stackable_CanStackWithFn and not self.inst.stackable_CanStackWithFn(self.inst, item) then
+        return false
+    end
+
+    return true
+end
+
 function Stackable:OnSave()
     if self.stacksize ~= 1 then
         return {stack = self.stacksize}
@@ -95,7 +111,6 @@ function Stackable:Get(num)
     -- If we have more than one item in the stack
     if self.stacksize > num_to_get then
         local instance = SpawnPrefab( self.inst.prefab, self.inst.skinname, self.inst.skin_id, nil )
-
 
         self:SetStackSize(self.stacksize - num_to_get)
         instance.components.stackable:SetStackSize(num_to_get)
@@ -128,6 +143,7 @@ function Stackable:Get(num)
                 instance.components.inventoryitem:OnPutInInventory(self.inst.components.inventoryitem.owner)
             end
             instance.components.inventoryitem:InheritMoisture(self.inst.components.inventoryitem:GetMoisture(), self.inst.components.inventoryitem:IsWet())
+            instance.components.inventoryitem:SetTemperature(self.inst.components.inventoryitem:GetTemperature())
         end
 
         return instance
@@ -143,7 +159,7 @@ end
 function Stackable:Put(item, source_pos)
     assert(item ~= self, "cant stack on self" )
     local ret
-    if item.prefab == self.inst.prefab and item.skinname == self.inst.skinname then
+    if self:CanStackWith(item) then
 
         local num_to_add = item.components.stackable.stacksize
         local newtotal = self.stacksize + num_to_add
@@ -158,6 +174,7 @@ function Stackable:Put(item, source_pos)
 
         if self.inst.components.inventoryitem ~= nil then
             self.inst.components.inventoryitem:DiluteMoisture(item, numberadded)
+            self.inst.components.inventoryitem:DiluteTemperature(item, numberadded)
         end
 
         if self.inst.components.edible ~= nil then

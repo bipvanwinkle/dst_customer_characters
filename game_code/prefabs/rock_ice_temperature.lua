@@ -128,6 +128,21 @@ local function SetStage(inst, stage, source, snap_to_stage)
     inst.stage = STAGES[targetstage].name
     SerializeStage(inst, targetstage, source)
 
+    if inst.stage == "dryup" or inst.stage == "empty" then
+        RemoveLunarHailBuildup(inst)
+    else
+        if not inst.components.lunarhailbuildup then
+            MakeLunarHailBuildup(inst)
+        end
+        if inst.stage == "short" then
+            SetLunarHailBuildupAmountSmall(inst)
+        elseif inst.stage == "medium" then
+            SetLunarHailBuildupAmountMedium(inst)
+        elseif inst.stage == "tall" then
+            SetLunarHailBuildupAmountLarge(inst)
+        end
+    end
+
     if STAGES[targetstage].isdriedup then
         inst:AddTag("CLASSIFIED")
 
@@ -275,8 +290,6 @@ local function fn()
 
     inst.scrapbook_proxy = "rock_ice"
 
-    inst.entity:SetPristine()
-
     if not TheNet:IsDedicated() then
         inst._puddle = SpawnPrefab("ice_puddle")
         inst._puddle.entity:SetParent(inst.entity)
@@ -287,6 +300,8 @@ local function fn()
     end
 
     inst:OnStageDirty()
+
+    inst.entity:SetPristine()
 
     if not TheWorld.ismastersim then
         return inst
@@ -319,6 +334,7 @@ local function fn()
     inst.OnLoad = OnLoad
 
     MakeSnowCovered(inst)
+    --SetLunarHailBuildupAmountSmall(inst) NOTES(JBK): Handled in the SetStage above.
     MakeHauntableWork(inst)
 
     inst:ListenForEvent("timerdone", inst.OnTimerDone)

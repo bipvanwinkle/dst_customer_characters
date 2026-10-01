@@ -13,15 +13,38 @@ local prefabs =
 local AOE_RANGE = 0.9
 local AOE_RANGE_PADDING = 3
 local AOE_TARGET_TAGS = { "_combat" }
-local AOE_TARGET_CANT_TAGS = { "INLIMBO", "flight", "invisible", "playerghost", "lunar_aligned" }
-local AOE_TARGET_CANT_TAGS_PVE = { "INLIMBO", "flight", "invisible", "player", "wall" }
-local AOE_TARGET_CANT_TAGS_PVP = { "INLIMBO", "flight", "invisible", "playerghost", "wall" }
+local REGISTERED_AOE_TARGET_CANT_TAGS, REGISTERED_AOE_TARGET_CANT_TAGS_PVP, REGISTERED_AOE_TARGET_CANT_TAGS_PVE
+local function GetRegisteredTargetFindTags(inst, notplayer)
+	if notplayer then
+		if REGISTERED_AOE_TARGET_CANT_TAGS == nil then
+			REGISTERED_AOE_TARGET_CANT_TAGS = TheSim:RegisterFindTags(AOE_TARGET_TAGS, { "INLIMBO", "flight", "invisible", "playerghost", "lunar_aligned" })
+		end
+
+		return REGISTERED_AOE_TARGET_CANT_TAGS
+	elseif TheNet:GetPVPEnabled() then
+		if REGISTERED_AOE_TARGET_CANT_TAGS_PVP == nil then
+			REGISTERED_AOE_TARGET_CANT_TAGS_PVP = TheSim:RegisterFindTags(AOE_TARGET_TAGS, { "INLIMBO", "flight", "invisible", "playerghost", "wall" })
+		end
+
+		return REGISTERED_AOE_TARGET_CANT_TAGS_PVP
+	else
+		if REGISTERED_AOE_TARGET_CANT_TAGS_PVE == nil then
+			REGISTERED_AOE_TARGET_CANT_TAGS_PVE = TheSim:RegisterFindTags(AOE_TARGET_TAGS, { "INLIMBO", "flight", "invisible", "player", "wall" })
+		end
+
+		return REGISTERED_AOE_TARGET_CANT_TAGS_PVE
+	end
+end
+
 local MULTIHIT_FRAMES = 10
+local MULTIHIT_TALLFLAME_FRAMES = 15
+local function GetMultiHitFrames(inst)
+	return inst.tallflame and MULTIHIT_TALLFLAME_FRAMES
+		or MULTIHIT_FRAMES
+end
 
 local function OnUpdateHitbox(inst)
-	if not (inst.attacker and inst.attacker.components.combat and inst.attacker:IsValid()) then
-		return
-	end
+	local combat = inst.attacker and inst.attacker:IsValid() and inst.attacker.components.combat or inst.components.combat
 
 	local weapon
 	if inst.owner ~= inst.attacker then
@@ -32,22 +55,28 @@ local function OnUpdateHitbox(inst)
 		end
 	end
 
-	local cant_tags =
-		(not inst.attacker:HasTag("player") and AOE_TARGET_CANT_TAGS) or
-		(TheNet:GetPVPEnabled() and AOE_TARGET_CANT_TAGS_PVP) or 
-		AOE_TARGET_CANT_TAGS_PVE
+	local notplayer = inst.attacker == nil or not inst.attacker.isplayer
 
-	inst.attacker.components.combat.ignorehitrange = true
-	inst.attacker.components.combat.ignoredamagereflect = true
+	combat.ignorehitrange = true
+	combat.ignoredamagereflect = true
+
+	local _defaultdamage
+	local _planardamage
+	if inst.damage_configured then
+		_defaultdamage = combat.defaultdamage
+		_planardamage = combat.inst.components.planardamage:GetBaseDamage()
+		combat:SetDefaultDamage(inst.components.combat.defaultdamage)
+		combat.inst.components.planardamage:SetBaseDamage(inst.components.planardamage:GetBaseDamage())
+	end
+
+	local hit_frames = GetMultiHitFrames(inst)
 	local tick = GetTick()
 	local x, y, z = inst.Transform:GetWorldPosition()
 	local radius = AOE_RANGE * inst.scale
-	local ents = TheSim:FindEntities(x, 0, z, radius + AOE_RANGE_PADDING, AOE_TARGET_TAGS, cant_tags)
-	for i, v in ipairs(ents) do	
-
+	local ents = TheSim:FindEntities_Registered(x, 0, z, radius + AOE_RANGE_PADDING, GetRegisteredTargetFindTags(inst, notplayer))
+	for i, v in ipairs(ents) do
 		if v ~= inst.attacker and v:IsValid() and not v:IsInLimbo() and not (v.components.health and v.components.health:IsDead()) then
-			
-			if not inst.attacker:HasTag("player") or not inst.attacker.components.combat:IsAlly(v) then		
+			if notplayer or not combat:IsAlly(v) then
 
 				local range = radius + v:GetPhysicsRadius(0)
 				if v:GetDistanceSqToPoint(x, 0, z) < range * range then
@@ -59,24 +88,28 @@ local function OnUpdateHitbox(inst)
 					if target_data.tick ~= tick then
 						target_data.tick = tick
 						--Supercool
-						if v.components.temperature ~= nil then
-							local newtemp = math.max(v.components.temperature.mintemp, TUNING.MUTATED_WARG_COLDFIRE_TEMPERATURE)
-							if newtemp < v.components.temperature:GetCurrent() then
-								v.components.temperature:SetTemperature(newtemp)
-							end
-						end
+						local ent_temp = GetEntityTemperature(v)
+						if ent_temp and TUNING.MUTATED_WARG_COLDFIRE_TEMPERATURE < ent_temp then
+            			    SetEntityTemperature(v, TUNING.MUTATED_WARG_COLDFIRE_TEMPERATURE)
+            			end
 						--Hit
-						if (target_data.hit_tick == nil or target_data.hit_tick + MULTIHIT_FRAMES < tick) and inst.attacker.components.combat:CanTarget(v) then
+						if (target_data.hit_tick == nil or target_data.hit_tick + hit_frames < tick) and combat:CanTarget(v) then
 							target_data.hit_tick = tick
-							inst.attacker.components.combat:DoAttack(v, weapon)
+							combat:DoAttack(v, weapon)
 						end
 					end
 				end
 			end
 		end
 	end
-	inst.attacker.components.combat.ignorehitrange = false
-	inst.attacker.components.combat.ignoredamagereflect = false
+
+	if _defaultdamage ~= nil then
+		combat.defaultdamage = _defaultdamage
+		combat.inst.components.planardamage:SetBaseDamage(_planardamage)
+	end
+
+	combat.ignorehitrange = false
+	combat.ignoredamagereflect = false
 end
 
 local function RefreshBrightness(inst)
@@ -113,6 +146,7 @@ end
 
 local function OnAnimQueueOver(inst)
 	if inst.owner ~= nil and inst.owner.flame_pool ~= nil then
+		inst.SoundEmitter:KillSound("fire_loop")
 		inst.components.updatelooper:RemoveOnUpdateFn(OnUpdateHitbox)
 		inst.targets = nil
 		inst.brightness:set(7)
@@ -131,6 +165,7 @@ local function KillFX(inst, fadeoption)
 	inst.AnimState:PlayAnimation("flame"..tostring(math.random(3)).."_pst")
 	inst.components.updatelooper:RemoveOnUpdateFn(OnUpdateHitbox)
 	inst.targets = nil
+	inst.fadeoption = nil
 
 	if inst.embers ~= nil then
 		if inst.embers:IsValid() then
@@ -138,6 +173,8 @@ local function KillFX(inst, fadeoption)
 		end
 		inst.embers = nil
 	end
+
+	inst.kill_fx_task = nil
 end
 
 local function SetFXOwner(inst, owner, attacker)
@@ -161,20 +198,51 @@ local function SpawnEmbers(inst, scale, fadeoption)
 
 	inst.embers.Transform:SetPosition(x, 0, z)
 	inst.embers:RestartFX(scale, fadeoption)
+	if inst.icedember then
+		inst.embers:SetIced()
+	end
+
+	inst.spawn_embers_task = nil
 end
 
-local function RestartFX(inst, scale, fadeoption, targets)
+local function ClearTasks(inst)
+	if inst.spawn_embers_task then
+		inst.spawn_embers_task:Cancel()
+		inst.spawn_embers_task = nil
+	end
+	if inst.kill_fx_task then
+		inst.kill_fx_task:Cancel()
+		inst.kill_fx_task = nil
+	end
+end
+
+local function GetFlameTime(tallflame)
+	return (tallflame and TUNING.TALL_FLAMEWALL_BASE_TIME + math.random() * TUNING.TALL_FLAMEWALL_VAR_TIME)
+		or math.random(18, 22) * FRAMES
+end
+
+local function RestartFX(inst, scale, fadeoption, targets, tallflame, icedember)
 	if inst:IsInLimbo() then
 		inst:ReturnToScene()
 	end
+	ClearTasks(inst)
 
-	local anim = "flame"..tostring(math.random(3))
+	local suffix = (tallflame and "_tall" or "")
+	local anim = "flame"..tostring(math.random(3))..suffix
+
+	if tallflame then
+		inst.SoundEmitter:PlaySound("lunarhail_event/creatures/lunar_buzzard/fire_ground_LP", "fire_loop")
+	end
+
 	if not inst.AnimState:IsCurrentAnimation(anim.."_pre") then
 		inst.AnimState:PlayAnimation(anim.."_pre")
 		inst.AnimState:PushAnimation(anim.."_loop", true)
 	end
 
+	inst.tallflame = tallflame
+	inst.icedember = icedember
 	inst.scale = scale or 1
+	inst.fadeoption = fadeoption
 	inst.AnimState:SetScale(math.random() < 0.5 and -inst.scale or inst.scale, inst.scale)
 
 	if fadeoption == "latefade" then
@@ -182,8 +250,9 @@ local function RestartFX(inst, scale, fadeoption, targets)
 	elseif fadeoption ~= "nofade" then
 		StartFade(inst)
 	end
-	inst:DoTaskInTime(2 * FRAMES, SpawnEmbers, inst.scale * 1.1, fadeoption)
-	inst:DoTaskInTime(math.random(18, 22) * FRAMES, KillFX, fadeoption)
+	inst.spawn_embers_task = inst:DoTaskInTime(2 * FRAMES, SpawnEmbers, inst.scale * 1.1, fadeoption)
+
+	inst.kill_fx_task = inst:DoTaskInTime(GetFlameTime(tallflame), KillFX, fadeoption)
 
 	if inst.embers ~= nil then
 		if inst.embers:IsValid() then
@@ -198,11 +267,29 @@ local function RestartFX(inst, scale, fadeoption, targets)
 	end
 end
 
+local function ExtendFx(inst, time)
+	ClearTasks(inst)
+
+	inst.spawn_embers_task = inst:DoTaskInTime(2 * FRAMES, SpawnEmbers, inst.scale * 1.1, inst.fadeoption)
+	inst.kill_fx_task = inst:DoTaskInTime(GetFlameTime(inst.tallflame), KillFX, inst.fadeoption)
+end
+
+local function ConfigureDamage(inst, default_damage, base_planar_damage)
+	inst.damage_configured = true
+	inst.components.combat:SetDefaultDamage(default_damage)
+	inst.components.planardamage:SetBaseDamage(base_planar_damage)
+end
+
+local function KeepTargetFn()
+	return false
+end
+
 local function fn()
 	local inst = CreateEntity()
 
 	inst.entity:AddTransform()
 	inst.entity:AddAnimState()
+	inst.entity:AddSoundEmitter()
 	inst.entity:AddNetwork()
 
 	inst.AnimState:SetBank("warg_mutated_breath_fx")
@@ -229,10 +316,19 @@ local function fn()
 		return inst
 	end
 
+	inst:AddComponent("combat")
+	inst.components.combat:SetDefaultDamage(TUNING.MUTATED_WARG_FLAMETHROWER_DAMAGE)
+	inst.components.combat:SetKeepTargetFunction(KeepTargetFn)
+
+	inst:AddComponent("planardamage")
+	inst.components.planardamage:SetBaseDamage(TUNING.MUTATED_WARG_PLANAR_DAMAGE)
+
 	inst:ListenForEvent("animqueueover", OnAnimQueueOver)
 	inst.persists = false
 	inst.SetFXOwner = SetFXOwner
 	inst.RestartFX = RestartFX
+	inst.ConfigureDamage = ConfigureDamage
+	inst.ExtendFx = ExtendFx
 
 	inst.AnimState:PushAnimation("flame1_loop", true)
 	RestartFX(inst)
@@ -406,10 +502,46 @@ local function ember_RestartFX(inst, scale, fadeoption)
 	ember_OnFadeDirty(inst)
 end
 
-local function ember_KillFX(inst)
+local function ember_DoFade(inst)
+	if inst.kill_ember_task ~= nil then
+		inst.kill_ember_task:Cancel()
+		inst.kill_ember_task = nil
+	end
 	if inst.fade:value() < 3 then
 		inst.fade:set(3)
 		ember_OnFadeDirty(inst)
+	end
+end
+
+local function ember_KillFX(inst)
+	if inst.icedember then
+		inst.kill_ember_task = inst:DoTaskInTime(TUNING.ICED_EMBER_BASE_TIME + math.random() * TUNING.ICED_EMBER_VAR_TIME, ember_DoFade)
+	else
+		ember_DoFade(inst)
+	end
+end
+
+local SLIPPERY_DIST = 1
+local SLIPPERY_DIST_SQ = SLIPPERY_DIST * SLIPPERY_DIST
+local function ember_IsSlipperyAtPosition(inst, x, y, z)
+   	if inst.fade:value() > 18 then
+        return false
+    end
+
+	return inst:GetDistanceSqToPoint(x, y, z) <= SLIPPERY_DIST_SQ
+end
+
+local function ember_SlipperyRate(inst, target)
+    return TUNING.ICED_EMBER_SLIPPERY_RATE
+end
+
+local function ember_SetIced(inst)
+	if not inst.icedember then
+		inst.icedember = true
+		inst.AnimState:Show("iced")
+		local slipperyfeettarget = inst:AddComponent("slipperyfeettarget")
+    	slipperyfeettarget:SetIsSlipperyAtPoint(ember_IsSlipperyAtPosition)
+    	slipperyfeettarget:SetSlipperyRate(ember_SlipperyRate)
 	end
 end
 
@@ -425,6 +557,7 @@ local function emberfn()
 	inst.AnimState:PlayAnimation("ember1_ground", true)
 	inst.AnimState:SetSymbolBloom("track")
 	inst.AnimState:SetSymbolLightOverride("track", 0.1)
+	inst.AnimState:Hide("iced")
 	inst.AnimState:SetOrientation(ANIM_ORIENTATION.OnGround)
 	inst.AnimState:SetLayer(LAYER_BACKGROUND)
 	inst.AnimState:SetSortOrder(3)
@@ -450,6 +583,7 @@ local function emberfn()
 	inst.SetFXOwner = ember_SetFXOwner
 	inst.RestartFX = ember_RestartFX
 	inst.KillFX = ember_KillFX
+	inst.SetIced = ember_SetIced
 
 	ember_RestartFX(inst)
 

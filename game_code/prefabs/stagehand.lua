@@ -50,10 +50,11 @@ local function ChangePhysics(inst, is_standing)
         inst:AddTag("blocker")
         inst.Physics:SetMass(0)
         inst.Physics:SetCollisionGroup(COLLISION.OBSTACLES)
-        inst.Physics:ClearCollisionMask()
-        inst.Physics:CollidesWith(COLLISION.ITEMS)
-        inst.Physics:CollidesWith(COLLISION.CHARACTERS)
-        inst.Physics:CollidesWith(COLLISION.GIANTS)
+		inst.Physics:SetCollisionMask(
+			COLLISION.ITEMS,
+			COLLISION.CHARACTERS,
+			COLLISION.GIANTS
+		)
     end
 end
 
@@ -79,6 +80,8 @@ local function fn()
 
     inst:AddTag("notraptrigger")
     inst:AddTag("antlion_sinkhole_blocker")
+	inst:AddTag("electricdamageimmune")
+	inst:AddTag("shadow_aligned")
 
     MakeSnowCoveredPristine(inst)
 
@@ -88,9 +91,12 @@ local function fn()
         return inst
     end
 
+	inst.scrapbook_speechstatus = "HIDING"
+
     MakeSmallPropagator(inst)
     MakeHauntableWork(inst)
     MakeSnowCovered(inst)
+    SetLunarHailBuildupAmountSmall(inst)
 
     inst:AddComponent("burnable")
     inst.components.burnable:SetFXLevel(2)

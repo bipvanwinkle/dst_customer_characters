@@ -77,7 +77,7 @@ local function SpikeLaunch(inst, launcher, basespeed, startheight, startradius)
 	end
 	local sina, cosa = math.sin(angle), math.cos(angle)
 	local speed = basespeed + math.random()
-	inst.Physics:Teleport(x0 + startradius * cosa, startheight, z0 + startradius * sina)
+	TryTeleportToLaunchPos(inst, x0 + startradius * cosa, startheight, z0 + startradius * sina)
 	inst.Physics:SetVel(cosa * speed, speed * 5 + math.random() * 2, sina * speed)
 end
 
@@ -142,9 +142,7 @@ local function DoDamage(inst)
 		if v.prefab == "ice" then
 			v:Remove()
 		else
-			if v.components.mine then
-				v.components.mine:Deactivate()
-			end
+			DeactivateInventoryItemBeforeLaunch(v)
 			if not v.components.inventoryitem.nobounce and v.Physics and v.Physics:IsActive() then
 				SpikeLaunch(v, inst, .8 + radius, radius * .4, radius + v:GetPhysicsRadius(0))
 			end
@@ -217,11 +215,12 @@ local function CreatePhysicsPush(parent)
 	inst.entity:AddPhysics()
 	inst.Physics:SetMass(999999)
 	inst.Physics:SetCollisionGroup(COLLISION.OBSTACLES)
-	inst.Physics:ClearCollisionMask()
-	inst.Physics:CollidesWith(COLLISION.ITEMS)
-	inst.Physics:CollidesWith(COLLISION.CHARACTERS)
-	inst.Physics:CollidesWith(COLLISION.GIANTS)
-	inst.Physics:CollidesWith(COLLISION.WORLD)
+	inst.Physics:SetCollisionMask(
+		COLLISION.ITEMS,
+		COLLISION.CHARACTERS,
+		COLLISION.GIANTS,
+		COLLISION.WORLD
+	)
 	inst.Physics:SetCapsule(parent.islarge:value() and RADIUS_LARGE or RADIUS, 2)
 
 	inst:DoTaskInTime(0, inst.Remove)
