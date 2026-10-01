@@ -1,7 +1,7 @@
 name = "Bip's Custom DST Tuning"
-description = "Customizes the game for my personal enjoyment 1.24.0"
+description = "Customizes the game for my personal enjoyment 1.25.0"
 author = "Bipvanwinkle"
-version = "1.24.0"
+version = "1.25.0"
 api_version = 10
 dst_compatible = true
 all_clients_require_mod = true
@@ -112,6 +112,18 @@ configuration_options = {
 			{ description = "Off", data = false },
 		},
 		default = true,
+	},
+	{
+		name = "wx78_super_illumination_radius",
+		label = "WX78 Super-Illumination Radius",
+		hover = "Light from each Super-Illumination Circuit, relative to an Illumination Circuit",
+		options = {
+			{ description = "Same (1x)", data = 1 },
+			{ description = "1.5x", data = 1.5 },
+			{ description = "2x", data = 2 },
+			{ description = "3x", data = 3 },
+		},
+		default = 2,
 	},
 	{
 		name = "beefalo_riding_insulation",

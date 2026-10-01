@@ -332,6 +332,47 @@ end
 
 AddPrefabPostInit("wx78", WX78PostInit)
 
+-- Illumination circuits cost hunger, and the Super-Illumination Circuit gives off more light.
+-- Module prefabs read activatefn/deactivatefn from these shared definitions each time one spawns.
+local ILLUMINATION_HUNGER_RATES = {
+	light = 1.05, -- Illumination Circuit: +5% hunger drain
+	light2 = 1.15, -- Super-Illumination Circuit: +15% hunger drain
+}
+local super_illumination_radius = GetModConfigData("wx78_super_illumination_radius") or 1
+
+local function withLightRadiusMultiplier(multiplier, fn, ...)
+	-- The base game's light_change is local, so scale the per-module radius it reads for this one call;
+	-- this keeps WX-78's light and the Tinkering II beam in sync on both activate and deactivate
+	local TUNING = GLOBAL.TUNING
+	local base_radius = TUNING.WX78_LIGHT_RADIUS_PER_MODULE
+	TUNING.WX78_LIGHT_RADIUS_PER_MODULE = base_radius * multiplier
+	fn(...)
+	TUNING.WX78_LIGHT_RADIUS_PER_MODULE = base_radius
+end
+
+for _, def in ipairs(GLOBAL.require("wx78_moduledefs").module_definitions) do
+	local hunger_rate = ILLUMINATION_HUNGER_RATES[def.name]
+	if hunger_rate ~= nil then
+		local radius_multiplier = def.name == "light2" and super_illumination_radius or 1
+		local original_activate = def.activatefn
+		local original_deactivate = def.deactivatefn
+
+		def.activatefn = function(inst, wx, ...)
+			withLightRadiusMultiplier(radius_multiplier, original_activate, inst, wx, ...)
+			if wx.components.hunger ~= nil then
+				wx.components.hunger.burnratemodifiers:SetModifier(inst, hunger_rate, "illumination_hunger")
+			end
+		end
+
+		def.deactivatefn = function(inst, wx, ...)
+			withLightRadiusMultiplier(radius_multiplier, original_deactivate, inst, wx, ...)
+			if wx.components.hunger ~= nil then
+				wx.components.hunger.burnratemodifiers:RemoveModifier(inst, "illumination_hunger")
+			end
+		end
+	end
+end
+
 if GetModConfigData("wx78_gear_indicator") ~= false then
 	local WXGearBadge = require("widgets/wxgearbadge")
 
