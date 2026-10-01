@@ -1,7 +1,7 @@
 name = "Bip's Custom DST Tuning"
-description = "Customizes the game for my personal enjoyment 1.23.0"
+description = "Customizes the game for my personal enjoyment 1.24.0"
 author = "Bipvanwinkle"
-version = "1.23.0"
+version = "1.24.0"
 api_version = 10
 dst_compatible = true
 all_clients_require_mod = true
@@ -125,5 +125,41 @@ configuration_options = {
 			{ description = "Large (240)", data = 240 },
 		},
 		default = 60,
+	},
+	{
+		name = "treeguard_chance_multiplier",
+		label = "Treeguard Chance Multiplier",
+		hover = "Multiplies the treeguard chance per tree chopped, on top of the world's Treeguards setting",
+		options = {
+			{ description = "Default (1x)", data = 1 },
+			{ description = "2x", data = 2 },
+			{ description = "3x", data = 3 },
+			{ description = "4x", data = 4 },
+		},
+		default = 2,
+	},
+	{
+		name = "blowdart_craft_count",
+		label = "Blow Darts per Craft",
+		hover = "How many blow darts each blow dart recipe makes",
+		options = {
+			{ description = "Default (1)", data = 1 },
+			{ description = "2", data = 2 },
+			{ description = "3", data = 3 },
+			{ description = "5", data = 5 },
+		},
+		default = 3,
+	},
+	{
+		name = "saltlick_durability_multiplier",
+		label = "Salt Lick Durability",
+		hover = "Multiplies how many licks a salt lick (regular and improved) lasts",
+		options = {
+			{ description = "Default (1x)", data = 1 },
+			{ description = "2x", data = 2 },
+			{ description = "5x", data = 5 },
+			{ description = "10x", data = 10 },
+		},
+		default = 10,
 	},
 }

@@ -20,6 +20,9 @@ local circuit_slots = GetModConfigData("wx78_circuit_slots")
 local reverse_frozen_items = GetModConfigData("reverse_frozen_items")
 local fridge_spoil_rate = GetModConfigData("fridge_spoil_rate")
 local beefalo_riding_insulation = GetModConfigData("beefalo_riding_insulation") or 0
+local treeguard_chance_multiplier = GetModConfigData("treeguard_chance_multiplier") or 1
+local blowdart_craft_count = GetModConfigData("blowdart_craft_count") or 1
+local saltlick_durability_multiplier = GetModConfigData("saltlick_durability_multiplier") or 1
 
 --Changes to Perishables to make it so that frozen items
 --reverse their perish rate when they are in a fridge
@@ -165,6 +168,9 @@ end
 GLOBAL.TUNING.WX78_MAXELECTRICCHARGE = circuit_slots
 GLOBAL.TUNING.CHESTER_HEALTH = GLOBAL.TUNING.CHESTER_HEALTH * chester_health_multiplier
 GLOBAL.TUNING.PERISH_FRIDGE_MULT = fridge_spoil_rate
+-- Read when a salt lick spawns; the improved lick's salt rock repair value scales with it too
+GLOBAL.TUNING.SALTLICK_MAX_LICKS = GLOBAL.TUNING.SALTLICK_MAX_LICKS * saltlick_durability_multiplier
+GLOBAL.TUNING.SALTLICK_IMPROVED_MAX_LICKS = GLOBAL.TUNING.SALTLICK_IMPROVED_MAX_LICKS * saltlick_durability_multiplier
 
 -- Make sure enough networked slots exist for the largest configured container
 containers.MAXITEMSLOTS = math.max(containers.MAXITEMSLOTS, chester_slots, icebox_slots, backpack_slots, chest_slots)
@@ -423,6 +429,33 @@ if beefalo_riding_insulation > 0 then
 			return winter, summer
 		end
 	end)
+end
+
+-- Scale the treeguard chance on top of the world's Treeguards setting. That setting rewrites
+-- TUNING.LEIF_PERCENT_CHANCE on world load (and again when the master shard syncs settings),
+-- so wrap it rather than scaling the value once. Resetting to the stock chance first keeps
+-- repeated calls from compounding, since the "default" level leaves the value untouched.
+if treeguard_chance_multiplier ~= 1 then
+	local worldsettings_overrides = GLOBAL.require("worldsettings_overrides")
+	local original_liefs = worldsettings_overrides.Pre.liefs
+	local stock_leif_chance = GLOBAL.TUNING.LEIF_PERCENT_CHANCE
+	if original_liefs ~= nil then
+		worldsettings_overrides.Pre.liefs = function(difficulty, ...)
+			GLOBAL.TUNING.LEIF_PERCENT_CHANCE = stock_leif_chance
+			original_liefs(difficulty, ...)
+			GLOBAL.TUNING.LEIF_PERCENT_CHANCE = GLOBAL.TUNING.LEIF_PERCENT_CHANCE * treeguard_chance_multiplier
+		end
+	end
+end
+
+-- Each blow dart craft makes more than one dart. Base game recipes already exist when modmain runs.
+if blowdart_craft_count > 1 then
+	for _, recipe_name in ipairs({ "blowdart_pipe", "blowdart_fire", "blowdart_yellow", "blowdart_sleep" }) do
+		local recipe = GLOBAL.AllRecipes[recipe_name]
+		if recipe ~= nil then
+			recipe.numtogive = blowdart_craft_count
+		end
+	end
 end
 
 -- Recipes from other mods that use the deprecated AddRecipe only show up under the Mods crafting filter.
