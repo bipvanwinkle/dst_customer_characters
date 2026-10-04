@@ -1,7 +1,7 @@
 name = "Bip's Custom DST Tuning"
-description = "Customizes the game for my personal enjoyment 1.25.0"
+description = "Customizes the game for my personal enjoyment 1.26.0"
 author = "Bipvanwinkle"
-version = "1.25.0"
+version = "1.26.0"
 api_version = 10
 dst_compatible = true
 all_clients_require_mod = true

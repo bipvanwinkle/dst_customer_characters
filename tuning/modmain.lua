@@ -267,7 +267,7 @@ end)
 
 -- Both gear upgrades reach their maximum at WX78_MAX_GEARS gears eaten
 local WX78_MAX_GEARS = 18
-local WX78_MAX_ABSORPTION_DUE_TO_GEARS = 0.9
+local WX78_MAX_ABSORPTION_DUE_TO_GEARS = 0.5
 local WX78_MAX_DAMAGE_AMP = 2.0
 
 -- Use gears to upgrade WX-78
