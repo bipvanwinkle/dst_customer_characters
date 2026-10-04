@@ -23,6 +23,7 @@ local beefalo_riding_insulation = GetModConfigData("beefalo_riding_insulation") 
 local treeguard_chance_multiplier = GetModConfigData("treeguard_chance_multiplier") or 1
 local blowdart_craft_count = GetModConfigData("blowdart_craft_count") or 1
 local saltlick_durability_multiplier = GetModConfigData("saltlick_durability_multiplier") or 1
+local naughtiness_multiplier = GetModConfigData("naughtiness_multiplier") or 1
 
 --Changes to Perishables to make it so that frozen items
 --reverse their perish rate when they are in a fridge
@@ -499,6 +500,27 @@ if blowdart_craft_count > 1 then
 	end
 end
 
+-- Sleep and fire darts deal damage too, a bit less than a regular blow dart since they have other effects.
+-- Damage lands before the dart's effect, so a sleep dart still puts its target to sleep.
+local EFFECT_DART_DAMAGE = GLOBAL.TUNING.PIPE_DART_DAMAGE * 0.75
+for _, prefab in ipairs({ "blowdart_sleep", "blowdart_fire" }) do
+	AddPrefabPostInit(prefab, function(inst)
+		if inst.components.weapon ~= nil then
+			inst.components.weapon:SetDamage(EFFECT_DART_DAMAGE)
+		end
+	end)
+end
+
+-- Scale the naughtiness from killing innocent creatures. Values are read at kill time, so
+-- rewriting the table here covers Krampus and the Rabbit King, which both read it.
+if naughtiness_multiplier ~= 1 then
+	for prefab, value in pairs(GLOBAL.NAUGHTY_VALUE) do
+		GLOBAL.NAUGHTY_VALUE[prefab] = function(...)
+			return GLOBAL.FunctionOrValue(value, ...) * naughtiness_multiplier
+		end
+	end
+end
+
 -- Recipes from other mods that use the deprecated AddRecipe only show up under the Mods crafting filter.
 -- Also list them under the filter their old recipe tab pointed at. Deferred until every mod has loaded,
 -- and skipped for any recipe that doesn't exist, so this is a no-op when those mods aren't enabled.
@@ -515,6 +537,22 @@ AddSimPostInit(function()
 		end
 	end
 end)
+
+-- Gilded Boomerang: a sturdier, harder-hitting boomerang made from a regular one
+PrefabFiles = { "boomerang_gilded" }
+table.insert(Assets, Asset("ATLAS", "images/inventoryimages/boomerang_gilded.xml"))
+table.insert(Assets, Asset("IMAGE", "images/inventoryimages/boomerang_gilded.tex"))
+RegisterInventoryItemAtlas(GLOBAL.resolvefilepath("images/inventoryimages/boomerang_gilded.xml"), "boomerang_gilded.tex")
+
+AddRecipe2("boomerang_gilded",
+	{ Ingredient("boomerang", 1), Ingredient("livinglog", 1), Ingredient("goldnugget", 2) },
+	GLOBAL.TECH.SCIENCE_TWO,
+	{ atlas = "images/inventoryimages/boomerang_gilded.xml", image = "boomerang_gilded.tex" },
+	{ "WEAPONS" })
+
+GLOBAL.STRINGS.NAMES.BOOMERANG_GILDED = "Gilded Boomerang"
+GLOBAL.STRINGS.RECIPE_DESC.BOOMERANG_GILDED = "It always comes back, and hits harder."
+GLOBAL.STRINGS.CHARACTERS.GENERIC.DESCRIBE.BOOMERANG_GILDED = "Heavier than it looks. It still comes back."
 
 -- Initialize the modules
 initThermalStone(AddPrefabPostInit)

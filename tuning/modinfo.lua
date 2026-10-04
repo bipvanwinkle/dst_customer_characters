@@ -1,7 +1,7 @@
 name = "Bip's Custom DST Tuning"
-description = "Customizes the game for my personal enjoyment 1.26.0"
+description = "Customizes the game for my personal enjoyment 1.27.0"
 author = "Bipvanwinkle"
-version = "1.26.0"
+version = "1.27.0"
 api_version = 10
 dst_compatible = true
 all_clients_require_mod = true
@@ -173,5 +173,17 @@ configuration_options = {
 			{ description = "10x", data = 10 },
 		},
 		default = 10,
+	},
+	{
+		name = "naughtiness_multiplier",
+		label = "Naughtiness Multiplier",
+		hover = "Multiplies the naughtiness from killing innocent creatures, which summons Krampus",
+		options = {
+			{ description = "Default (1x)", data = 1 },
+			{ description = "1.5x", data = 1.5 },
+			{ description = "2x", data = 2 },
+			{ description = "3x", data = 3 },
+		},
+		default = 1.5,
 	},
 }

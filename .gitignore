@@ -41,3 +41,6 @@ luac.out
 
 # Apple Artifacts
 *.DS_Store
+
+# Mod animation builds are zips
+!tuning/anim/*.zip
