@@ -293,8 +293,10 @@ class InstallTest(CliCase):
         self.install(self.art_png("c.png", 200, 200, (50, 50, 149, 149)))
         ground, held = self.frame("thing"), self.frame("swap_thing")
         self.assertEqual((ground["x"], ground["y"]), (0.0, -32.0))          # pivot 0.5,0.75 of 128
-        self.assertAlmostEqual(held["x"], (0.5 - 0.2) * held["w"], places=3)
-        self.assertAlmostEqual(held["y"], (0.5 - 0.7) * held["h"], places=3)
+        # base-game tools (pickaxe, axe, hammer) are about 200 pixels long in the hand, pivot near 0.4,0.8
+        self.assertEqual((held["w"], held["h"]), (200.0, 200.0))
+        self.assertAlmostEqual(held["x"], (0.5 - 0.4) * 200, places=3)
+        self.assertAlmostEqual(held["y"], (0.5 - 0.8) * 200, places=3)
 
     def test_held_image_and_rotation(self):
         master = self.art_png("c.png", 200, 200, (50, 50, 149, 149))
@@ -302,10 +304,10 @@ class InstallTest(CliCase):
         self.install(master, "--held-image", tall)
         self.assertTrue(os.path.exists(os.path.join(self.art, "thing", "held.png")))
         frame = self.frame("swap_thing")
-        self.assertEqual((frame["w"], frame["h"]), (16.0, 128.0))
+        self.assertEqual((frame["w"], frame["h"]), (25.0, 200.0))
         self.install("--held-rotate", "90")   # held.png is reused, now lying on its side
         frame = self.frame("swap_thing")
-        self.assertEqual((frame["w"], frame["h"]), (128.0, 16.0))
+        self.assertEqual((frame["w"], frame["h"]), (200.0, 25.0))
 
 
 if __name__ == "__main__":

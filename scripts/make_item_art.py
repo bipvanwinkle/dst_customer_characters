@@ -271,9 +271,10 @@ def main(argv=None):
     ins.add_argument("--held-image", metavar="PNG", help="separate image for the held art")
     ins.add_argument("--ground-size", type=int, default=128, metavar="PX", help="long side on the ground")
     ins.add_argument("--ground-pivot", type=pivot, default=(0.5, 0.75), metavar="X,Y")
-    ins.add_argument("--held-size", type=int, default=128, metavar="PX", help="long side in the hand")
+    ins.add_argument("--held-size", type=int, default=200, metavar="PX", help="long side in the hand")
     ins.add_argument("--held-rotate", type=float, default=0, metavar="DEG", help="clockwise turn before use")
-    ins.add_argument("--held-pivot", type=pivot, default=(0.2, 0.7), metavar="X,Y", help="the grip point")
+    ins.add_argument("--held-pivot", type=pivot, default=(0.4, 0.8), metavar="X,Y",
+                     help="point of the image that sits at the hand (default 0.4,0.8, as base-game tools)")
     ins.add_argument("--mod", default="tuning", help="mod directory (default tuning)")
     ins.set_defaults(run=cmd_install)
 
