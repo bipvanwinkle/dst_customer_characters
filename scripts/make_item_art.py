@@ -22,6 +22,7 @@ LUA = """\
 table.insert(Assets, Asset("ATLAS", "images/inventoryimages/{item}.xml"))
 table.insert(Assets, Asset("IMAGE", "images/inventoryimages/{item}.tex"))
 RegisterInventoryItemAtlas(GLOBAL.resolvefilepath("images/inventoryimages/{item}.xml"), "{item}.tex")
+GLOBAL.STRINGS.NAMES.{name} = "..."
 
 -- prefab assets
 Asset("ANIM", "anim/{bank}.zip"),
@@ -38,13 +39,18 @@ inst.components.inventoryitem.atlasname = "images/inventoryimages/{item}.xml"
 
 -- on equip
 owner.AnimState:OverrideSymbol("swap_object", "swap_{item}", "swap_{item}")"""
-STYLE = ("A single game item drawn in the art style of Don't Starve: hand-drawn, with thick uneven dark "
-         "outlines, sketchy cross-hatched shading, a muted earthy palette and a slightly crooked gothic look. "
-         "The object is centred, fills most of the frame and sits on a fully transparent background, "
-         "with no shadow, no ground, no text and no border.")
+STYLE = ("A single game item drawn in the art style of Don't Starve inventory icons: a chunky, slightly crooked "
+         "cartoon object with a bold, uneven black ink outline as thick as a marker stroke and a few stray scratchy "
+         "hairs of ink along its edges. Flat, simple colouring in the material's own strong colour (gold is bright "
+         "saturated yellow, metal is pale grey, wood is dull olive brown), with two or three white highlight streaks "
+         "and a little dark shading, and almost no cross-hatching or fine texture. It must stay readable when shrunk "
+         "to 64 pixels, so shapes are thick and details are few. The object is centred, fills most of the frame and "
+         "sits on a fully transparent background, with no shadow, no ground, no text and no border.")
 HELD = ("Drawn as it is held in a hand: the object runs diagonally, with its grip at the bottom left "
         "and its working end at the top right.")
-REFERENCE = "Use the attached image as the reference for drawing style, line weight and proportions."
+REFERENCE = ("The attached images are real icons from the game: match their outline weight, colouring and level "
+             "of detail, not their subject.")
+HELD_FRAMES = 100  # hand animations ask for swap_object frames 0 to 42, mostly 1; one image answers for all
 
 
 def fail(msg):
@@ -90,25 +96,29 @@ def base_icon(data, item, out_png):
         magick(upright, "-resize", "512x512", out_png)
 
 
-def multipart(fields, name, filename, data):
-    """Encode form fields plus one PNG file; returns (body, content type)."""
+def multipart(fields, files):
+    """Encode form fields plus PNG files given as (field name, filename, data); returns (body, content type)."""
     boundary = uuid.uuid4().hex
     body = b""
     for key, value in fields.items():
         body += f'--{boundary}\r\nContent-Disposition: form-data; name="{key}"\r\n\r\n{value}\r\n'.encode()
-    body += (f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"; filename="{filename}"\r\n'
-             "Content-Type: image/png\r\n\r\n").encode() + data + f"\r\n--{boundary}--\r\n".encode()
-    return body, "multipart/form-data; boundary=" + boundary
+    for name, filename, data in files:
+        body += (f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"; filename="{filename}"\r\n'
+                 "Content-Type: image/png\r\n\r\n").encode() + data + b"\r\n"
+    return body + f"--{boundary}--\r\n".encode(), "multipart/form-data; boundary=" + boundary
 
 
-def request_images(key, model, prompt, n, reference=None):
-    """Ask OpenAI for n transparent PNGs; with a reference image, through the edit endpoint."""
+def request_images(key, model, prompt, n, references=()):
+    """Ask OpenAI for n transparent PNGs; with reference images, through the edit endpoint."""
     fields = {"model": model, "prompt": prompt, "n": n, "size": "1024x1024", "background": "transparent",
               "output_format": "png"}
-    if reference:
-        url = API + "edits"
-        with open(reference, "rb") as f:
-            body, content_type = multipart(fields, "image", "base.png", f.read())
+    if references:
+        url, files = API + "edits", []
+        for i, path in enumerate(references, 1):
+            with open(path, "rb") as f:
+                files.append(("image[]", f"base-{i}.png", f.read()) if len(references) > 1 else
+                             ("image", "base.png", f.read()))
+        body, content_type = multipart(fields, files)
     else:
         url, body, content_type = API + "generations", json.dumps(fields).encode(), "application/json"
     request = urllib.request.Request(url, data=body, headers={"Authorization": "Bearer " + key,
@@ -145,19 +155,19 @@ def cmd_generate(args):
     check_item(args.item)
     prompt = build_prompt(args.prompt, held=args.held, base=bool(args.base))
     with tempfile.TemporaryDirectory() as tmp:
-        reference = None
-        if args.base:
-            reference = os.path.join(tmp, "base.png")
-            base_icon(args.data, args.base, reference)
+        references = []
+        for i, base in enumerate(args.base):
+            references.append(os.path.join(tmp, f"base-{i}.png"))
+            base_icon(args.data, base, references[-1])
         print(f"model:  {args.model}\nimages: {args.n}\nprompt: {prompt}")
         if args.base:
-            print(f"reference: base-game icon of {args.base}")
+            print("reference: base-game icons of " + ", ".join(args.base))
         if args.dry_run:
             return
         key = os.environ.get("OPENAI_API_KEY")
         if not key:
             fail("OPENAI_API_KEY is not set in the environment")
-        images = request_images(key, args.model, prompt, args.n, reference)
+        images = request_images(key, args.model, prompt, args.n, references)
     out = os.path.join(args.art, args.item, "candidates")
     os.makedirs(out, exist_ok=True)
     stamp = ("held-" if args.held else "") + time.strftime("%Y%m%d-%H%M%S")
@@ -223,9 +233,9 @@ def cmd_install(args):
         trim(held if os.path.exists(held) else master, hand, rotate=args.held_rotate)
         magick(hand, "-resize", f"{args.held_size}x{args.held_size}", hand)
         dst_art.write_single_frame_build(hand, "swap_" + item, "swap_" + item, args.held_pivot,
-                                         os.path.join(anim, f"swap_{item}.zip"))
+                                         os.path.join(anim, f"swap_{item}.zip"), duration=HELD_FRAMES)
     print(f"wrote icon, ground and held art for {item} to {os.path.normpath(mod)}\n")
-    print(LUA.format(item=item, bank=GROUND_BANK))
+    print(LUA.format(item=item, name=item.upper(), bank=GROUND_BANK))
 
 
 def pivot(text):
@@ -246,7 +256,8 @@ def main(argv=None):
     gen = commands.add_parser("generate", help="save candidate images for an item (calls the OpenAI API)")
     gen.add_argument("item")
     gen.add_argument("--prompt", required=True, help="what the item looks like")
-    gen.add_argument("--base", metavar="GAME_ITEM", help="base-game item whose icon is sent as a reference")
+    gen.add_argument("--base", metavar="GAME_ITEM", action="append", default=[],
+                     help="base-game item whose icon is sent as a style reference (repeatable)")
     gen.add_argument("--held", action="store_true", help="draw the item as held in a hand")
     gen.add_argument("-n", type=int, default=3, help="number of candidates (default 3)")
     gen.add_argument("--model", default=DEFAULT_MODEL)

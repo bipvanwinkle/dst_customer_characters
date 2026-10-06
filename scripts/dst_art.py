@@ -193,11 +193,12 @@ def write_build(build):
     return bytes(out)
 
 
-def write_single_frame_build(png, build_name, symbol, pivot, out_zip):
+def write_single_frame_build(png, build_name, symbol, pivot, out_zip, duration=1):
     """Write a normal PNG as an anim zip holding a one-symbol, one-frame build.
 
     `pivot` is the point of the image, as fractions of its width and height from the top left,
-    that sits at the symbol's origin.
+    that sits at the symbol's origin. An animation asks for a symbol's frame by number, and a frame
+    answers for the numbers from 0 up to `duration`, so held art needs a duration that covers them all.
     """
     w, h, _ = read_rgba(png)
     aw, ah = (max(4, 1 << (n - 1).bit_length()) for n in (w, h))  # atlas sides are powers of two
@@ -206,7 +207,7 @@ def write_single_frame_build(png, build_name, symbol, pivot, out_zip):
     # two triangles; v runs from 1 at the top of the image because the texture is stored upside down
     verts = [(x0, y0, 0, 0, 1, 0), (x1, y0, 0, u1, 1, 0), (x0, y1, 0, 0, v1, 0),
              (x1, y0, 0, u1, 1, 0), (x1, y1, 0, u1, v1, 0), (x0, y1, 0, 0, v1, 0)]
-    frame = {"num": 0, "duration": 1, "x": x0 + w / 2, "y": y0 + h / 2, "w": w, "h": h,
+    frame = {"num": 0, "duration": duration, "x": x0 + w / 2, "y": y0 + h / 2, "w": w, "h": h,
              "vert_index": 0, "vert_count": 6}
     build = {"version": 6, "name": build_name, "atlases": ["atlas-0.tex"],
              "symbols": [{"hash": strhash(symbol), "frames": [frame]}], "verts": verts,

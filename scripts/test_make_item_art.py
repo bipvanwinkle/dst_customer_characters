@@ -69,7 +69,8 @@ class GenerateTest(CliCase):
         self.assertTrue(prompt.endswith("The item: a golden axe"))
         self.assertNotIn(make_item_art.HELD, prompt)
         self.assertIn(make_item_art.HELD, make_item_art.build_prompt("a golden axe", held=True))
-        self.assertIn("reference", make_item_art.build_prompt("a golden axe", base=True))
+        self.assertIn(make_item_art.REFERENCE, make_item_art.build_prompt("a golden axe", base=True))
+        self.assertNotIn(make_item_art.REFERENCE, prompt)
 
     def test_rejects_bad_item_name(self):
         self.no_network()
@@ -160,6 +161,17 @@ class GenerateTest(CliCase):
         self.no_network()
         self.assertIn("no_such_item_xyz", self.fails("generate", "thing", "--prompt", "an axe",
                                                      "--base", "no_such_item_xyz"))
+
+    @unittest.skipUnless(HAVE_DST, "no DST install")
+    def test_several_base_icons_are_all_sent(self):
+        self.fake_api([b"one"])
+        out = self.run_cli("generate", "thing", "--prompt", "a golden hammer", "--base", "hammer",
+                           "--base", "goldenaxe")
+        self.assertIn("hammer, goldenaxe", out)
+        (request,) = self.requests
+        self.assertEqual(request.full_url, "https://api.openai.com/v1/images/edits")
+        self.assertEqual(request.data.count(b'name="image[]"'), 2)
+        self.assertEqual(request.data.count(b"\x89PNG"), 2)
 
     @unittest.skipUnless(HAVE_DST, "no DST install")
     def test_base_icon_goes_to_the_edit_endpoint(self):
@@ -265,6 +277,17 @@ class InstallTest(CliCase):
         self.install(self.art_png("c.png", 200, 200, (50, 50, 149, 149)))
         self.install(os.path.join(self.art, "thing", "master.png"), "--ground-size", "80")
         self.assertEqual(self.frame("thing")["w"], 80.0)
+
+    def test_held_frame_covers_every_frame_the_player_animations_ask_for(self):
+        self.install(self.art_png("c.png", 200, 200, (50, 50, 149, 149)))
+        # hand animations request swap_object frames 0 to 42, mostly frame 1; a frame is shown for
+        # the numbers from its own up to its own plus its duration
+        self.assertGreater(self.frame("swap_thing")["duration"], 42)
+        self.assertEqual(self.frame("thing")["duration"], 1)
+
+    def test_reminder_includes_the_item_name_string(self):
+        out = self.install(self.art_png("c.png", 200, 200, (50, 50, 149, 149)))
+        self.assertIn('GLOBAL.STRINGS.NAMES.THING = ', out)
 
     def test_default_pivots(self):
         self.install(self.art_png("c.png", 200, 200, (50, 50, 149, 149)))

@@ -138,6 +138,14 @@ class BuildTest(TmpCase):
         dst_art.ktex_to_png(tex, self.path("atlas.png"))
         self.assertEqual(dst_art.read_rgba(self.path("atlas.png"))[:2], (64, 32))
 
+    def test_single_frame_build_can_cover_many_frame_numbers(self):
+        out = self.path("swap_gold_axe.zip")
+        dst_art.write_single_frame_build(self.box_png("art.png", 50, 30, (0, 0, 49, 29)), "swap_gold_axe",
+                                         "swap_gold_axe", (0.2, 0.7), out, duration=100)
+        with zipfile.ZipFile(out) as z:
+            (frame,) = dst_art.parse_build(z.read("build.bin"))["symbols"][0]["frames"]
+        self.assertEqual((frame["num"], frame["duration"]), (0, 100))
+
 
 if __name__ == "__main__":
     unittest.main()
