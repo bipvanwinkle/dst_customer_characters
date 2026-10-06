@@ -44,7 +44,7 @@ Out of scope:
 
 This is the only command that calls the API or costs money.
 
-### `install <item> [candidate] [--held-image PNG] [--ground-size PX] [--held-size PX] [--held-rotate DEG] [--held-pivot X,Y] [--mod DIR]`
+### `install <item> [candidate] [--held-image PNG] [--ground-size PX] [--ground-pivot X,Y] [--held-size PX] [--held-rotate DEG] [--held-pivot X,Y] [--mod DIR]`
 
 - Copies the chosen candidate to `art/<item>/master.png` (and `--held-image` to
   `art/<item>/held.png`), trims transparent margins, then writes:
@@ -52,7 +52,7 @@ This is the only command that calls the API or costs money.
 | Asset | File | Derivation |
 |---|---|---|
 | Inventory icon | `<mod>/images/inventoryimages/<item>.tex` and `.xml` | Master scaled to fit 64x64, single-image atlas as for `boomerang_gilded` |
-| Ground art | `<mod>/anim/<item>.zip` | One-symbol, one-frame build; master scaled to `--ground-size` on its long side; pivot at the image centre |
+| Ground art | `<mod>/anim/<item>.zip` | One-symbol, one-frame build named `<item>` with symbol `cutstone01`; master scaled to `--ground-size` on its long side; pivot at `--ground-pivot` (default `0.5,0.75`, where the base game's `cutstone` puts it, so the item sits on the ground) |
 | Held art | `<mod>/anim/swap_<item>.zip` | One-symbol, one-frame build named `swap_<item>` with symbol `swap_<item>`; `held.png` if present, otherwise the master; rotated by `--held-rotate`, scaled to `--held-size`, pivot at `--held-pivot` (fractions of width and height, the grip point) |
 
 - Run with no candidate argument, it rebuilds from the existing `master.png`, so sizes and pivots can
@@ -115,17 +115,12 @@ def strhash(s):
 
 The atlas is the image padded to power-of-two dimensions, converted with `png_to_ktex`.
 
-## Stages
+## Build order
 
-Each stage ends with an in-game check before the next begins.
-
-1. **Icon.** `dst_art.py` with the KTEX move and `write_icon_atlas`; `generate` and `install` writing
-   the icon only. Check: the icon shows in the inventory.
-2. **Ground art.** `parse_build`, `write_build`, `write_single_frame_build`; `install` writes
-   `<item>.zip`. Choose the base-game bank to borrow and record the choice and the symbol name it
-   expects in this spec. Check: the item shows correctly when dropped.
-3. **Held art.** `install` writes `swap_<item>.zip`; `--held` generation. Check: the item sits
-   correctly in the hand facing each direction.
+The code is built module by module, each part covered by automated tests: the shared texture and icon
+code, the `build.bin` reader and writer, `generate`, then `install`. One in-game session at the end
+checks the three assets in order (icon in the inventory, item on the ground, item in the hand facing
+each direction) using a throwaway test item, so the game only has to be restarted once.
 
 ## Testing
 
@@ -146,11 +141,16 @@ The OpenAI call itself is not unit tested; it is exercised by real `generate` ru
 - API errors print the status and OpenAI's error message, and save nothing.
 - `install` refuses a candidate with no transparency, since it would produce a solid square in game.
 
-## Open items, settled during the build
+## Decisions settled before the build
 
-- **Default model.** The key can use `gpt-image-1`, `gpt-image-1.5`, `gpt-image-2` and
-  `gpt-image-2.5`. Before stage 1's first real run, check which support transparent backgrounds and
-  reference images, pick the default and record it here. `--model` overrides it.
-- **Ground bank.** Chosen and verified in stage 2.
+- **Default model.** `gpt-image-2.5-flare`, which OpenAI describes as the model for everyday generation.
+  It and `gpt-image-2.5-sunburst` both support `background=transparent` with PNG output and reference
+  images on the edit endpoint. `--model` overrides it.
+- **Ground bank.** `cutstone`: its `idle` animation is a single frame showing one symbol,
+  `cutstone01`, with no transform. The prefab uses `SetBank("cutstone")`, `SetBuild("<item>")` and
+  `PlayAnimation("idle")`.
+
+## Open item, settled by the in-game check
+
 - **Held art from the master.** If a rotated master does not read well in hand for the first real
   item, `--held` generation becomes the documented default for equippable items.
