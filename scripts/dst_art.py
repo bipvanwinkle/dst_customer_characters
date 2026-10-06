@@ -35,7 +35,8 @@ def png_to_ktex(png):
     with tempfile.NamedTemporaryFile(suffix=".dds") as f:
         subprocess.run(["magick", png, "-define", "dds:compression=dxt5", "-define", f"dds:mipmaps={len(sizes) - 1}",
                         f"DDS:{f.name}"], check=True)
-        dds = open(f.name, "rb").read()
+        with open(f.name, "rb") as out:
+            dds = out.read()
     assert dds[84:88] == b"DXT5"
     data, mips, off = dds[128:], [], 0
     for mw, mh in sizes:
@@ -103,3 +104,103 @@ def write_icon_atlas(png, tex_path, xml_path):
     with open(xml_path, "w") as f:
         f.write(f'<Atlas><Texture filename="{name}" /><Elements>'
                 f'<Element name="{name}" u1="0" u2="1" v1="0" v2="1" /></Elements></Atlas>\n')
+
+
+# ---- Anim builds -----------------------------------------------------------------------------
+# An anim zip's build.bin lists symbols, each a set of frames that are quads into atlas-0.tex.
+# Animations live in a separate bank, so a new build can be paired with a base-game animation.
+
+def strhash(s):
+    """The game's string hash, used for symbol names."""
+    h = 0
+    for c in s.lower():
+        h = (ord(c) + (h << 6) + (h << 16) - h) & 0xFFFFFFFF
+    return h
+
+
+def parse_build(data):
+    assert data[:4] == b"BILD"
+    pos = 4
+
+    def take(fmt):
+        nonlocal pos
+        vals = struct.unpack_from("<" + fmt, data, pos)
+        pos += struct.calcsize("<" + fmt)
+        return vals
+
+    def take_str():
+        nonlocal pos
+        n, = take("I")
+        s = data[pos:pos + n].decode("latin-1")
+        pos += n
+        return s
+
+    version, nsymbols, _ = take("III")  # the third field is the total frame count
+    build = {"version": version, "name": take_str()}
+    build["atlases"] = [take_str() for _ in range(take("I")[0])]
+    build["symbols"] = []
+    for _ in range(nsymbols):
+        sym_hash, nframes = take("II")
+        frames = []
+        for _ in range(nframes):
+            num, duration = take("II")
+            x, y, w, h = take("ffff")
+            vert_index, vert_count = take("II")
+            frames.append({"num": num, "duration": duration, "x": x, "y": y, "w": w, "h": h,
+                           "vert_index": vert_index, "vert_count": vert_count})
+        build["symbols"].append({"hash": sym_hash, "frames": frames})
+    build["verts"] = [take("ffffff") for _ in range(take("I")[0])]
+    build["names"] = [(take("I")[0], take_str()) for _ in range(take("I")[0])]
+    assert pos == len(data), (pos, len(data))
+    return build
+
+
+def write_build(build):
+    def pstr(s):
+        return struct.pack("<I", len(s)) + s.encode("latin-1")
+
+    out = bytearray(b"BILD")
+    out += struct.pack("<III", build["version"], len(build["symbols"]),
+                       sum(len(s["frames"]) for s in build["symbols"]))
+    out += pstr(build["name"]) + struct.pack("<I", len(build["atlases"]))
+    for atlas in build["atlases"]:
+        out += pstr(atlas)
+    for sym in build["symbols"]:
+        out += struct.pack("<II", sym["hash"], len(sym["frames"]))
+        for f in sym["frames"]:
+            out += struct.pack("<IIffffII", f["num"], f["duration"], f["x"], f["y"], f["w"], f["h"],
+                               f["vert_index"], f["vert_count"])
+    out += struct.pack("<I", len(build["verts"]))
+    for vert in build["verts"]:
+        out += struct.pack("<ffffff", *vert)
+    out += struct.pack("<I", len(build["names"]))
+    for name_hash, name in build["names"]:
+        out += struct.pack("<I", name_hash) + pstr(name)
+    return bytes(out)
+
+
+def write_single_frame_build(png, build_name, symbol, pivot, out_zip):
+    """Write a normal PNG as an anim zip holding a one-symbol, one-frame build.
+
+    `pivot` is the point of the image, as fractions of its width and height from the top left,
+    that sits at the symbol's origin.
+    """
+    w, h, _ = read_rgba(png)
+    aw, ah = (max(4, 1 << (n - 1).bit_length()) for n in (w, h))  # atlas sides are powers of two
+    x0, y0 = -pivot[0] * w, -pivot[1] * h
+    x1, y1, u1, v1 = x0 + w, y0 + h, w / aw, 1 - h / ah
+    # two triangles; v runs from 1 at the top of the image because the texture is stored upside down
+    verts = [(x0, y0, 0, 0, 1, 0), (x1, y0, 0, u1, 1, 0), (x0, y1, 0, 0, v1, 0),
+             (x1, y0, 0, u1, 1, 0), (x1, y1, 0, u1, v1, 0), (x0, y1, 0, 0, v1, 0)]
+    frame = {"num": 0, "duration": 1, "x": x0 + w / 2, "y": y0 + h / 2, "w": w, "h": h,
+             "vert_index": 0, "vert_count": 6}
+    build = {"version": 6, "name": build_name, "atlases": ["atlas-0.tex"],
+             "symbols": [{"hash": strhash(symbol), "frames": [frame]}], "verts": verts,
+             "names": [(strhash(symbol), symbol)]}
+    with tempfile.TemporaryDirectory() as tmp:
+        tex_png = os.path.join(tmp, "atlas.png")
+        texture_png(png, tex_png, canvas=(aw, ah))
+        tex = png_to_ktex(tex_png)
+    with zipfile.ZipFile(out_zip, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("build.bin", write_build(build))
+        z.writestr("atlas-0.tex", tex)

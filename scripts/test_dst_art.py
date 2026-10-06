@@ -79,5 +79,52 @@ class TextureTest(TmpCase):
                          '<Element name="gold_axe.tex" u1="0" u2="1" v1="0" v2="1" /></Elements></Atlas>\n')
 
 
+class BuildTest(TmpCase):
+    def test_strhash_matches_game_hashes(self):
+        self.assertEqual(dst_art.strhash("swap_boomerang"), 0xB2D9F4B6)
+        self.assertEqual(dst_art.strhash("boomerang01"), 0x6DE856C3)
+        self.assertEqual(dst_art.strhash("BrokeTool01"), 0x500C4CD2)
+
+    def round_trip(self, zips):
+        for path in zips:
+            with zipfile.ZipFile(path) as z:
+                if "build.bin" not in z.namelist():
+                    continue
+                data = z.read("build.bin")
+            self.assertEqual(dst_art.write_build(dst_art.parse_build(data)), data, path)
+
+    def test_round_trip_mod_builds(self):
+        zips = sorted(glob.glob(os.path.join(ROOT, "tuning", "anim", "*.zip")))
+        self.assertTrue(zips)
+        self.round_trip(zips)
+
+    @unittest.skipUnless(os.path.isdir(DST_ANIM), "no DST install")
+    def test_round_trip_base_game_builds(self):
+        self.round_trip(sorted(glob.glob(os.path.join(DST_ANIM, "*.zip")))[::15])
+
+    def test_single_frame_build(self):
+        out = self.path("gold_axe.zip")
+        dst_art.write_single_frame_build(self.box_png("art.png", 50, 30, (0, 0, 49, 29)), "gold_axe", "cutstone01",
+                                         (0.5, 0.75), out)
+        with zipfile.ZipFile(out) as z:
+            self.assertEqual(z.namelist(), ["build.bin", "atlas-0.tex"])
+            build, tex = dst_art.parse_build(z.read("build.bin")), z.read("atlas-0.tex")
+        self.assertEqual((build["version"], build["name"], build["atlases"]), (6, "gold_axe", ["atlas-0.tex"]))
+        self.assertEqual(build["names"], [(dst_art.strhash("cutstone01"), "cutstone01")])
+        (symbol,) = build["symbols"]
+        self.assertEqual(symbol["hash"], dst_art.strhash("cutstone01"))
+        (frame,) = symbol["frames"]
+        self.assertEqual(frame, {"num": 0, "duration": 1, "x": 0.0, "y": -7.5, "w": 50.0, "h": 30.0,
+                                 "vert_index": 0, "vert_count": 6})
+        xs, ys, _, us, vs, _ = zip(*build["verts"])
+        self.assertEqual(len(build["verts"]), 6)
+        self.assertEqual((min(xs), max(xs), min(ys), max(ys)), (-25.0, 25.0, -22.5, 7.5))
+        self.assertEqual((min(us), max(us), min(vs), max(vs)), (0.0, 50 / 64, 1 - 30 / 32, 1.0))
+        # the top of the image (smallest y) carries v = 1, as in the game's own builds
+        self.assertEqual({v for y, v in zip(ys, vs) if y == -22.5}, {1.0})
+        dst_art.ktex_to_png(tex, self.path("atlas.png"))
+        self.assertEqual(dst_art.read_rgba(self.path("atlas.png"))[:2], (64, 32))
+
+
 if __name__ == "__main__":
     unittest.main()
