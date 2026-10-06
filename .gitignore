@@ -47,3 +47,6 @@ luac.out
 
 # Python bytecode
 __pycache__/
+
+# Generated art candidates; the chosen master.png is kept
+art/*/candidates/

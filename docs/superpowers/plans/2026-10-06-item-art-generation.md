@@ -735,10 +735,11 @@ def request_images(key, model, prompt, n, reference=None):
         with urllib.request.urlopen(request, timeout=600) as reply:
             data = json.load(reply).get("data") or []
     except urllib.error.HTTPError as e:
-        try:
-            message = json.load(e)["error"]["message"]
-        except Exception:
-            message = e.reason
+        with e:
+            try:
+                message = json.load(e)["error"]["message"]
+            except Exception:
+                message = e.reason
         fail(f"OpenAI API error {e.code}: {message}")
     except urllib.error.URLError as e:
         fail(f"could not reach OpenAI: {e.reason}")
@@ -803,6 +804,8 @@ def main(argv=None):
     gen.set_defaults(run=cmd_generate)
 
     args = parser.parse_args(argv)
+    if not shutil.which("magick"):
+        fail("ImageMagick (`magick`) is not installed")
     args.run(args)
 
 
