@@ -16,6 +16,28 @@ ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
 DEFAULT_DATA = os.path.expanduser("~/.local/share/Steam/steamapps/common/Don't Starve Together/data")
 DEFAULT_MODEL = "gpt-image-2.5-flare"
 API = "https://api.openai.com/v1/images/"
+GROUND_BANK, GROUND_SYMBOL = "cutstone", "cutstone01"  # a base-game bank whose idle is one static symbol
+LUA = """\
+-- modmain.lua
+table.insert(Assets, Asset("ATLAS", "images/inventoryimages/{item}.xml"))
+table.insert(Assets, Asset("IMAGE", "images/inventoryimages/{item}.tex"))
+RegisterInventoryItemAtlas(GLOBAL.resolvefilepath("images/inventoryimages/{item}.xml"), "{item}.tex")
+
+-- prefab assets
+Asset("ANIM", "anim/{bank}.zip"),
+Asset("ANIM", "anim/{item}.zip"),
+Asset("ANIM", "anim/swap_{item}.zip"),
+Asset("ATLAS", "images/inventoryimages/{item}.xml"),
+Asset("IMAGE", "images/inventoryimages/{item}.tex"),
+
+-- prefab fn
+inst.AnimState:SetBank("{bank}")
+inst.AnimState:SetBuild("{item}")
+inst.AnimState:PlayAnimation("idle")
+inst.components.inventoryitem.atlasname = "images/inventoryimages/{item}.xml"
+
+-- on equip
+owner.AnimState:OverrideSymbol("swap_object", "swap_{item}", "swap_{item}")"""
 STYLE = ("A single game item drawn in the art style of Don't Starve: hand-drawn, with thick uneven dark "
          "outlines, sketchy cross-hatched shading, a muted earthy palette and a slightly crooked gothic look. "
          "The object is centred, fills most of the frame and sits on a fully transparent background, "
@@ -146,6 +168,74 @@ def cmd_generate(args):
         print("saved", path)
 
 
+# ---- install ---------------------------------------------------------------------------------
+
+def adopt(src, dst):
+    """Copy a chosen image into the item's art folder, refusing ones that cannot work in game."""
+    if not os.path.exists(src):
+        fail(f"no such image: {src}")
+    try:
+        alpha = dst_art.read_rgba(src)[2][3::4]
+    except subprocess.CalledProcessError:
+        fail(f"{src} is not a readable image")
+    if dst_art.opaque_box(src) is None:
+        fail(f"{src} is blank (completely transparent)")
+    if min(alpha) == 255:
+        fail(f"{src} has no transparent background, so it would show as a solid square in game")
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    if os.path.abspath(src) != os.path.abspath(dst):
+        shutil.copyfile(src, dst)
+
+
+def trim(src, dst, rotate=0):
+    """Crop an image to its visible pixels, after turning it clockwise by `rotate` degrees."""
+    if rotate:
+        magick(src, "-background", "none", "-rotate", str(rotate), "+repage", dst)
+        src = dst
+    x, y, w, h = dst_art.opaque_box(src)
+    magick(src, "-crop", f"{w}x{h}+{x}+{y}", "+repage", dst)
+
+
+def cmd_install(args):
+    check_item(args.item)
+    item = args.item
+    mod = os.path.join(ROOT, args.mod)
+    if not os.path.isdir(mod):
+        fail(f"no mod directory {mod}")
+    master, held = (os.path.join(args.art, item, n) for n in ("master.png", "held.png"))
+    if args.candidate:
+        adopt(args.candidate, master)
+    if args.held_image:
+        adopt(args.held_image, held)
+    if not os.path.exists(master):
+        fail(f"no {master} yet; pass a candidate image to install")
+    icons, anim = os.path.join(mod, "images", "inventoryimages"), os.path.join(mod, "anim")
+    os.makedirs(icons, exist_ok=True)
+    os.makedirs(anim, exist_ok=True)
+    with tempfile.TemporaryDirectory() as tmp:
+        art, icon, ground, hand = (os.path.join(tmp, n) for n in ("art.png", "icon.png", "ground.png", "hand.png"))
+        trim(master, art)
+        magick(art, "-resize", "60x60", "-background", "none", "-gravity", "center", "-extent", "64x64", icon)
+        dst_art.write_icon_atlas(icon, os.path.join(icons, item + ".tex"), os.path.join(icons, item + ".xml"))
+        magick(art, "-resize", f"{args.ground_size}x{args.ground_size}", ground)
+        dst_art.write_single_frame_build(ground, item, GROUND_SYMBOL, args.ground_pivot,
+                                         os.path.join(anim, item + ".zip"))
+        trim(held if os.path.exists(held) else master, hand, rotate=args.held_rotate)
+        magick(hand, "-resize", f"{args.held_size}x{args.held_size}", hand)
+        dst_art.write_single_frame_build(hand, "swap_" + item, "swap_" + item, args.held_pivot,
+                                         os.path.join(anim, f"swap_{item}.zip"))
+    print(f"wrote icon, ground and held art for {item} to {os.path.normpath(mod)}\n")
+    print(LUA.format(item=item, bank=GROUND_BANK))
+
+
+def pivot(text):
+    try:
+        x, y = (float(v) for v in text.split(","))
+    except ValueError:
+        raise argparse.ArgumentTypeError("expected X,Y as fractions of the image, e.g. 0.5,0.75")
+    return x, y
+
+
 # ---- command line ----------------------------------------------------------------------------
 
 def main(argv=None):
@@ -163,6 +253,18 @@ def main(argv=None):
     gen.add_argument("--data", default=DEFAULT_DATA, help="DST data directory, for --base")
     gen.add_argument("--dry-run", action="store_true", help="print the request and stop")
     gen.set_defaults(run=cmd_generate)
+
+    ins = commands.add_parser("install", help="write the icon, ground build and held build from one image")
+    ins.add_argument("item")
+    ins.add_argument("candidate", nargs="?", help="image to adopt as the master (omit to rebuild from it)")
+    ins.add_argument("--held-image", metavar="PNG", help="separate image for the held art")
+    ins.add_argument("--ground-size", type=int, default=128, metavar="PX", help="long side on the ground")
+    ins.add_argument("--ground-pivot", type=pivot, default=(0.5, 0.75), metavar="X,Y")
+    ins.add_argument("--held-size", type=int, default=128, metavar="PX", help="long side in the hand")
+    ins.add_argument("--held-rotate", type=float, default=0, metavar="DEG", help="clockwise turn before use")
+    ins.add_argument("--held-pivot", type=pivot, default=(0.2, 0.7), metavar="X,Y", help="the grip point")
+    ins.add_argument("--mod", default="tuning", help="mod directory (default tuning)")
+    ins.set_defaults(run=cmd_install)
 
     args = parser.parse_args(argv)
     if not shutil.which("magick"):

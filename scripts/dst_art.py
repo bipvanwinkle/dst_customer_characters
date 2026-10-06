@@ -91,6 +91,20 @@ def from_texture_png(src, dst):
     write_rgba(w, h, px, dst)
 
 
+def opaque_box(png):
+    """The bounding box (x, y, w, h) of the visible pixels, or None if the image is blank.
+
+    Pixels with almost no alpha are treated as empty, so stray specks do not stop art being trimmed.
+    """
+    w, h, px = read_rgba(png)
+    alpha = px[3::4]
+    rows = [y for y in range(h) if max(alpha[y * w:(y + 1) * w]) > 8]
+    cols = [x for x in range(w) if max(alpha[x::w]) > 8]
+    if not rows:
+        return None
+    return cols[0], rows[0], cols[-1] - cols[0] + 1, rows[-1] - rows[0] + 1
+
+
 # ---- Inventory icons -------------------------------------------------------------------------
 
 def write_icon_atlas(png, tex_path, xml_path):

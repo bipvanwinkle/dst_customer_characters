@@ -70,6 +70,19 @@ class TextureTest(TmpCase):
         self.assertEqual(out[3], 0)                        # corner stays clear
         self.assertEqual(out[(32 * 64 + 32) * 4 + 3], 255)  # centre stays solid
 
+    def test_opaque_box_bounds_the_visible_pixels(self):
+        self.assertEqual(dst_art.opaque_box(self.box_png("a.png", 40, 30, (5, 7, 24, 16))), (5, 7, 20, 10))
+        self.assertEqual(dst_art.opaque_box(self.box_png("b.png", 8, 8, (0, 0, 7, 7))), (0, 0, 8, 8))
+
+    def test_opaque_box_ignores_faint_pixels_and_blank_images(self):
+        px = bytearray(4 * 4 * 4)
+        px[3] = 5                                  # a barely visible speck in the corner
+        px[(2 * 4 + 1) * 4 + 3] = 200              # one solid pixel at (1, 2)
+        dst_art.write_rgba(4, 4, px, self.path("speck.png"))
+        self.assertEqual(dst_art.opaque_box(self.path("speck.png")), (1, 2, 1, 1))
+        dst_art.write_rgba(4, 4, bytearray(64), self.path("blank.png"))
+        self.assertIsNone(dst_art.opaque_box(self.path("blank.png")))
+
     def test_write_icon_atlas(self):
         tex, xml = self.path("gold_axe.tex"), self.path("gold_axe.xml")
         dst_art.write_icon_atlas(self.box_png("icon.png", 64, 64, (8, 8, 55, 55)), tex, xml)

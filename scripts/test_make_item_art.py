@@ -174,5 +174,116 @@ class GenerateTest(CliCase):
         self.assertIn(b'name="background"\r\n\r\ntransparent', request.data)
 
 
+class InstallTest(CliCase):
+    def setUp(self):
+        super().setUp()
+        self.mod = self.path("mod")
+        os.mkdir(self.mod)
+
+    def art_png(self, name, w, h, box, background="none"):
+        path = self.path(name)
+        subprocess.run(["magick", "-size", f"{w}x{h}", f"xc:{background}", "+antialias", "-fill", "rgb(200,100,50)",
+                        "-draw", "rectangle %d,%d %d,%d" % box, path], check=True)
+        return path
+
+    def install(self, *argv):
+        return self.run_cli("install", "thing", *argv, "--mod", self.mod)
+
+    def build(self, name):
+        with zipfile.ZipFile(os.path.join(self.mod, "anim", name + ".zip")) as z:
+            return dst_art.parse_build(z.read("build.bin"))
+
+    def frame(self, name):
+        return self.build(name)["symbols"][0]["frames"][0]
+
+    def test_writes_icon_ground_and_held_art(self):
+        candidate = self.art_png("c.png", 200, 200, (50, 50, 149, 149))
+        out = self.install(candidate)
+        self.assertEqual(read(os.path.join(self.art, "thing", "master.png")), read(candidate))
+        icons = os.path.join(self.mod, "images", "inventoryimages")
+        self.assertIn(b'name="thing.tex"', read(os.path.join(icons, "thing.xml")))
+        dst_art.ktex_to_png(read(os.path.join(icons, "thing.tex")), self.path("icon.png"))
+        self.assertEqual(dst_art.read_rgba(self.path("icon.png"))[:2], (64, 64))
+        ground, held = self.build("thing"), self.build("swap_thing")
+        self.assertEqual((ground["name"], ground["names"][0][1]), ("thing", "cutstone01"))
+        self.assertEqual((held["name"], held["names"][0][1]), ("swap_thing", "swap_thing"))
+        self.assertEqual((self.frame("thing")["w"], self.frame("thing")["h"]), (128.0, 128.0))
+        for line in ('SetBank("cutstone")', 'SetBuild("thing")',
+                     'OverrideSymbol("swap_object", "swap_thing", "swap_thing")',
+                     'Asset("ANIM", "anim/swap_thing.zip")', 'RegisterInventoryItemAtlas'):
+            self.assertIn(line, out)
+
+    def test_wide_image_keeps_aspect(self):
+        self.install(self.art_png("c.png", 400, 200, (50, 70, 349, 129)))  # the art itself is 300x60
+        dst_art.ktex_to_png(read(os.path.join(self.mod, "images", "inventoryimages", "thing.tex")),
+                            self.path("icon.png"))
+        w, h, px = dst_art.read_rgba(self.path("icon.png"))
+        self.assertEqual((w, h), (64, 64))
+        alpha = px[3::4]
+        solid_rows = [y for y in range(64) if max(alpha[y * 64:y * 64 + 64]) > 127]
+        solid_cols = [x for x in range(64) if max(alpha[x::64]) > 127]
+        self.assertAlmostEqual(len(solid_cols), 60, delta=2)
+        self.assertAlmostEqual(len(solid_rows), 12, delta=2)
+        frame = self.frame("thing")
+        self.assertEqual((frame["w"], frame["h"]), (128.0, 26.0))
+
+    def test_refuses_candidate_without_transparency(self):
+        message = self.fails("install", "thing", self.art_png("c.png", 64, 64, (8, 8, 55, 55), "white"),
+                             "--mod", self.mod)
+        self.assertIn("transparent", message)
+        self.assertFalse(os.path.exists(os.path.join(self.art, "thing", "master.png")))
+        self.assertEqual(os.listdir(self.mod), [])
+
+    def test_refuses_blank_candidate(self):
+        blank = self.path("blank.png")
+        subprocess.run(["magick", "-size", "64x64", "xc:none", blank], check=True)
+        self.assertIn("blank", self.fails("install", "thing", blank, "--mod", self.mod))
+        self.assertEqual(os.listdir(self.mod), [])
+
+    def test_missing_candidate_file(self):
+        self.assertIn("no such image", self.fails("install", "thing", self.path("nope.png"), "--mod", self.mod))
+
+    def test_needs_a_master_first(self):
+        self.assertIn("master.png", self.fails("install", "thing", "--mod", self.mod))
+
+    def test_missing_mod_directory(self):
+        candidate = self.art_png("c.png", 64, 64, (8, 8, 55, 55))
+        self.assertIn("mod", self.fails("install", "thing", candidate, "--mod", self.path("nowhere")))
+
+    def test_rejects_bad_item_name(self):
+        candidate = self.art_png("c.png", 64, 64, (8, 8, 55, 55))
+        self.assertIn("item name", self.fails("install", "Gold Axe", candidate, "--mod", self.mod))
+
+    def test_rebuilds_from_the_master_with_new_sizes(self):
+        self.install(self.art_png("c.png", 200, 200, (50, 50, 149, 149)))
+        self.install("--ground-size", "80", "--held-size", "90", "--ground-pivot", "0,0", "--held-pivot", "1,1")
+        ground, held = self.frame("thing"), self.frame("swap_thing")
+        self.assertEqual((ground["w"], ground["x"], ground["y"]), (80.0, 40.0, 40.0))
+        self.assertEqual((held["w"], held["x"], held["y"]), (90.0, -45.0, -45.0))
+
+    def test_master_can_be_passed_as_the_candidate(self):
+        self.install(self.art_png("c.png", 200, 200, (50, 50, 149, 149)))
+        self.install(os.path.join(self.art, "thing", "master.png"), "--ground-size", "80")
+        self.assertEqual(self.frame("thing")["w"], 80.0)
+
+    def test_default_pivots(self):
+        self.install(self.art_png("c.png", 200, 200, (50, 50, 149, 149)))
+        ground, held = self.frame("thing"), self.frame("swap_thing")
+        self.assertEqual((ground["x"], ground["y"]), (0.0, -32.0))          # pivot 0.5,0.75 of 128
+        self.assertAlmostEqual(held["x"], (0.5 - 0.2) * held["w"], places=3)
+        self.assertAlmostEqual(held["y"], (0.5 - 0.7) * held["h"], places=3)
+
+    def test_held_image_and_rotation(self):
+        master = self.art_png("c.png", 200, 200, (50, 50, 149, 149))
+        tall = self.art_png("h.png", 200, 200, (90, 20, 109, 179))  # 20x160
+        self.install(master, "--held-image", tall)
+        self.assertTrue(os.path.exists(os.path.join(self.art, "thing", "held.png")))
+        frame = self.frame("swap_thing")
+        self.assertEqual((frame["w"], frame["h"]), (16.0, 128.0))
+        self.install("--held-rotate", "90")   # held.png is reused, now lying on its side
+        frame = self.frame("swap_thing")
+        self.assertEqual((frame["w"], frame["h"]), (128.0, 16.0))
+
+
 if __name__ == "__main__":
     unittest.main()
