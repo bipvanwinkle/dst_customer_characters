@@ -289,19 +289,38 @@ class InstallTest(CliCase):
         out = self.install(self.art_png("c.png", 200, 200, (50, 50, 149, 149)))
         self.assertIn('GLOBAL.STRINGS.NAMES.THING = ', out)
 
-    def test_default_pivots(self):
+    def test_default_ground_pivot(self):
         self.install(self.art_png("c.png", 200, 200, (50, 50, 149, 149)))
-        ground, held = self.frame("thing"), self.frame("swap_thing")
+        ground = self.frame("thing")
         self.assertEqual((ground["x"], ground["y"]), (0.0, -32.0))          # pivot 0.5,0.75 of 128
-        # base-game tools (pickaxe, axe, hammer) are about 200 pixels long in the hand, pivot near 0.4,0.8
-        self.assertEqual((held["w"], held["h"]), (200.0, 200.0))
-        self.assertAlmostEqual(held["x"], (0.5 - 0.4) * 200, places=3)
-        self.assertAlmostEqual(held["y"], (0.5 - 0.8) * 200, places=3)
+
+    def test_held_art_is_sized_like_base_game_tools_and_pivots_on_its_handle(self):
+        # base-game tools are about 200 pixels tall in the hand, drawn upright, with the pivot on the
+        # handle four fifths of the way down. Here: a head across the top, a handle down the left side.
+        tool = self.path("tool.png")
+        subprocess.run(["magick", "-size", "140x240", "xc:none", "+antialias", "-fill", "rgb(200,100,50)",
+                        "-draw", "rectangle 20,20 119,59", "-draw", "rectangle 40,20 59,219", tool], check=True)
+        self.install(tool, "--held-rotate", "0")
+        held = self.frame("swap_thing")
+        self.assertEqual((held["w"], held["h"]), (100.0, 200.0))
+        self.assertAlmostEqual(held["x"], (0.5 - 0.3) * 100, delta=1)   # the handle's centre is 30% across
+        self.assertAlmostEqual(held["y"], (0.5 - 0.8) * 200, delta=1)
+
+    def test_held_art_is_turned_upright_by_default(self):
+        # icons are drawn diagonally, from bottom left up to top right; in the hand tools stand upright
+        diagonal = self.path("diagonal.png")
+        subprocess.run(["magick", "-size", "200x200", "xc:none", "+antialias", "-fill", "rgb(200,100,50)",
+                        "-draw", "rectangle 90,20 109,179", "-background", "none", "-rotate", "45", "+repage",
+                        diagonal], check=True)
+        self.install(diagonal)
+        held = self.frame("swap_thing")
+        self.assertEqual(held["h"], 200.0)
+        self.assertLess(held["w"], 40)
 
     def test_held_image_and_rotation(self):
         master = self.art_png("c.png", 200, 200, (50, 50, 149, 149))
         tall = self.art_png("h.png", 200, 200, (90, 20, 109, 179))  # 20x160
-        self.install(master, "--held-image", tall)
+        self.install(master, "--held-image", tall, "--held-rotate", "0")
         self.assertTrue(os.path.exists(os.path.join(self.art, "thing", "held.png")))
         frame = self.frame("swap_thing")
         self.assertEqual((frame["w"], frame["h"]), (25.0, 200.0))

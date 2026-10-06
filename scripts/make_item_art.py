@@ -46,8 +46,8 @@ STYLE = ("A single game item drawn in the art style of Don't Starve inventory ic
          "and a little dark shading, and almost no cross-hatching or fine texture. It must stay readable when shrunk "
          "to 64 pixels, so shapes are thick and details are few. The object is centred, fills most of the frame and "
          "sits on a fully transparent background, with no shadow, no ground, no text and no border.")
-HELD = ("Drawn as it is held in a hand: the object runs diagonally, with its grip at the bottom left "
-        "and its working end at the top right.")
+HELD = ("Drawn as it is held in a hand: the object stands upright, with a straight vertical handle whose grip "
+        "is at the bottom and its working end at the top.")
 REFERENCE = ("The attached images are real icons from the game: match their outline weight, colouring and level "
              "of detail, not their subject.")
 HELD_FRAMES = 100  # hand animations ask for swap_object frames 0 to 42, mostly 1; one image answers for all
@@ -206,6 +206,15 @@ def trim(src, dst, rotate=0):
     magick(src, "-crop", f"{w}x{h}+{x}+{y}", "+repage", dst)
 
 
+def grip_pivot(png):
+    """Where base-game tools put the pivot: on the handle, four fifths of the way down the image."""
+    w, h, px = dst_art.read_rgba(png)
+    y = min(h - 1, int(h * 0.8))
+    row = px[3::4][y * w:(y + 1) * w]
+    xs = [x for x in range(w) if row[x] > 8]
+    return ((xs[0] + xs[-1] + 1) / 2 / w if xs else 0.5), 0.8
+
+
 def cmd_install(args):
     check_item(args.item)
     item = args.item
@@ -232,7 +241,7 @@ def cmd_install(args):
                                          os.path.join(anim, item + ".zip"))
         trim(held if os.path.exists(held) else master, hand, rotate=args.held_rotate)
         magick(hand, "-resize", f"{args.held_size}x{args.held_size}", hand)
-        dst_art.write_single_frame_build(hand, "swap_" + item, "swap_" + item, args.held_pivot,
+        dst_art.write_single_frame_build(hand, "swap_" + item, "swap_" + item, args.held_pivot or grip_pivot(hand),
                                          os.path.join(anim, f"swap_{item}.zip"), duration=HELD_FRAMES)
     print(f"wrote icon, ground and held art for {item} to {os.path.normpath(mod)}\n")
     print(LUA.format(item=item, name=item.upper(), bank=GROUND_BANK))
@@ -272,9 +281,11 @@ def main(argv=None):
     ins.add_argument("--ground-size", type=int, default=128, metavar="PX", help="long side on the ground")
     ins.add_argument("--ground-pivot", type=pivot, default=(0.5, 0.75), metavar="X,Y")
     ins.add_argument("--held-size", type=int, default=200, metavar="PX", help="long side in the hand")
-    ins.add_argument("--held-rotate", type=float, default=0, metavar="DEG", help="clockwise turn before use")
-    ins.add_argument("--held-pivot", type=pivot, default=(0.4, 0.8), metavar="X,Y",
-                     help="point of the image that sits at the hand (default 0.4,0.8, as base-game tools)")
+    ins.add_argument("--held-rotate", type=float, default=-45, metavar="DEG",
+                     help="clockwise turn that stands the art upright (default -45, for art drawn diagonally "
+                          "like an icon; 0 for art that is already upright)")
+    ins.add_argument("--held-pivot", type=pivot, metavar="X,Y",
+                     help="point of the image that sits at the hand (default: on the handle, 0.8 of the way down)")
     ins.add_argument("--mod", default="tuning", help="mod directory (default tuning)")
     ins.set_defaults(run=cmd_install)
 
