@@ -29,12 +29,13 @@ Out of scope:
 
 `scripts/make_item_art.py` has two commands.
 
-### `generate <item> --prompt TEXT [--base GAME_ITEM] [--held] [-n N] [--model ID] [--dry-run]`
+### `generate <item> --prompt TEXT [--base GAME_ITEM]... [--held] [-n N] [--model ID] [--dry-run]`
 
 - Builds the request prompt from `TEXT` plus a fixed style preamble describing Don't Starve's
   hand-drawn look (thick dark outlines, muted palette, transparent background, single centred object).
-- With `--base`, extracts that item's icon from the DST install (`databundles/images.zip`, the
-  `inventoryimages*.xml` atlases) and sends it as a reference image through the image edit endpoint.
+- With `--base` (repeatable), extracts each item's icon from the DST install (`databundles/images.zip`, the
+  `inventoryimages*.xml` atlases) and sends them as style references through the image edit endpoint. Several real icons pull the
+  result much closer to the game's look than one.
   Without it, uses the image generation endpoint.
 - Saves `N` candidates (default 3) as `art/<item>/candidates/<timestamp>-<i>.png`, or
   `held-<timestamp>-<i>.png` with `--held`.
@@ -53,12 +54,12 @@ This is the only command that calls the API or costs money.
 |---|---|---|
 | Inventory icon | `<mod>/images/inventoryimages/<item>.tex` and `.xml` | Master scaled to fit 64x64, single-image atlas as for `boomerang_gilded` |
 | Ground art | `<mod>/anim/<item>.zip` | One-symbol, one-frame build named `<item>` with symbol `cutstone01`; master scaled to `--ground-size` on its long side; pivot at `--ground-pivot` (default `0.5,0.75`, where the base game's `cutstone` puts it, so the item sits on the ground) |
-| Held art | `<mod>/anim/swap_<item>.zip` | One-symbol, one-frame build named `swap_<item>` with symbol `swap_<item>`; `held.png` if present, otherwise the master; rotated by `--held-rotate`, scaled to `--held-size`, pivot at `--held-pivot` (fractions of width and height, the grip point) |
+| Held art | `<mod>/anim/swap_<item>.zip` | One-symbol, one-frame build named `swap_<item>` with symbol `swap_<item>`; `held.png` if present, otherwise the master; rotated by `--held-rotate`, scaled to `--held-size`, pivot at `--held-pivot` (fractions of width and height; default `0.4,0.8` and 200 pixels long, as base-game tools). Its one frame has a duration of 100, because hand animations ask for `swap_object` frames 0 to 42 (mostly frame 1) and a frame only answers for the numbers its duration covers |
 
 - Run with no candidate argument, it rebuilds from the existing `master.png`, so sizes and pivots can
   be tuned without regenerating.
 - Prints the Lua lines the item needs (`Asset` entries, `RegisterInventoryItemAtlas`, `SetBuild`,
-  `OverrideSymbol`) as a reminder. It does not edit Lua files.
+  `OverrideSymbol`, the `STRINGS.NAMES` entry) as a reminder. It does not edit Lua files.
 
 `art/<item>/master.png` and `held.png` are committed. `art/*/candidates/` is gitignored.
 
