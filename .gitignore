@@ -44,3 +44,6 @@ luac.out
 
 # Mod animation builds are zips
 !tuning/anim/*.zip
+
+# Python bytecode
+__pycache__/
