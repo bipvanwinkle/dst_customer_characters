@@ -1,13 +1,17 @@
 -- Conductor's Whistle: the Beefalo Bell's idea, for befriended clockworks, with no bonding. While a
 -- survivor carries it their clockworks follow as usual. When it leaves their inventory (dropped, put
 -- in a chest, handed to someone else) their clockworks stay where they are, and they rejoin when the
--- survivor carries one again. Borrows the Beefalo Bell's art for now.
+-- survivor carries one again. Its art is made by scripts/make_item_art.py; on the ground it shows on
+-- the base game's cut stone animation, which is a single still image.
 
 local parking = require("utils.clockwork_parking")
 
 local assets =
 {
-	Asset("ANIM", "anim/cowbell.zip"),
+	Asset("ANIM", "anim/cutstone.zip"),
+	Asset("ANIM", "anim/conductors_whistle.zip"),
+	Asset("ATLAS", "images/inventoryimages/conductors_whistle.xml"),
+	Asset("IMAGE", "images/inventoryimages/conductors_whistle.tex"),
 }
 
 -- The survivor carrying this, directly or inside a backpack
@@ -51,9 +55,9 @@ local function fn()
 
 	MakeInventoryPhysics(inst)
 
-	inst.AnimState:SetBank("cowbell")
-	inst.AnimState:SetBuild("cowbell")
-	inst.AnimState:PlayAnimation("idle1", false)
+	inst.AnimState:SetBank("cutstone")
+	inst.AnimState:SetBuild("conductors_whistle")
+	inst.AnimState:PlayAnimation("idle")
 
 	MakeInventoryFloatable(inst, nil, 0.05, { 1.3, 0.6, 1.3 })
 
@@ -66,7 +70,7 @@ local function fn()
 	inst:AddComponent("inspectable")
 
 	inst:AddComponent("inventoryitem")
-	inst.components.inventoryitem:ChangeImageName("beef_bell")
+	inst.components.inventoryitem.atlasname = "images/inventoryimages/conductors_whistle.xml"
 
 	-- The whistle can change hands without an event of its own, as when a backpack holding it is
 	-- dropped, so the holder is also checked on a timer.

@@ -645,8 +645,11 @@ GLOBAL.STRINGS.CHARACTERS.GENERIC.DESCRIBE.BOOMERANG_GILDED = "Heavier than it l
 AddRecipe2("conductors_whistle",
 	{ Ingredient("transistor", 2) },
 	GLOBAL.TECH.SCIENCE_TWO,
-	{ image = "beef_bell.tex" },
+	{ atlas = "images/inventoryimages/conductors_whistle.xml", image = "conductors_whistle.tex" },
 	{ "TOOLS" })
+table.insert(Assets, Asset("ATLAS", "images/inventoryimages/conductors_whistle.xml"))
+table.insert(Assets, Asset("IMAGE", "images/inventoryimages/conductors_whistle.tex"))
+RegisterInventoryItemAtlas(GLOBAL.resolvefilepath("images/inventoryimages/conductors_whistle.xml"), "conductors_whistle.tex")
 
 GLOBAL.STRINGS.NAMES.CONDUCTORS_WHISTLE = "Conductor's Whistle"
 GLOBAL.STRINGS.RECIPE_DESC.CONDUCTORS_WHISTLE = "Clockworks follow while you carry it, and wait when you don't."
