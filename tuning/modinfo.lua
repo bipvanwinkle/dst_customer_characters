@@ -1,7 +1,7 @@
 name = "Bip's Custom DST Tuning"
-description = "Customizes the game for my personal enjoyment 1.27.0"
+description = "Customizes the game for my personal enjoyment 1.28.0"
 author = "Bipvanwinkle"
-version = "1.27.0"
+version = "1.28.0"
 api_version = 10
 dst_compatible = true
 all_clients_require_mod = true
@@ -185,5 +185,105 @@ configuration_options = {
 			{ description = "3x", data = 3 },
 		},
 		default = 1.5,
+	},
+	{
+		name = "explosive_resist_cap",
+		label = "Explosive Resistance Cap",
+		hover = "Explosive damage a boss takes in one burst before it becomes immune to explosions",
+		options = {
+			{ description = "Default (8,000)", data = 8000 },
+			{ description = "16,000", data = 16000 },
+			{ description = "32,000", data = 32000 },
+		},
+		default = 16000,
+	},
+	{
+		name = "walking_stick_key",
+		label = "Walking Stick Key",
+		hover = "Equips a Walking Cane or Wooden Walking Stick from your inventory or backpack; press again to swap back. To use a controller back button, bind it to this key in the Steam controller layout",
+		options = {
+			{ description = "Off", data = false },
+			{ description = "F5", data = "F5" },
+			{ description = "F6", data = "F6" },
+			{ description = "F7", data = "F7" },
+			{ description = "F8", data = "F8" },
+			{ description = "F9", data = "F9" },
+		},
+		default = "F6",
+	},
+	{
+		name = "skill_points",
+		label = "Skill Points",
+		hover = "Most insight points a survivor can earn. Each point past 15 costs 5 days survived, and banked days count",
+		options = {
+			{ description = "Default (15)", data = 15 },
+			{ description = "18", data = 18 },
+			{ description = "20", data = 20 },
+			{ description = "25", data = 25 },
+			{ description = "33", data = 33 },
+		},
+		default = 20,
+	},
+	{
+		name = "clockwork_gear_damage",
+		label = "Clockwork Gear Damage",
+		hover = "Damage bonus per gear. WX-78 gives Gears to his clockworks, up to 5 each. Bishops, Knights and Rooks weight this differently, and Chessmaster Circuits add 20% each",
+		options = {
+			{ description = "+4%", data = 0.04 },
+			{ description = "+7%", data = 0.07 },
+			{ description = "+10%", data = 0.1 },
+			{ description = "+15%", data = 0.15 },
+			{ description = "+20%", data = 0.2 },
+		},
+		default = 0.1,
+	},
+	{
+		name = "clockwork_gear_reduction",
+		label = "Clockwork Gear Damage Reduction",
+		hover = "Damage reduction per gear, to a ceiling of 75%. WX-78 gives Gears to his clockworks, up to 5 each. Bishops, Knights and Rooks weight this differently, and Chessmaster Circuits add 20% each",
+		options = {
+			{ description = "2%", data = 0.02 },
+			{ description = "4%", data = 0.04 },
+			{ description = "6%", data = 0.06 },
+			{ description = "8%", data = 0.08 },
+			{ description = "10%", data = 0.1 },
+		},
+		default = 0.06,
+	},
+	{
+		name = "clockwork_gear_health",
+		label = "Clockwork Gear Health",
+		hover = "Maximum health per gear. WX-78 gives Gears to his clockworks, up to 5 each. Bishops, Knights and Rooks weight this differently, and Chessmaster Circuits add 20% each",
+		options = {
+			{ description = "+50", data = 50 },
+			{ description = "+100", data = 100 },
+			{ description = "+150", data = 150 },
+			{ description = "+225", data = 225 },
+			{ description = "+300", data = 300 },
+		},
+		default = 150,
+	},
+	{
+		name = "clockwork_gear_regen",
+		label = "Clockwork Gear Regeneration",
+		hover = "Extra health regenerated every 3 seconds out of combat, per gear. WX-78 gives Gears to his clockworks, up to 5 each. Bishops, Knights and Rooks weight this differently, and Chessmaster Circuits add 20% each",
+		options = {
+			{ description = "+1", data = 1 },
+			{ description = "+2", data = 2 },
+			{ description = "+4", data = 4 },
+			{ description = "+6", data = 6 },
+			{ description = "+8", data = 8 },
+		},
+		default = 4,
+	},
+	{
+		name = "beefalo_charge",
+		label = "Beefalo Charge",
+		hover = "While riding a beefalo, the weremoose's charge: the special action on open ground sends it charging through creatures, and into trees and boulders",
+		options = {
+			{ description = "Off", data = false },
+			{ description = "On", data = true },
+		},
+		default = true,
 	},
 }

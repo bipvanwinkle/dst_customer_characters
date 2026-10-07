@@ -1,6 +1,9 @@
 -- Import the modules
 local initThermalStone = require("components.thermal_stone")
 local layout_helper = require("utils.layout_helper")
+local initBeefaloCharge = require("utils.beefalo_charge")
+local clockwork_parking = require("utils.clockwork_parking")
+local initClockworkGears = require("utils.clockwork_gears")
 local containers = GLOBAL.require("containers")
 local Vector3 = GLOBAL.Vector3
 
@@ -24,6 +27,7 @@ local treeguard_chance_multiplier = GetModConfigData("treeguard_chance_multiplie
 local blowdart_craft_count = GetModConfigData("blowdart_craft_count") or 1
 local saltlick_durability_multiplier = GetModConfigData("saltlick_durability_multiplier") or 1
 local naughtiness_multiplier = GetModConfigData("naughtiness_multiplier") or 1
+local explosive_resist_cap = GetModConfigData("explosive_resist_cap") or 16000
 
 --Changes to Perishables to make it so that frozen items
 --reverse their perish rate when they are in a fridge
@@ -521,6 +525,89 @@ if naughtiness_multiplier ~= 1 then
 	end
 end
 
+-- Bosses build up immunity to explosions as they take explosive damage, reaching full immunity at
+-- this much in one burst. Each boss reads the value when it spawns.
+GLOBAL.TUNING.EXPLOSIVE_MAX_RESIST_DAMAGE = explosive_resist_cap
+
+-- Insight points: the game grants one for each entry in this table, so more entries raise the cap.
+-- Each extra point costs 5 experience (days survived), like the last ten of the stock fifteen.
+-- Experience is banked up to 160, which is enough for 33 points. Both the server and the player's
+-- game check skills against this table, so it has to match on both, which the mod guarantees in a
+-- world. The main menu runs without mods and still expects 15.
+local skill_points = GetModConfigData("skill_points") or 15
+for _ = #GLOBAL.TUNING.SKILL_THRESHOLDS + 1, skill_points do
+	table.insert(GLOBAL.TUNING.SKILL_THRESHOLDS, 5)
+end
+
+-- Walking stick key: equip the fastest walking aid carried, and swap back to what was held before on
+-- the next press. Runs on the player's own machine and uses the same call as clicking the item, so
+-- the game handles it like any other equip. A controller back button reaches it through a key
+-- binding in the Steam controller layout, since the game never sees those buttons itself.
+local walking_stick_key = GetModConfigData("walking_stick_key")
+if walking_stick_key and not GLOBAL.TheNet:IsDedicated() then
+	local WALKING_AIDS = { "cane", "walking_stick" } -- fastest first
+	local held_before
+
+	local function isWalkingAid(item)
+		return item ~= nil and table.contains(WALKING_AIDS, item.prefab)
+	end
+
+	-- Every item carried: the inventory slots, then the backpack
+	local function carriedItems(inventory)
+		local items = {}
+		for _, item in pairs(inventory:GetItems()) do
+			table.insert(items, item)
+		end
+		local backpack = inventory:GetOverflowContainer()
+		if backpack ~= nil then
+			for _, item in pairs(backpack:GetItems()) do
+				table.insert(items, item)
+			end
+		end
+		return items
+	end
+
+	local function findWalkingAid(carried)
+		for _, prefab in ipairs(WALKING_AIDS) do
+			for _, item in ipairs(carried) do
+				if item.prefab == prefab then
+					return item
+				end
+			end
+		end
+	end
+
+	local function onWalkingStickKey()
+		local player = GLOBAL.ThePlayer
+		local screen = GLOBAL.TheFrontEnd:GetActiveScreen()
+		-- Only during play: not while typing in chat or the console, in a menu, or as a ghost
+		if player == nil or screen == nil or screen.name ~= "HUD" or player:HasTag("playerghost") then
+			return
+		end
+		local inventory = player.replica.inventory
+		if inventory == nil then
+			return
+		end
+		local held = inventory:GetEquippedItem(GLOBAL.EQUIPSLOTS.HANDS)
+		local carried = carriedItems(inventory)
+		if isWalkingAid(held) then
+			-- Swap back if the earlier item is still carried; otherwise just put the stick away
+			local back = table.contains(carried, held_before) and held_before or held
+			held_before = nil
+			inventory:UseItemFromInvTile(back)
+		else
+			local aid = findWalkingAid(carried)
+			if aid ~= nil then
+				held_before = held
+				inventory:UseItemFromInvTile(aid)
+			end
+		end
+	end
+
+	-- On release, so holding the key down does not flip back and forth as it repeats
+	GLOBAL.TheInput:AddKeyUpHandler(GLOBAL["KEY_" .. walking_stick_key], onWalkingStickKey)
+end
+
 -- Recipes from other mods that use the deprecated AddRecipe only show up under the Mods crafting filter.
 -- Also list them under the filter their old recipe tab pointed at. Deferred until every mod has loaded,
 -- and skipped for any recipe that doesn't exist, so this is a no-op when those mods aren't enabled.
@@ -539,7 +626,7 @@ AddSimPostInit(function()
 end)
 
 -- Gilded Boomerang: a sturdier, harder-hitting boomerang made from a regular one
-PrefabFiles = { "boomerang_gilded" }
+PrefabFiles = { "boomerang_gilded", "conductors_whistle" }
 table.insert(Assets, Asset("ATLAS", "images/inventoryimages/boomerang_gilded.xml"))
 table.insert(Assets, Asset("IMAGE", "images/inventoryimages/boomerang_gilded.tex"))
 RegisterInventoryItemAtlas(GLOBAL.resolvefilepath("images/inventoryimages/boomerang_gilded.xml"), "boomerang_gilded.tex")
@@ -554,5 +641,26 @@ GLOBAL.STRINGS.NAMES.BOOMERANG_GILDED = "Gilded Boomerang"
 GLOBAL.STRINGS.RECIPE_DESC.BOOMERANG_GILDED = "It always comes back, and hits harder."
 GLOBAL.STRINGS.CHARACTERS.GENERIC.DESCRIBE.BOOMERANG_GILDED = "Heavier than it looks. It still comes back."
 
+-- Conductor's Whistle: carry it and befriended clockworks follow; set it down and they stay put
+AddRecipe2("conductors_whistle",
+	{ Ingredient("transistor", 2) },
+	GLOBAL.TECH.SCIENCE_TWO,
+	{ image = "beef_bell.tex" },
+	{ "TOOLS" })
+
+GLOBAL.STRINGS.NAMES.CONDUCTORS_WHISTLE = "Conductor's Whistle"
+GLOBAL.STRINGS.RECIPE_DESC.CONDUCTORS_WHISTLE = "Clockworks follow while you carry it, and wait when you don't."
+GLOBAL.STRINGS.CHARACTERS.GENERIC.DESCRIBE.CONDUCTORS_WHISTLE = "The clockworks come when it's with me, and stay when it's not."
+
 -- Initialize the modules
 initThermalStone(AddPrefabPostInit)
+clockwork_parking.init(env)
+initClockworkGears(env, {
+	damage = GetModConfigData("clockwork_gear_damage") or 0.1,
+	reduction = GetModConfigData("clockwork_gear_reduction") or 0.06,
+	health = GetModConfigData("clockwork_gear_health") or 150,
+	regen = GetModConfigData("clockwork_gear_regen") or 4,
+})
+if GetModConfigData("beefalo_charge") ~= false then
+	initBeefaloCharge(env)
+end
