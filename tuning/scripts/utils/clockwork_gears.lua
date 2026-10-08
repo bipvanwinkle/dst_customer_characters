@@ -1,13 +1,14 @@
--- Gear upgrades for befriended clockworks. WX-78 uses Gears on a clockwork that follows him to
--- raise its level, up to MAX_GEARS. Each level adds damage, damage reduction, health and health
--- regeneration, weighted by the kind of piece, and every Chessmaster Circuit WX-78 has plugged in
--- strengthens all of it while the clockwork follows him. Circuit sockets are the only limit on
--- that scaling, apart from a ceiling on damage reduction.
+-- Gear upgrades for befriended clockworks. WX-78 uses Gears or Frazzled Wires on a clockwork that
+-- follows him to raise its level, up to MAX_GEARS. Each level adds damage, damage reduction, health
+-- and health regeneration, weighted by the kind of piece, and every Chessmaster Circuit WX-78 has
+-- plugged in strengthens all of it while the clockwork follows him. Circuit sockets are the only
+-- limit on that scaling, apart from a ceiling on damage reduction.
 
 local MAX_GEARS = 5
 local CIRCUIT_BONUS = 0.2 -- each Chessmaster Circuit adds this share of the per-gear values
 local MAX_REDUCTION = 0.75
 local KEY = "clockwork_gears"
+local UPGRADE_ITEMS = { "gears", "trinket_6" } -- trinket_6 is Frazzled Wires
 
 -- How much of each configured per-gear value a piece gets
 local PIECES =
@@ -140,12 +141,21 @@ local function CanUpgrade(doer, target)
 	return follower ~= nil and follower:GetLeader() == doer
 end
 
-local function StopUsingGears(inst)
+local function StopUsingItem(inst)
 	inst.components.useabletargeteditem:StopUsingItem()
 end
 
--- Gears already befriend a leaderless clockwork; this adds upgrading one that follows WX-78
-local function OnGearsSpawned(inst)
+local function GetUseItemOnVerb()
+	return "GEARS"
+end
+
+-- Gears already befriend a leaderless clockwork; this adds upgrading one that follows WX-78.
+-- Frazzled Wires have no use on a target of their own, so upgrading is all they do.
+local function OnUpgradeItemSpawned(inst)
+	if inst.prefab ~= "gears" then
+		inst.GetUseItemOnVerb = GetUseItemOnVerb
+	end
+
 	local ValidTarget = inst.UseableTargetedItem_ValidTarget
 	inst.UseableTargetedItem_ValidTarget = function(inst, target, doer)
 		return CanUpgrade(doer, target) or (ValidTarget ~= nil and ValidTarget(inst, target, doer))
@@ -155,6 +165,9 @@ local function OnGearsSpawned(inst)
 		return
 	end
 
+	if inst.components.useabletargeteditem == nil then
+		inst:AddComponent("useabletargeteditem")
+	end
 	local onuse = inst.components.useabletargeteditem.onusefn
 	inst.components.useabletargeteditem:SetOnUseFn(function(inst, target, doer)
 		if not CanUpgrade(doer, target) then
@@ -164,7 +177,7 @@ local function OnGearsSpawned(inst)
 		target.components.health:SetPercent(1)
 		inst.components.stackable:Get():Remove()
 		if inst:IsValid() then
-			inst:DoStaticTaskInTime(0, StopUsingGears)
+			inst:DoStaticTaskInTime(0, StopUsingItem)
 		end
 		return true
 	end)
@@ -175,7 +188,9 @@ local function init(env, config)
 	for prefab in pairs(PREFABS) do
 		env.AddPrefabPostInit(prefab, OnClockworkSpawned)
 	end
-	env.AddPrefabPostInit("gears", OnGearsSpawned)
+	for _, prefab in ipairs(UPGRADE_ITEMS) do
+		env.AddPrefabPostInit(prefab, OnUpgradeItemSpawned)
+	end
 end
 
 return init

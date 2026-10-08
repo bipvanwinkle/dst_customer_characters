@@ -4,6 +4,8 @@ local layout_helper = require("utils.layout_helper")
 local initBeefaloCharge = require("utils.beefalo_charge")
 local clockwork_parking = require("utils.clockwork_parking")
 local initClockworkGears = require("utils.clockwork_gears")
+local initClockworkMigration = require("utils.clockwork_migration")
+local initBishopKiting = require("utils.bishop_kiting")
 local containers = GLOBAL.require("containers")
 local Vector3 = GLOBAL.Vector3
 
@@ -664,6 +666,12 @@ initClockworkGears(env, {
 	health = GetModConfigData("clockwork_gear_health") or 150,
 	regen = GetModConfigData("clockwork_gear_regen") or 4,
 })
+if GetModConfigData("clockwork_migration") ~= false then
+	initClockworkMigration(env)
+end
+if GetModConfigData("bishop_kiting") ~= false then
+	initBishopKiting(env)
+end
 if GetModConfigData("beefalo_charge") ~= false then
 	initBeefaloCharge(env)
 end

@@ -1,7 +1,7 @@
 name = "Bip's Custom DST Tuning"
 description = "Customizes the game for my personal enjoyment 1.28.0"
 author = "Bipvanwinkle"
-version = "1.28.0"
+version = "1.31.0"
 api_version = 10
 dst_compatible = true
 all_clients_require_mod = true
@@ -227,7 +227,7 @@ configuration_options = {
 	{
 		name = "clockwork_gear_damage",
 		label = "Clockwork Gear Damage",
-		hover = "Damage bonus per gear. WX-78 gives Gears to his clockworks, up to 5 each. Bishops, Knights and Rooks weight this differently, and Chessmaster Circuits add 20% each",
+		hover = "Damage bonus per gear. WX-78 gives Gears or Frazzled Wires to his clockworks, up to 5 each. Bishops, Knights and Rooks weight this differently, and Chessmaster Circuits add 20% each",
 		options = {
 			{ description = "+4%", data = 0.04 },
 			{ description = "+7%", data = 0.07 },
@@ -240,7 +240,7 @@ configuration_options = {
 	{
 		name = "clockwork_gear_reduction",
 		label = "Clockwork Gear Damage Reduction",
-		hover = "Damage reduction per gear, to a ceiling of 75%. WX-78 gives Gears to his clockworks, up to 5 each. Bishops, Knights and Rooks weight this differently, and Chessmaster Circuits add 20% each",
+		hover = "Damage reduction per gear, to a ceiling of 75%. WX-78 gives Gears or Frazzled Wires to his clockworks, up to 5 each. Bishops, Knights and Rooks weight this differently, and Chessmaster Circuits add 20% each",
 		options = {
 			{ description = "2%", data = 0.02 },
 			{ description = "4%", data = 0.04 },
@@ -253,7 +253,7 @@ configuration_options = {
 	{
 		name = "clockwork_gear_health",
 		label = "Clockwork Gear Health",
-		hover = "Maximum health per gear. WX-78 gives Gears to his clockworks, up to 5 each. Bishops, Knights and Rooks weight this differently, and Chessmaster Circuits add 20% each",
+		hover = "Maximum health per gear. WX-78 gives Gears or Frazzled Wires to his clockworks, up to 5 each. Bishops, Knights and Rooks weight this differently, and Chessmaster Circuits add 20% each",
 		options = {
 			{ description = "+50", data = 50 },
 			{ description = "+100", data = 100 },
@@ -266,7 +266,7 @@ configuration_options = {
 	{
 		name = "clockwork_gear_regen",
 		label = "Clockwork Gear Regeneration",
-		hover = "Extra health regenerated every 3 seconds out of combat, per gear. WX-78 gives Gears to his clockworks, up to 5 each. Bishops, Knights and Rooks weight this differently, and Chessmaster Circuits add 20% each",
+		hover = "Extra health regenerated every 3 seconds out of combat, per gear. WX-78 gives Gears or Frazzled Wires to his clockworks, up to 5 each. Bishops, Knights and Rooks weight this differently, and Chessmaster Circuits add 20% each",
 		options = {
 			{ description = "+1", data = 1 },
 			{ description = "+2", data = 2 },
@@ -275,6 +275,26 @@ configuration_options = {
 			{ description = "+8", data = 8 },
 		},
 		default = 4,
+	},
+	{
+		name = "clockwork_migration",
+		label = "Clockworks Change Worlds",
+		hover = "Befriended clockworks that are following a survivor go with them between the surface and the caves. Ones left waiting by the Conductor's Whistle stay behind",
+		options = {
+			{ description = "Off", data = false },
+			{ description = "On", data = true },
+		},
+		default = true,
+	},
+	{
+		name = "bishop_kiting",
+		label = "Allied Bishops Keep Distance",
+		hover = "A bishop that follows a survivor backs away from a target that gets close while it waits to fire again, instead of standing still to be hit",
+		options = {
+			{ description = "Off", data = false },
+			{ description = "On", data = true },
+		},
+		default = true,
 	},
 	{
 		name = "beefalo_charge",
